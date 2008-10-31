@@ -2,7 +2,7 @@
 """
 A Gtk+ application for keeping track of time.
 
-$Id$
+$Id: gtimelog.py 119 2008-07-03 22:25:56Z mg $
 """
 
 import re
@@ -10,6 +10,7 @@ import os
 import csv
 import sys
 import sets
+import copy
 import urllib
 import datetime
 import tempfile
@@ -21,6 +22,12 @@ import gobject
 import gtk
 import gtk.glade
 import pango
+try:
+    import dbus
+    import pynotify
+    assert pynotify.init ("gtimelog")
+except:
+    print "dbus or pynotify not found, idle timeouts are not supported"
 
 
 # This is to let people run GTimeLog without having to install it
@@ -33,7 +40,6 @@ if not os.path.exists(ui_file):
     ui_file = "/usr/share/gtimelog/gtimelog.glade"
 if not os.path.exists(icon_file):
     icon_file = "/usr/share/pixmaps/gtimelog-small.png"
-
 
 def as_minutes(duration):
     """Convert a datetime.timedelta to an integer number of minutes."""
@@ -85,6 +91,58 @@ def parse_time(t):
     hour, min = map(int, m.groups())
     return datetime.time(hour, min)
 
+def parse_timedelta(td):
+    """
+       Parse a timedelta of seconds, minutes, hours and days into a timedelta
+       10s 14h 3d
+       14 days 240 MINUTES
+       12 hours and 52 d
+       1 second 3 min
+       1 day and 12 secs
+    """
+
+    td = td.strip()
+    if td == "" or td == "0":
+        return datetime.timedelta(0)
+
+    done = False
+    ms = re.search (r'\s*(\d+)\s*s(ec(ond)?(s)?)?', td, re.I)
+    if ms:
+        seconds = int (ms.group (1))
+        done = True
+    else:
+        seconds = 0
+
+    mm = re.search (r'\s*(\d+)\s*m(in(ute)?(s)?)?(\s*(\d+)\s*$)?', td, re.I)
+    if mm:
+        seconds += int (mm.group (1)) * 60 + (mm.group (4) and int (mm.group (5)) or 0)
+        done = True
+
+    mh = re.search (r'\s*(\d+)\s*h(our(s)?)?(\s*(\d+)\s*$)?', td, re.I)
+    if mh:
+        seconds += int (mh.group (1)) * 60 * 60 + (mh.group (4) and int (mh.group (5)) * 60 or 0)
+        done = True
+
+    if not done:
+        m = re.search (r'\s*(\d+)\s*:\s*(\d+)(\s*:\s*(\d+))?', td)
+        if m:
+            done = True
+            seconds = (int (m.group (1)) * 60 + int (m.group (2))) * 60
+            if m.group (3):
+                seconds += int (m.group (4))
+        else:
+            seconds = 0
+
+    md = re.search (r'\s*(\d+)\s*d(ay(s)?)?', td, re.I)
+    if md:
+        days = int (md.group (1))
+        done = True
+    else:
+        days = 0
+
+    if not done:
+        raise ValueError ('bad timedelta: ', td)
+    return datetime.timedelta (days, seconds)
 
 def virtual_day(dt, virtual_midnight):
     """Return the "virtual day" of a timestamp.
@@ -581,9 +639,10 @@ class TimeLog(object):
         print >> f, line
         f.close()
 
-    def append(self, entry):
+    def append(self, entry, now=None):
         """Append a new entry to the time log."""
-        now = datetime.datetime.now().replace(second=0, microsecond=0)
+        if not now:
+            now = datetime.datetime.now().replace(second=0, microsecond=0)
         last = self.window.last_time()
         if last and different_days(now, last, self.virtual_midnight):
             # next day: reset self.window
@@ -642,22 +701,16 @@ class TaskList(object):
 
     def load(self):
         """Load task list from a file named self.filename."""
-        groups = {}
+        self.items = set()
         self.last_mtime = self.get_mtime()
         try:
             for line in file(self.filename):
                 line = line.strip()
-                if not line or line.startswith('#'):
-                    continue
-                if ':' in line:
-                    group, task = [s.strip() for s in line.split(':', 1)]
-                else:
-                    group, task = self.other_title, line
-                groups.setdefault(group, []).append(task)
+                if line and not line.startswith("#"):
+                    self.items.add (line)
         except IOError:
             pass # the file's not there, so what?
-        self.groups = groups.items()
-        self.groups.sort()
+
 
     def reload(self):
         """Reload the task list."""
@@ -670,10 +723,14 @@ class RemoteTaskList(TaskList):
     Keeps a cached copy of the list in a local file, so you can use it offline.
     """
 
-    def __init__(self, url, cache_filename):
+    def __init__(self, url, cache_filename, expires=datetime.timedelta(1)):
         self.url = url
         TaskList.__init__(self, cache_filename)
-        self.first_time = True
+
+        #Even better would be to use the Expires: header on the list itself I suppose...
+        self.max_age = expires
+        # Slightly hacky - just ensures that the last time is less than the maximum age
+        self.last_time = datetime.datetime.now () - self.max_age * 2
 
     def check_reload(self):
         """Check whether the task list needs to be reloaded.
@@ -683,11 +740,11 @@ class RemoteTaskList(TaskList):
 
         Returns True if the file was reloaded.
         """
-        if self.first_time:
-            self.first_time = False
-            if not os.path.exists(self.filename):
-                self.download()
-                return True
+        if datetime.datetime.now() - self.last_time > self.max_age:
+            self.last_time = datetime.datetime.now ()
+            #Always redownload if past the expiry date.
+            self.download()
+            return True
         return TaskList.check_reload(self)
 
     def download(self):
@@ -725,9 +782,14 @@ class Settings(object):
     virtual_midnight = datetime.time(2, 0)
 
     task_list_url = ''
+    task_list_expiry = '24 hours'
     edit_task_list_cmd = ''
 
     show_office_hours = True
+
+    report_to_url = ""
+
+    remind_idle = '10 minutes'
 
     def _config(self):
         config = ConfigParser.RawConfigParser()
@@ -743,9 +805,13 @@ class Settings(object):
         config.set('gtimelog', 'virtual_midnight',
                    self.virtual_midnight.strftime('%H:%M'))
         config.set('gtimelog', 'task_list_url', self.task_list_url)
+        config.set('gtimelog', 'task_list_expiry', self.task_list_expiry)
         config.set('gtimelog', 'edit_task_list_cmd', self.edit_task_list_cmd)
         config.set('gtimelog', 'show_office_hours',
                    str(self.show_office_hours))
+        config.set('gtimelog', 'report_to_url', self.report_to_url)
+        config.set('gtimelog', 'remind_idle', self.remind_idle)
+
         return config
 
     def load(self, filename):
@@ -762,9 +828,16 @@ class Settings(object):
         self.virtual_midnight = parse_time(config.get('gtimelog',
                                                       'virtual_midnight'))
         self.task_list_url = config.get('gtimelog', 'task_list_url')
+        self.task_list_expiry = parse_timedelta(config.get('gtimelog', 'task_list_expiry'))
         self.edit_task_list_cmd = config.get('gtimelog', 'edit_task_list_cmd')
         self.show_office_hours = config.getboolean('gtimelog',
                                                    'show_office_hours')
+        self.report_to_url = config.get('gtimelog','report_to_url')
+        self.remind_idle = parse_timedelta (config.get('gtimelog', 'remind_idle'))
+
+        #Anything shorter than 2 minutes will tick every minute
+        #if self.remind_idle > datetime.timedelta (0, 120):
+        #    self.remind_idle = datetime.timedelta (0, 120)
 
     def save(self, filename):
         config = self._config()
@@ -852,7 +925,7 @@ class TrayIcon(object):
     def tip(self):
         """Compute tooltip text."""
         current_task = self.gtimelog_window.task_entry.get_text()
-        if not current_task: 
+        if not current_task:
             current_task = "nothing"
         tip = "GTimeLog: working on %s" % current_task
         total_work, total_slacking = self.timelog.window.totals()
@@ -883,11 +956,16 @@ class MainWindow(object):
         self.tray_icon = None
         self.last_tick = None
         self.footer_mark = None
+        self.inserting_old_time = False #Allow insert of backdated log entries
+
         # Try to prevent timer routines mucking with the buffer while we're
         # mucking with the buffer.  Not sure if it is necessary.
         self.lock = False
         self.entry_watchers = []
         self._init_ui()
+        self._init_dbus()
+        self.tick(True)
+        gobject.timeout_add(1000, self.tick)
 
     def _init_ui(self):
         """Initialize the user interface."""
@@ -910,6 +988,7 @@ class MainWindow(object):
         self.calendar = tree.get_widget("calendar")
         self.calendar.connect("day_selected_double_click",
                               self.on_calendar_day_selected_double_click)
+        self.submit_window = SubmitWindow(tree, self.timelog.whole_history (), self.settings)
         self.main_window = tree.get_widget("main_window")
         self.main_window.connect("delete_event", self.delete_event)
         self.log_view = tree.get_widget("log_view")
@@ -946,12 +1025,21 @@ class MainWindow(object):
         buffer.create_tag('duration', foreground='red')
         buffer.create_tag('time', foreground='green')
         buffer.create_tag('slacking', foreground='gray')
-        self.set_up_task_list()
         self.set_up_completion()
+        self.set_up_task_list()
         self.set_up_history()
         self.populate_log()
-        self.tick(True)
-        gobject.timeout_add(1000, self.tick)
+
+
+    def _init_dbus(self):
+        try:
+            dbus_bus = dbus.SessionBus()
+            dbus_proxy = dbus_bus.get_object('org.gnome.ScreenSaver','/org/gnome/ScreenSaver')
+            self.screensaver = dbus.Interface(dbus_proxy, dbus_interface='org.gnome.ScreenSaver')
+            self.screensaving =self.screensaver.GetActive () ==1
+        except:
+            self.screensaving = False
+            self.screensaver = None
 
     def set_up_log_view_columns(self):
         """Set up tab stops in the log view."""
@@ -1099,17 +1187,33 @@ class MainWindow(object):
         buffer.delete_mark(end_mark)
 
     def set_up_task_list(self):
-        """Set up the task list pane."""
+        """Set up a fully hierarchical task list
+            Creates a dictionary of dictionaries that mirrors the
+            structure of the tasks (seperated by :) and then
+            recurses into that structure bunging it into the treeview
+        """
+        task_list = {}
         self.task_store.clear()
-        for group_name, group_items in self.tasks.groups:
-            t = self.task_store.append(None, [group_name, group_name + ': '])
-            for item in group_items:
-                if group_name == self.tasks.other_title:
-                    task = item
+        for item in self.tasks.items:
+            parent = task_list
+            for pos in [s.strip() for s in item.split(":")]:
+                if pos: #Prevent blank labels caused by :: in config
+                    if not pos in parent:
+                        parent[pos] = {}
+                    parent = parent[pos]
+
+        def recursive_append (source, prefix, parent):
+            tl = source.keys()
+            tl.sort()
+            for key in tl:
+                if source[key] == {}:
+                    child = self.task_store.append(parent, [key, prefix + key])
                 else:
-                    task = group_name + ': ' + item
-                self.task_store.append(t, [item, task])
-        self.task_list.expand_all()
+                    child = self.task_store.append(parent, [key, prefix + key + ": "])
+                    recursive_append (source[key], prefix + key + ": ", child)
+
+        recursive_append(task_list, "", None)
+        self.task_list.expand_all ()
 
     def set_up_history(self):
         """Set up history."""
@@ -1120,7 +1224,6 @@ class MainWindow(object):
         if not self.have_completion:
             return
         seen = sets.Set()
-        self.completion_choices.clear()
         for entry in self.history:
             if entry not in seen:
                 seen.add(entry)
@@ -1138,6 +1241,7 @@ class MainWindow(object):
         completion = gtk.EntryCompletion()
         completion.set_model(self.completion_choices)
         completion.set_text_column(0)
+        completion.set_inline_completion (True)
         self.task_entry.set_completion(completion)
 
     def add_history(self, entry):
@@ -1198,10 +1302,20 @@ class MainWindow(object):
         window = self.timelog.window
         self.mail(window.daily_report)
 
+    def on_submit_report_menu_activate(self, widget):
+        """File -> Submit Report"""
+        self.timelog.reread()
+        self.set_up_history()
+        self.populate_log()		
+        self.submit_window.show()
+
+    def on_cancel_submit_button_pressed(self, widget):
+        self.submit_window.hide()
+
     def on_yesterdays_report_activate(self, widget):
         """File -> Daily Report for Yesterday"""
         max = self.timelog.window.min_timestamp
-        min = max - datetime.timedelta(1) 
+        min = max - datetime.timedelta(1)
         window = self.timelog.window_for(min, max)
         self.mail(window.daily_report)
 
@@ -1309,6 +1423,10 @@ class MainWindow(object):
     def on_edit_timelog_activate(self, widget):
         """File -> Edit timelog.txt"""
         self.spawn(self.settings.editor, self.timelog.filename)
+
+    def on_edit_log_button_activate(self, widget):
+        self.spawn(self.settings.editor, self.timelog.filename)
+        self.submit_window.hide()
 
     def mail(self, write_draft):
         """Send an email."""
@@ -1431,8 +1549,14 @@ class MainWindow(object):
         entry = self.task_entry.get_text()
         if not entry:
             return
-        self.add_history(entry)
-        self.timelog.append(entry)
+
+        if self.inserting_old_time:
+            self.insert_new_log_entries ()
+            now = self.time_before_idle
+        else:
+            now = None
+
+        self.timelog.append(entry, now)
         if self.chronological:
             self.delete_footer()
             self.write_item(self.timelog.window.last_entry())
@@ -1446,26 +1570,246 @@ class MainWindow(object):
         for watcher in self.entry_watchers:
             watcher(entry)
 
+    def resume_from_idle (self):
+        """
+            This will give the user an opportunity to fill in a log entry for the time the computer noticed it was idle.
+
+            It is only triggered if the computer was idle for > settings.remind_idle period of time
+                AND the previous event in the log occured more than settings.remind_idle before the start of the idling
+        """
+        try:
+            if self.time_before_idle - self.timelog.window.last_time() > self.settings.remind_idle:
+                self.n = pynotify.Notification ("Welcome back",
+                    "Would you like to insert a log entry near the time you left your computer?")
+                self.n.add_action("clicked","Yes please", self.insert_old_log_entries, "")
+                    #The please is just to make the tiny little button bigger
+                self.n.show ()
+
+        except:
+            print "pynotification failed"
+
+    def insert_old_log_entries (self, note=None, act=None, data=None):
+        """
+            Callback from the resume_from_idle notification
+        """
+        print repr ((note, act, data))
+        self.inserting_old_time = True
+        self.time_label.set_text ("Backdated: " +self.time_before_idle.strftime("%H:%M"))
+
+    def insert_new_log_entries (self):
+        """
+            Once we have inserted an old log entry, go back to inserting new ones
+        """
+        self.inserting_old_time = False
+        self.tick (True) #Reset label caption
+
     def tick(self, force_update=False):
         """Tick every second."""
+
+        now = datetime.datetime.now().replace(second=0, microsecond=0)
+
+        #Make that every minute
+        if now == self.last_tick and not force_update:
+            return True
+
+        #Computer has been asleep?
+        if self.settings.remind_idle > datetime.timedelta (0):
+            if self.last_tick and now - self.last_tick > self.settings.remind_idle:
+                self.time_before_idle = self.last_tick
+                self.resume_from_idle ()
+
+            #Computer has been left idle?
+            screensaving = self.screensaver and self.screensaver.GetActive () == 1
+            if not screensaving == self.screensaving:
+                self.screensaving = screensaving
+                if screensaving:
+                    self.time_before_idle = self.last_tick
+                else:
+                    if now - self.time_before_idle > self.settings.remind_idle:
+                        self.resume_from_idle ()
+
+        #Reload task list if necessary
         if self.tasks.check_reload():
             self.set_up_task_list()
-        now = datetime.datetime.now().replace(second=0, microsecond=0)
-        if now == self.last_tick and not force_update:
-            # Do not eat CPU unnecessarily
-            return True
+
         self.last_tick = now
         last_time = self.timelog.window.last_time()
-        if last_time is None:
-            self.time_label.set_text(now.strftime("%H:%M"))
-        else:
-            self.time_label.set_text(format_duration(now - last_time))
-            # Update "time left to work"
-            if not self.lock:
-                self.delete_footer()
-                self.add_footer()
+
+        if not self.inserting_old_time: #We override the text on the label when we do that
+            if last_time is None:
+                self.time_label.set_text(now.strftime("Arrival message:"))
+            else:
+                self.time_label.set_text(format_duration(now - last_time))
+                # Update "time left to work"
+                if not self.lock:
+                    self.delete_footer()
+                    self.add_footer()
         return True
 
+class SubmitWindow(object):
+    """The window for submitting reports over the http interface"""
+    def __init__(self, tree, timewindow, settings):
+        self.settings = settings
+        self.window = tree.get_widget("submit_window")
+        self.timewindow = timewindow
+        self.report_url = settings.report_to_url
+        tree.get_widget("submit_report").connect ("pressed", self.on_submit_report)
+        self.list_store = self._list_store ()
+        self.tree_view = tree.get_widget("submit_tree")
+        tree.get_widget("email_label").set_label (settings.report_to_url)
+        self.tree_view.set_model (self.list_store)
+        toggle= gtk.CellRendererToggle()
+        toggle.connect ("toggled", self.on_toggled)
+        tree.get_widget("toggle_selection").connect("toggled", self.on_toggle_selection)
+        self.tree_view.append_column(gtk.TreeViewColumn('Include?', toggle ,active=2, activatable=3, radio=6, visible=7))
+        time_cell = gtk.CellRendererText()
+        time_cell.connect ("edited", self.on_time_cell_edit)
+        self.tree_view.append_column(gtk.TreeViewColumn('Log Time', time_cell, text=0, editable=4, foreground=5))
+        item_cell = gtk.CellRendererText()
+        item_cell.connect ("edited", self.on_item_cell_edit)
+        self.tree_view.append_column(gtk.TreeViewColumn('Log Entry', item_cell, text=1, editable=4, foreground=5))
+        self.tree_view.append_column(gtk.TreeViewColumn('Error Message', gtk.CellRendererText (), text=8, foreground=5))
+        selection = self.tree_view.get_selection()
+        selection.set_mode(gtk.SELECTION_MULTIPLE)
+
+        self.shown = False
+
+    def on_submit_report (self, button):
+        """The actual submit action"""
+        data = {}
+        for row in self.list_store:
+            if row[2]:
+                data[row[0]] = ""
+                for item in row.iterchildren():
+                    if item[7]:
+                        data[row[0]] += "%s %s\n" % (format_duration_short(parse_timedelta(item[0])), item[1])
+
+        try:
+            response = urllib.urlopen(self.report_url, urllib.urlencode(data)).read ()
+
+            if response.startswith("Failed"):
+                self.annotate_failure (response)
+            else:
+                self.hide ()
+
+        except:
+            dialog = gtk.Dialog("Server Error",
+                     self.window,
+                     gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+                     (gtk.STOCK_OK, gtk.RESPONSE_ACCEPT))
+            label = gtk.Label ("Error communicating with the server, please try again later")
+            label.show ()
+            dialog.vbox.pack_start (label)
+            dialog.run ()
+            dialog.destroy ()
+            self.hide ()
+
+
+    def on_toggled (self, toggle, path, value=None):
+        """When one of the dates is toggled"""
+        self.list_store[path] = self.date_row(self.list_store[path][0],value == None and (not self.list_store[path][2]) or value )
+
+    def on_toggle_selection (self, toggle):
+        """The toggle selection check box to do groups"""
+        model, selection = self.tree_view.get_selection ().get_selected_rows ()
+        for row in selection:
+            if model[row][3]:
+                self.on_toggled(toggle, row, toggle.get_property("active"))
+
+    def on_time_cell_edit (self, cell, path, text):
+        """When a time cell has been edited"""
+        try:
+            time = parse_timedelta (text)
+            item = self.list_store[path][1]
+            self.list_store[path] = self.item_row(time, item)
+        except ValueError:
+            return # XXX: might want to tell the user what's wrong
+
+    def on_item_cell_edit (self, cell, path, text):
+        """When the description cell has been edited"""
+        try:
+            time = parse_timedelta (self.list_store[path][0])
+            item = text
+            self.list_store[path] = self.item_row(time, item)
+        except ValueError:
+            return # XXX: might want to tell the user what's wrong
+
+    def show (self):
+        """Re-read the log file and fill in the list_store"""
+
+        self.list_store.clear ()
+        date_dict = {}
+
+        for (start, finish, duration, entry) in self.timewindow.all_entries ():
+            entry = entry.strip ()
+            #Neatly store the things under the day on which they started
+            (date, time) = str(start).split(" ")
+            if not date in date_dict:
+                date_dict[date] = {}
+            if not entry in date_dict[date]:
+                date_dict[date][entry] = datetime.timedelta(0)
+            date_dict[date][entry] += duration
+
+        keys = date_dict.keys ()
+        keys.sort ()
+        for date in keys:
+            parent = self.list_store.append(None, self.date_row(date))
+            items = date_dict[date].keys ()
+            #Sort by length of time with longest first
+            items.sort (lambda a,b: cmp(date_dict[date][b], date_dict[date][a]))
+            for item in items:
+                submit = date_dict[date][item] > datetime.timedelta(0) and not "**" in item
+                self.list_store.append (parent,self.item_row(date_dict[date][item], item))
+
+        self.window.show ()
+
+    #All the row based stuff together
+    def _list_store (self):
+        #Col1, col2, active (date submission), activatable, editable, foreground, radio, visible (row submission), error
+        return gtk.TreeStore(str, str, bool, bool, bool, str, bool, bool, str)
+
+    def date_row (self, date, submit=True):
+        return [date, "", submit, True, False, submit and "black" or "grey", False, True, ""]
+
+    def item_row (self, duration, item):
+        submit = duration > datetime.timedelta(0) and not "**" in item
+        return [format_duration_long (duration), item, submit, False, True, submit and "black" or "grey", True, submit, ""]
+
+    def annotate_failure (self, response):
+        """
+            Parses the error response sent by the server and adds notes to the treeview
+        """
+        redate = re.compile("\[(\d\d\d\d-\d\d-\d\d)\]")
+        reitem = re.compile("([^@]*)@\s*\d+:\d\d\s+(.*)$")
+
+        date = "0000-00-00"
+        daterow = None
+        for line in map(str.strip, response.split("\n")):
+
+            m = redate.match (line)
+            if m:
+                date = m.group (1)
+                for row in self.list_store:
+                    if row[0] == date:
+                        daterow = row
+                        break
+                continue
+
+            m = reitem.match (line)
+            if m and daterow:
+                for itemrow in daterow.iterchildren ():
+                    if itemrow[1].strip () == m.group (2):
+                        itemrow[5] = "red"
+                        daterow[5] = "red"
+                        itemrow[7] = False
+                        itemrow[8] = m.group (1).strip ()
+                continue
+
+            if line and line != "Failed":
+                print "Couldn't understand server: %s" % line
+
+    def hide (self):
+        self.window.hide ()
 
 def main():
     """Run the program."""
@@ -1481,7 +1825,7 @@ def main():
     except OSError:
         pass
     settings = Settings()
-    settings_file = os.path.join(configdir, 'gtimelogrc') 
+    settings_file = os.path.join(configdir, 'gtimelogrc')
     if not os.path.exists(settings_file):
         settings.save(settings_file)
     else:
@@ -1490,7 +1834,8 @@ def main():
                       settings.virtual_midnight)
     if settings.task_list_url:
         tasks = RemoteTaskList(settings.task_list_url,
-                               os.path.join(configdir, 'remote-tasks.txt'))
+                               os.path.join(configdir, 'remote-tasks.txt'),
+                               settings.task_list_expiry)
     else:
         tasks = TaskList(os.path.join(configdir, 'tasks.txt'))
     main_window = MainWindow(timelog, settings, tasks)

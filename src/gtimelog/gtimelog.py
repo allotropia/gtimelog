@@ -115,7 +115,7 @@ def parse_timedelta(td):
 
     mm = re.search (r'\s*(\d+)\s*m(in(ute)?(s)?)?(\s*(\d+)\s*$)?', td, re.I)
     if mm:
-        seconds += int (mm.group (1)) * 60 + (mm.group (4) and int (mm.group (5)) or 0)
+        seconds += int (mm.group (1)) * 60 + (mm.group (5) and int (mm.group (6)) or 0)
         done = True
 
     mh = re.search (r'\s*(\d+)\s*h(our(s)?)?(\s*(\d+)\s*$)?', td, re.I)

@@ -114,6 +114,12 @@ def doctest_parse_timedelta():
         datetime.timedelta(0, 181)
         >>> parse_timedelta('1 day and 12 secs')
         datetime.timedelta(1, 12)
+        >>> parse_timedelta('10 minutes')
+        datetime.timedelta(0, 600)
+        >>> parse_timedelta('10 minutes 10')
+        datetime.timedelta(0, 610)
+        >>> parse_timedelta('10 hours')
+        datetime.timedelta(0, 36000)
     """
 
 def doctest_virtual_day():

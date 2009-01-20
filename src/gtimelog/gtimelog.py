@@ -11,7 +11,7 @@ import csv
 import sys
 import sets
 import copy
-import urllib
+import urllib2
 import datetime
 import tempfile
 import ConfigParser
@@ -751,11 +751,79 @@ class RemoteTaskList(TaskList):
         """Download the task list from the server."""
         if self.loading_callback:
             self.loading_callback()
-        try:
-            urllib.urlretrieve(self.url, self.filename)
-        except IOError:
-            if self.error_callback:
-                self.error_callback()
+	
+	
+	class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
+		# FIXME : work out how to find the parent window
+		def find_user_password (self, realm, authuri):
+			print "XXX: find_user_password: %s, %s" % (realm, authuri)
+			# pop up a username/password dialog
+			d = gtk.Dialog ()
+			d.vbox.set_spacing (6)
+			d.set_has_separator (False)
+			d.set_title ('Authentication Required')
+
+			l = gtk.Label ()
+			l.set_markup ('<span size="x-large" weight="bold">Authentication Required</span>')
+			d.vbox.pack_start (l)
+
+			l = gtk.Label ('Authentication is required for the domain "%s".' % realm)
+			l.set_line_wrap (True)
+			d.vbox.pack_start (l)
+
+			t = gtk.Table (2, 2)
+			t.attach (gtk.Label ("Username:"), 0, 1, 0, 1)
+			t.attach (gtk.Label ("Password:"), 0, 1, 1, 2)
+
+			userentry = gtk.Entry ()
+			passentry = gtk.Entry ()
+			passentry.set_visibility (False)
+			t.attach (userentry, 1, 2, 0, 1)
+			t.attach (passentry, 1, 2, 1, 2)
+
+			d.vbox.pack_start (t)
+
+			d.add_buttons (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+			               gtk.STOCK_OK, gtk.RESPONSE_OK)
+
+			d.show_all ()
+			r = d.run ()
+
+			username = userentry.get_text ()
+			password = passentry.get_text ()
+
+			d.destroy ()
+			
+			if r == gtk.RESPONSE_OK:
+				return (username, password)
+			else:
+				return (None, None)
+
+	passmgr = GtkPasswordRequest ()
+	auth_handler = urllib2.HTTPBasicAuthHandler (passmgr)
+	
+	opener = urllib2.build_opener (auth_handler)
+	urllib2.install_opener (opener)
+
+	try:
+		fp = urllib2.urlopen (self.url)
+	except urllib2.HTTPError:
+		if self.error_callback:
+			self.error_callback ()
+	else:
+		# FIXME - is there a better way to do this?
+		try:
+			out = open (self.filename, 'w')
+
+			out.write (fp.read ())
+		except IOError:
+			if self.error_callback:
+				self.error_callback ()
+		finally:
+			out.close ()
+
+		fp.close ()
+	
         self.load()
         if self.loaded_callback:
             self.loaded_callback()

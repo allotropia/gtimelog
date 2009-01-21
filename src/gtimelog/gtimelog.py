@@ -777,6 +777,12 @@ class RemoteTaskList(TaskList):
 			userentry = gtk.Entry ()
 			passentry = gtk.Entry ()
 			passentry.set_visibility (False)
+
+			userentry.connect ('activate', lambda entry:
+				passentry.grab_focus ())
+			passentry.connect ('activate', lambda entry:
+				d.response (gtk.RESPONSE_OK))
+
 			t.attach (userentry, 1, 2, 0, 1)
 			t.attach (passentry, 1, 2, 1, 2)
 

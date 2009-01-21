@@ -28,3 +28,5 @@ hours = 8
 # When does one work day end and another begin
 virtual_midnight = 02:00
 
+# Whether or not to show the time label in the tray icon
+show-time-label = True

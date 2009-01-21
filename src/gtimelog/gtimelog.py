@@ -778,6 +778,8 @@ class Settings(object):
 
     enable_gtk_completion = True  # False enables gvim-style completion
 
+    show_time_label = True
+
     hours = 8
     virtual_midnight = datetime.time(2, 0)
 
@@ -801,6 +803,8 @@ class Settings(object):
         config.set('gtimelog', 'spreadsheet', self.spreadsheet)
         config.set('gtimelog', 'gtk-completion',
                    str(self.enable_gtk_completion))
+        config.set('gtimelog', 'show-time-label',
+                   str(self.show_time_label))
         config.set('gtimelog', 'hours', str(self.hours))
         config.set('gtimelog', 'virtual_midnight',
                    self.virtual_midnight.strftime('%H:%M'))
@@ -824,6 +828,8 @@ class Settings(object):
         self.spreadsheet = config.get('gtimelog', 'spreadsheet')
         self.enable_gtk_completion = config.getboolean('gtimelog',
                                                        'gtk-completion')
+        self.show_time_label = config.getboolean('gtimelog',
+                                                  'show-time-label')
         self.hours = config.getfloat('gtimelog', 'hours')
         self.virtual_midnight = parse_time(config.get('gtimelog',
                                                       'virtual_midnight'))
@@ -866,8 +872,9 @@ class TrayIcon(object):
         icon = gtk.Image()
         icon.set_from_file(icon_file)
         hbox.add(icon)
-        self.time_label = gtk.Label()
-        hbox.add(self.time_label)
+        if self.gtimelog_window.settings.show_time_label:
+            self.time_label = gtk.Label()
+            hbox.add(self.time_label)
         self.eventbox.add(hbox)
         self.trayicon = egg.trayicon.TrayIcon("GTimeLog")
         self.trayicon.add(self.eventbox)
@@ -915,10 +922,11 @@ class TrayIcon(object):
         if now != self.last_tick or force_update: # Do not eat CPU too much
             self.last_tick = now
             last_time = self.timelog.window.last_time()
-            if last_time is None:
-                self.time_label.set_text(now.strftime("%H:%M"))
-            else:
-                self.time_label.set_text(format_duration_short(now - last_time))
+            if self.gtimelog_window.settings.show_time_label:
+                if last_time is None:
+                    self.time_label.set_text(now.strftime("%H:%M"))
+                else:
+                    self.time_label.set_text(format_duration_short(now - last_time))
         self.tooltips.set_tip(self.trayicon, self.tip())
         return True
 

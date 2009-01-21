@@ -966,6 +966,9 @@ class MainWindow(object):
         self.footer_mark = None
         self.inserting_old_time = False #Allow insert of backdated log entries
 
+        # I do not understand this at all.
+        self.time_before_idle = datetime.datetime.now()
+
         # Try to prevent timer routines mucking with the buffer while we're
         # mucking with the buffer.  Not sure if it is necessary.
         self.lock = False

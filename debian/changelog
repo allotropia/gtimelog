@@ -1,0 +1,93 @@
+gtimelog (0.0+svn88-3+collabora0+jonny0) unstable; urgency=low
+
+  * Include my patch.
+  * Include Davyd's patch.
+
+ -- Jonny Lamb <jonny@debian.org>  Wed, 21 Jan 2009 19:36:23 +0000
+
+gtimelog (0.0+svn88-3) unstable; urgency=low
+
+  * Use my debian.org address
+  * Depend on python-eggtrayicon in preference to python-gnome2-extras
+    (closes: #485317, #418885)
+
+ -- Simon McVittie <smcv@debian.org>  Tue, 24 Jun 2008 01:35:56 +0100
+
+gtimelog (0.0+svn88-2) unstable; urgency=low
+
+  * Correctly depend on python-gnome2-extras
+
+ -- Simon McVittie <smcv@ianadd.pseudorandom.co.uk>  Thu, 20 Mar 2008 21:21:05 +0000
+
+gtimelog (0.0+svn88-1) unstable; urgency=low
+
+  * New maintainers Simon McVittie and Dafydd Harries (closes: #459596)
+  * New VCS (moved to collab-maint bzr)
+  * Incorporate bigon's changes from Ubuntu into Debian, see below
+    - Edit menu entry has an accelerator (closes: #455549)
+    - No longer depends on vim-gnome (closes: #438858)
+  * Move python and python-support to Build-Depends-Indep (not needed for
+    clean)
+  * Add debian/pyversions, which python-support wants for versioning (*sigh*)
+  * Set XS-Dm-Upload-Allowed: yes so I can upload it
+
+ -- Simon McVittie <smcv@ianadd.pseudorandom.co.uk>  Thu, 10 Jan 2008 09:22:39 +0000
+
+gtimelog (0.0+svn88-0ubuntu1) hardy; urgency=low
+
+  * New svn snapshot (LP: #124911)
+    - add accelerator to the edit menu entry
+      (thanks to Kees Cook <kees@ubuntu.com>) (Closes: #455549)
+  * Add dpatch magic in debian/patches/01-glade.dpatch and refresh
+  * Drop debian/patches/02-gtimelog.dpatch: not needed any more
+  * Drop debian/patches/03-wrap_fix.dpatch: merged upstream
+  * debian/control:
+    - Bump Standards-Version
+    - Add Homepage field
+    - Add Vcs-Svn field
+    - Drop vim-gnome dependency to Suggests (Closes: #438858)
+  * Switch to dh_pysupport instead of dh_python
+
+ -- Laurent Bigonville <bigon@ubuntu.com>  Sun, 06 Jan 2008 22:34:47 +0100
+
+gtimelog (0.0+svn65-1debian2) unstable; urgency=low
+
+  * debian/control:
+    - Depends on vim-gnome. (Closes: #357826)
+    - Set Utnubu Team as Maintainer.
+    - Update Standards-Version to 3.7.2.
+    - Set debhelper dependency to 5.
+    - Add python as Build-Depends.
+    - Depends on ${python:Depends} and not python anymore.
+  * debian/rules: add dh_python call to replace ${python:Depends}  
+  * debian/copyright: license (GPL) disclaimer added.
+  * debian/changelog:
+    - Replace gdebi word with gtimelog.
+  * debian/patches/03-wrap_fix.patch: added to improve the
+    activity mail output. Thanks mvo. (Closes: #364916)
+
+ -- Gustavo Franco <stratus@debian.org>  Sat,  8 Jul 2006 21:28:11 -0300
+
+gtimelog (0.0+svn65-1debian1) unstable; urgency=low
+
+  * First Debian release (Closes: #351075)
+  * debian/control:
+    - Standards-Version bumped up
+    - Suggests on gvim and mutt
+    - Build-Depends on dpatch added
+  * debian/gtimelog.1: manpage added.
+  * debian/patches: two patches added (icon handling related)
+  
+ -- Gustavo Franco <stratus@debian.org>  Thu,  2 Feb 2006 11:32:24 -0200
+
+gtimelog (0.0+svn42-2) hoary; urgency=low
+
+  * Fix double build problem and copyright
+
+ -- Thom May <thom@ubuntu.com>  Wed,  9 Feb 2005 14:33:39 +0000
+
+gtimelog (0.0+svn42-1) hoary; urgency=low
+
+  * First upload.
+
+ -- Thom May <thom@ubuntu.com>  Wed, 09 Feb 2005 13:43:16 +0000

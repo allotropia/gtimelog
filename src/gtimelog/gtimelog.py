@@ -756,7 +756,6 @@ class RemoteTaskList(TaskList):
 	class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
 		# FIXME : work out how to find the parent window
 		def find_user_password (self, realm, authuri):
-			print "XXX: find_user_password: %s, %s" % (realm, authuri)
 			# pop up a username/password dialog
 			d = gtk.Dialog ()
 			d.vbox.set_spacing (6)

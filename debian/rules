@@ -6,6 +6,7 @@ include /usr/share/dpatch/dpatch.make
 clean: unpatch
 	dh_testdir
 	dh_clean
+	rm -rf build
 
 build: patch
 

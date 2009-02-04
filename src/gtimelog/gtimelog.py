@@ -16,6 +16,7 @@ import urlparse
 import datetime
 import tempfile
 import ConfigParser
+import cPickle as pickle
 
 import pygtk
 pygtk.require('2.0')
@@ -1082,6 +1083,9 @@ class MainWindow(object):
         self.footer_mark = None
         self.inserting_old_time = False #Allow insert of backdated log entries
 
+	# whether or not row toggle callbacks are heeded
+	self._block_row_toggles = 0
+
         # Try to prevent timer routines mucking with the buffer while we're
         # mucking with the buffer.  Not sure if it is necessary.
         self.lock = False
@@ -1127,6 +1131,8 @@ class MainWindow(object):
         self.task_list = tree.get_widget("task_list")
         self.task_store = gtk.TreeStore(str, str)
         self.task_list.set_model(self.task_store)
+	self.task_list.connect ("row-expanded", self.on_row_expander_changed, True)
+	self.task_list.connect ("row-collapsed", self.on_row_expander_changed, False)
         column = gtk.TreeViewColumn("Task", gtk.CellRendererText(), text=0)
         self.task_list.append_column(column)
         self.task_list.connect("row_activated", self.task_list_row_activated)
@@ -1316,6 +1322,8 @@ class MainWindow(object):
             structure of the tasks (seperated by :) and then
             recurses into that structure bunging it into the treeview
         """
+	self._block_row_toggles += 1
+
         task_list = {}
         self.task_store.clear()
         for item in self.tasks.items:
@@ -1337,7 +1345,20 @@ class MainWindow(object):
                     recursive_append (source[key], prefix + key + ": ", child)
 
         recursive_append(task_list, "", None)
-        self.task_list.expand_all ()
+
+	# Use the on-disk toggle state to work out whether a row is expanded
+	# or not
+	def update_toggle (model, path, iter, togglesdict):
+		item = model.get_value (iter, 1)
+		# expand the row if we know nothing about it, or its marked
+		# for expansion
+		if item not in togglesdict or togglesdict[item]:
+			self.task_list.expand_row (path, False)
+	
+	togglesdict = self.load_task_store_toggle_state ()
+	self.task_store.foreach (update_toggle, togglesdict)
+	
+	self._block_row_toggles -= 1
 
     def set_up_history(self):
         """Set up history."""
@@ -1452,6 +1473,46 @@ class MainWindow(object):
             max = min + datetime.timedelta(1)
             window = self.timelog.window_for(min, max)
             self.mail(window.daily_report)
+
+    def load_task_store_toggle_state (self):
+        configdir = os.path.expanduser('~/.gtimelog')
+	filename = os.path.join (configdir, 'togglesdict.pickle')
+	# read the dictionary from disk
+	try:
+		f = open (filename, 'r')
+		togglesdict = pickle.load (f)
+		f.close ()
+	except (IOError, pickle.PickleError), e:
+		print "ERROR READING TOGGLE STATE FROM DISK"
+		print e
+		togglesdict = {}
+	
+	return togglesdict
+
+    def save_task_store_toggle_state (self, togglesdict):
+        configdir = os.path.expanduser('~/.gtimelog')
+	filename = os.path.join (configdir, 'togglesdict.pickle')
+	# write the dictionary back to disk
+	try:
+		f = open (filename, 'w')
+		pickle.dump (togglesdict, f)
+		f.close ()
+	except (IOError, pickle.PickleError), e:
+		print "FAILED TO WRITE TOGGLE STATE TO DISK"
+		print e
+
+    def on_row_expander_changed(self, treeview, iter, path, expanded):
+        """Someone toggled a task list expander"""
+
+	if self._block_row_toggles > 0: return
+
+	togglesdict = self.load_task_store_toggle_state ()
+	item = self.task_store.get_value (iter, 1)
+	togglesdict[item] = expanded
+	# FIXME - hypothetically we could look at the togglesdict here to
+	# make a guess at the previous toggle state of all of the children
+	# of this iter; but I'm not sure that it's super important
+	self.save_task_store_toggle_state (togglesdict)
 
     def choose_date(self):
         """Pop up a calendar dialog.

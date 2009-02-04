@@ -12,6 +12,7 @@ import sys
 import sets
 import copy
 import urllib2
+import urlparse
 import datetime
 import tempfile
 import ConfigParser
@@ -756,6 +757,11 @@ class RemoteTaskList(TaskList):
 	class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
 		# FIXME : work out how to find the parent window
 		def find_user_password (self, realm, authuri):
+			
+			# try to use GNOME Keyring if available
+			try: import gnomekeyring
+			except ImportError: gnomekeyring = None
+
 			# pop up a username/password dialog
 			d = gtk.Dialog ()
 			d.vbox.set_spacing (6)
@@ -770,7 +776,7 @@ class RemoteTaskList(TaskList):
 			l.set_line_wrap (True)
 			d.vbox.pack_start (l)
 
-			t = gtk.Table (2, 2)
+			t = gtk.Table (3, 2)
 			t.attach (gtk.Label ("Username:"), 0, 1, 0, 1)
 			t.attach (gtk.Label ("Password:"), 0, 1, 1, 2)
 
@@ -786,6 +792,39 @@ class RemoteTaskList(TaskList):
 			t.attach (userentry, 1, 2, 0, 1)
 			t.attach (passentry, 1, 2, 1, 2)
 
+			# tease apart the URL
+			o = urlparse.urlparse (authuri)
+			if o.port: port = int (o.port)
+			else: port = 0
+			object = '%s?%s' % (o.path, o.query)
+
+			if gnomekeyring:
+				# attempt to load a username and password
+				# from the keyring
+
+				try:
+				  l = gnomekeyring.find_network_password_sync (
+					None,		# user
+					o.hostname,	# domain
+					o.hostname,	# server
+					object,		# object
+					o.scheme,	# protocol
+					None,		# authtype
+					port)		# port
+				except gnomekeyring.NoMatchError:
+					pass
+				else:
+					l = l[-1] # take the last key (Why?)
+
+					userentry.set_text (l['user'])
+					passentry.set_text (l['password'])
+
+				# ask the user if she would like to save her
+				# password
+				savepasstoggle = gtk.CheckButton ("Save Password in Keyring")
+				savepasstoggle.set_active (True)
+				t.attach (savepasstoggle, 0, 2, 2, 3)
+
 			d.vbox.pack_start (t)
 
 			d.add_buttons (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
@@ -800,6 +839,18 @@ class RemoteTaskList(TaskList):
 			d.destroy ()
 			
 			if r == gtk.RESPONSE_OK:
+				if gnomekeyring and savepasstoggle.get_active ():
+					gnomekeyring.set_network_password_sync (
+						None,		# keyring
+						username,	# user
+						o.hostname,	# domain
+						o.hostname,	# server
+						object,		# object
+						o.scheme,	# protocol
+						None,		# authtype
+						port,		# port
+						password)	# password
+
 				return (username, password)
 			else:
 				return (None, None)

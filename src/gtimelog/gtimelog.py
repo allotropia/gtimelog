@@ -864,7 +864,7 @@ class RemoteTaskList(TaskList):
 
 	try:
 		fp = urllib2.urlopen (self.url)
-	except urllib2.HTTPError:
+	except urllib2.URLError:
 		if self.error_callback:
 			self.error_callback ()
 	else:

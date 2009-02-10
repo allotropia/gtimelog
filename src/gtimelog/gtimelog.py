@@ -689,7 +689,7 @@ class TimeLog(object):
             # next day: reset self.window
             self.reread()
         self.window.items.append((now, entry))
-        line = '%s: %s' % (now.strftime("%Y-%m-%d %H:%M"), entry)
+        line = '%s: %s' % (now.strftime("%Y-%m-%d %H:%M %z"), entry)
         self.raw_append(line)
 
 
@@ -1335,8 +1335,8 @@ class MainWindow(object):
         buffer = self.log_buffer
         start, stop, duration, entry = item
         self.w(format_duration(duration), 'duration')
-        period = '\t(%s-%s)\t' % (start.strftime('%H:%M'),
-                                  stop.strftime('%H:%M'))
+        period = '\t(%s-%s)\t' % (start.astimezone (TZOffset()).strftime('%H:%M'),
+                                  stop.astimezone(TZOffset()).strftime('%H:%M'))
         self.w(period, 'time')
         tag = '**' in entry and 'slacking' or None
         self.w(entry + '\n', tag)

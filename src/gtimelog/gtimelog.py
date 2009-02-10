@@ -14,6 +14,7 @@ import copy
 import urllib2
 import urlparse
 import datetime
+import time
 import tempfile
 import ConfigParser
 import cPickle as pickle
@@ -75,23 +76,59 @@ def format_duration_long(duration):
     else:
         return '%d min' % m
 
+class TZOffset (datetime.tzinfo):
+	ZERO = datetime.timedelta (0)
+
+	def __init__ (self, offset = None):
+		if offset is not None:
+			offset = int (offset)
+		else:
+			# time.timezone is in seconds back to UTC
+			offset = -time.timezone / 36
+			offset += time.daylight * 100
+
+		self._offset = offset
+		h = offset / 100
+		m = offset % 100
+		self._offsetdelta = datetime.timedelta (hours = h, minutes = m)
+	
+	def utcoffset (self, dt):
+		return self._offsetdelta
+	
+	def dst (self, dt):
+		return self.ZERO
+	
+	def tzname (self, dt):
+		return str (self._offset)
+	
+	def __repr__ (self):
+		return self.tzname (False)
 
 def parse_datetime(dt):
     """Parse a datetime instance from 'YYYY-MM-DD HH:MM' formatted string."""
-    m = re.match(r'^(\d+)-(\d+)-(\d+) (\d+):(\d+)$', dt)
+    m = re.match(r'^(?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+) (?P<hour>\d+):(?P<min>\d+)(?: (?P<tz>[+-]\d+))?$', dt)
     if not m:
         raise ValueError('bad date time: ', dt)
-    year, month, day, hour, min = map(int, m.groups())
-    return datetime.datetime(year, month, day, hour, min)
+
+    def myint (i):
+    	if i is not None: return int (i)
+	else: return i
+    d = dict ((k, myint (v))
+    	for (k, v) in m.groupdict ().iteritems ())
+
+    return datetime.datetime (d['year'], d['month'], d['day'],
+                              d['hour'], d['min'],
+			      tzinfo = TZOffset (d['tz']))
 
 
 def parse_time(t):
     """Parse a time instance from 'HH:MM' formatted string."""
+    # FIXME - parse_time should probably support timezones
     m = re.match(r'^(\d+):(\d+)$', t)
     if not m:
         raise ValueError('bad time: ', t)
     hour, min = map(int, m.groups())
-    return datetime.time(hour, min)
+    return datetime.time(hour, min, tzinfo=TZOffset())
 
 def parse_timedelta(td):
     """
@@ -152,7 +189,7 @@ def virtual_day(dt, virtual_midnight):
     Timestamps between midnight and "virtual midnight" (e.g. 2 am) are
     assigned to the previous "virtual day".
     """
-    if dt.time() < virtual_midnight:     # assign to previous day
+    if dt.timetz() < virtual_midnight:     # assign to previous day
         return dt.date() - datetime.timedelta(1)
     return dt.date()
 
@@ -612,7 +649,8 @@ class TimeLog(object):
 
     def reread(self):
         """Reload today's log."""
-        self.day = virtual_day(datetime.datetime.now(), self.virtual_midnight)
+        self.day = virtual_day(datetime.datetime.now(TZOffset ()),
+			self.virtual_midnight)
         min = datetime.datetime.combine(self.day, self.virtual_midnight)
         max = min + datetime.timedelta(1)
         self.history = []
@@ -630,7 +668,7 @@ class TimeLog(object):
         # XXX I don't like this solution.  Better make the min/max filtering
         # arguments optional in TimeWindow.reread
         return self.window_for(self.window.earliest_timestamp,
-                               datetime.datetime.now())
+                               datetime.datetime.now(TZOffset ()))
 
     def raw_append(self, line):
         """Append a line to the time log file."""
@@ -644,13 +682,14 @@ class TimeLog(object):
     def append(self, entry, now=None):
         """Append a new entry to the time log."""
         if not now:
-            now = datetime.datetime.now().replace(second=0, microsecond=0)
+            now = datetime.datetime.now(TZOffset ()).replace(
+	    		second=0, microsecond=0)
         last = self.window.last_time()
         if last and different_days(now, last, self.virtual_midnight):
             # next day: reset self.window
             self.reread()
         self.window.items.append((now, entry))
-        line = '%s: %s' % (now.strftime("%Y-%m-%d %H:%M"), entry)
+        line = '%s: %s' % (now.strftime("%Y-%m-%d %H:%M %z"), entry)
         self.raw_append(line)
 
 
@@ -864,7 +903,7 @@ class RemoteTaskList(TaskList):
 
 	try:
 		fp = urllib2.urlopen (self.url)
-	except urllib2.HTTPError:
+	except urllib2.URLError:
 		if self.error_callback:
 			self.error_callback ()
 	else:
@@ -906,7 +945,7 @@ class Settings(object):
     show_time_label = True
 
     hours = 8
-    virtual_midnight = datetime.time(2, 0)
+    virtual_midnight = datetime.time(2, 0, tzinfo=TZOffset ())
 
     task_list_url = ''
     task_list_expiry = '24 hours'
@@ -1043,7 +1082,7 @@ class TrayIcon(object):
 
     def tick(self, force_update=False):
         """Tick every second."""
-        now = datetime.datetime.now().replace(second=0, microsecond=0)
+        now = datetime.datetime.now(TZOffset()).replace(second=0, microsecond=0)
         if now != self.last_tick or force_update: # Do not eat CPU too much
             self.last_tick = now
             last_time = self.timelog.window.last_time()
@@ -1052,6 +1091,7 @@ class TrayIcon(object):
                     self.time_label.set_text(now.strftime("%H:%M"))
                 else:
                     self.time_label.set_text(format_duration_short(now - last_time))
+        # FIXME - this should be wired up async
         self.tooltips.set_tip(self.trayicon, self.tip())
         return True
 
@@ -1207,7 +1247,7 @@ class MainWindow(object):
         if self.footer_mark is not None:
             buffer.delete_mark(self.footer_mark)
             self.footer_mark = None
-        today = virtual_day(datetime.datetime.now(),
+        today = virtual_day(datetime.datetime.now(TZOffset ()),
                             self.timelog.virtual_midnight)
         today = today.strftime('%A, %Y-%m-%d (week %V)')
         self.w(today + '\n\n', 'today')
@@ -1294,7 +1334,7 @@ class MainWindow(object):
         last_time = self.timelog.window.last_time()
         if last_time is None:
             return None
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(TZOffset ())
         current_task = self.task_entry.get_text()
         current_task_time = now - last_time
         if '**' in current_task:
@@ -1307,8 +1347,8 @@ class MainWindow(object):
         buffer = self.log_buffer
         start, stop, duration, entry = item
         self.w(format_duration(duration), 'duration')
-        period = '\t(%s-%s)\t' % (start.strftime('%H:%M'),
-                                  stop.strftime('%H:%M'))
+        period = '\t(%s-%s)\t' % (start.astimezone (TZOffset()).strftime('%H:%M'),
+                                  stop.astimezone(TZOffset()).strftime('%H:%M'))
         self.w(period, 'time')
         tag = '**' in entry and 'slacking' or None
         self.w(entry + '\n', tag)
@@ -1802,7 +1842,7 @@ class MainWindow(object):
     def tick(self, force_update=False):
         """Tick every second."""
 
-        now = datetime.datetime.now().replace(second=0, microsecond=0)
+        now = datetime.datetime.now(TZOffset()).replace(second=0, microsecond=0)
 
         #Make that every minute
         if now == self.last_tick and not force_update:

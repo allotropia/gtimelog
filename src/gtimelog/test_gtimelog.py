@@ -265,7 +265,7 @@ def doctest_TimeWindow_monthly_report():
         >>> from tempfile import NamedTemporaryFile
         >>> from gtimelog import TimeWindow, TZOffset
 
-        >>> vm = time(2, 0)
+        >>> vm = time(2, 0, tzinfo=TZOffset())
         >>> min = datetime(2007, 9, 1, tzinfo=TZOffset())
         >>> max = datetime(2007, 10, 1, tzinfo=TZOffset())
         >>> fh = NamedTemporaryFile()
@@ -314,7 +314,7 @@ def doctest_TimeWindow_to_csv_daily():
         >>> from datetime import datetime, time
         >>> min = datetime(2008, 6, 1, tzinfo=TZOffset())
         >>> max = datetime(2008, 7, 1, tzinfo=TZOffset())
-        >>> vm = time(2, 0)
+        >>> vm = time(2, 0, tzinfo=TZOffset())
 
         >>> from StringIO import StringIO
         >>> sampledata = StringIO('''

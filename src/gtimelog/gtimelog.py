@@ -1083,7 +1083,8 @@ class TrayIcon(object):
                 self.time_label.set_text(now.strftime("%H:%M"))
             else:
                 self.time_label.set_text(format_duration_short(now - last_time))
-        self.tooltips.set_tip(self.trayicon, self.tip())
+	    # FIXME - this should be wired up async
+            self.tooltips.set_tip(self.trayicon, self.tip())
         return True
 
     def tip(self):

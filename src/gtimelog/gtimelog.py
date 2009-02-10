@@ -189,7 +189,7 @@ def virtual_day(dt, virtual_midnight):
     Timestamps between midnight and "virtual midnight" (e.g. 2 am) are
     assigned to the previous "virtual day".
     """
-    if dt.time() < virtual_midnight:     # assign to previous day
+    if dt.timetz() < virtual_midnight:     # assign to previous day
         return dt.date() - datetime.timedelta(1)
     return dt.date()
 
@@ -649,7 +649,7 @@ class TimeLog(object):
 
     def reread(self):
         """Reload today's log."""
-        self.day = virtual_day(datetime.datetime.now(tzinfo=TZOffset ()),
+        self.day = virtual_day(datetime.datetime.now(TZOffset ()),
 			self.virtual_midnight)
         min = datetime.datetime.combine(self.day, self.virtual_midnight)
         max = min + datetime.timedelta(1)
@@ -668,7 +668,7 @@ class TimeLog(object):
         # XXX I don't like this solution.  Better make the min/max filtering
         # arguments optional in TimeWindow.reread
         return self.window_for(self.window.earliest_timestamp,
-                               datetime.datetime.now(tzinfo=TZOffset ()))
+                               datetime.datetime.now(TZOffset ()))
 
     def raw_append(self, line):
         """Append a line to the time log file."""
@@ -682,7 +682,7 @@ class TimeLog(object):
     def append(self, entry, now=None):
         """Append a new entry to the time log."""
         if not now:
-            now = datetime.datetime.now(tzinfo=TZOffset ()).replace(
+            now = datetime.datetime.now(TZOffset ()).replace(
 	    		second=0, microsecond=0)
         last = self.window.last_time()
         if last and different_days(now, last, self.virtual_midnight):
@@ -1075,7 +1075,7 @@ class TrayIcon(object):
 
     def tick(self, force_update=False):
         """Tick every second."""
-        now = datetime.datetime.now().replace(second=0, microsecond=0)
+        now = datetime.datetime.now(TZOffset()).replace(second=0, microsecond=0)
         if now != self.last_tick or force_update: # Do not eat CPU too much
             self.last_tick = now
             last_time = self.timelog.window.last_time()
@@ -1235,7 +1235,7 @@ class MainWindow(object):
         if self.footer_mark is not None:
             buffer.delete_mark(self.footer_mark)
             self.footer_mark = None
-        today = virtual_day(datetime.datetime.now(),
+        today = virtual_day(datetime.datetime.now(TZOffset ()),
                             self.timelog.virtual_midnight)
         today = today.strftime('%A, %Y-%m-%d (week %V)')
         self.w(today + '\n\n', 'today')
@@ -1322,7 +1322,7 @@ class MainWindow(object):
         last_time = self.timelog.window.last_time()
         if last_time is None:
             return None
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(TZOffset ())
         current_task = self.task_entry.get_text()
         current_task_time = now - last_time
         if '**' in current_task:
@@ -1830,7 +1830,7 @@ class MainWindow(object):
     def tick(self, force_update=False):
         """Tick every second."""
 
-        now = datetime.datetime.now().replace(second=0, microsecond=0)
+        now = datetime.datetime.now(TZOffset()).replace(second=0, microsecond=0)
 
         #Make that every minute
         if now == self.last_tick and not force_update:

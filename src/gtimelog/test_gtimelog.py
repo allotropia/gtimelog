@@ -80,7 +80,11 @@ def doctest_parse_datetime():
 
         >>> from gtimelog import parse_datetime
         >>> parse_datetime('2005-02-03 02:13')
-        datetime.datetime(2005, 2, 3, 2, 13)
+        datetime.datetime(2005, 2, 3, 2, 13, tzinfo=0)
+        >>> parse_datetime('2005-02-03 02:13 +0800')
+        datetime.datetime(2005, 2, 3, 2, 13, tzinfo=800)
+        >>> parse_datetime('2005-02-03 02:13 -0500')
+        datetime.datetime(2005, 2, 3, 2, 13, tzinfo=-500)
         >>> parse_datetime('xyzzy')
         Traceback (most recent call last):
           ...
@@ -93,7 +97,7 @@ def doctest_parse_time():
 
         >>> from gtimelog import parse_time
         >>> parse_time('02:13')
-        datetime.time(2, 13)
+        datetime.time(2, 13, tzinfo=0)
         >>> parse_time('xyzzy')
         Traceback (most recent call last):
           ...
@@ -259,11 +263,11 @@ def doctest_TimeWindow_monthly_report():
 
         >>> from datetime import datetime, time
         >>> from tempfile import NamedTemporaryFile
-        >>> from gtimelog import TimeWindow
+        >>> from gtimelog import TimeWindow, TZOffset
 
         >>> vm = time(2, 0)
-        >>> min = datetime(2007, 9, 1)
-        >>> max = datetime(2007, 10, 1)
+        >>> min = datetime(2007, 9, 1, tzinfo=TZOffset())
+        >>> max = datetime(2007, 10, 1, tzinfo=TZOffset())
         >>> fh = NamedTemporaryFile()
 
         >>> window = TimeWindow(fh.name, min, max, vm)
@@ -306,9 +310,10 @@ def doctest_TimeWindow_monthly_report():
 def doctest_TimeWindow_to_csv_daily():
     r"""Tests for TimeWindow.to_csv_daily
 
+        >>> from gtimelog import TZOffset
         >>> from datetime import datetime, time
-        >>> min = datetime(2008, 6, 1)
-        >>> max = datetime(2008, 7, 1)
+        >>> min = datetime(2008, 6, 1, tzinfo=TZOffset())
+        >>> max = datetime(2008, 7, 1, tzinfo=TZOffset())
         >>> vm = time(2, 0)
 
         >>> from StringIO import StringIO

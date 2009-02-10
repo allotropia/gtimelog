@@ -14,6 +14,7 @@ import copy
 import urllib2
 import urlparse
 import datetime
+import time
 import tempfile
 import ConfigParser
 import cPickle as pickle
@@ -75,23 +76,59 @@ def format_duration_long(duration):
     else:
         return '%d min' % m
 
+class TZOffset (datetime.tzinfo):
+	ZERO = datetime.timedelta (0)
+
+	def __init__ (self, offset = None):
+		if offset is not None:
+			offset = int (offset)
+		else:
+			# time.timezone is in seconds back to UTC
+			offset = -time.timezone / 36
+			offset += time.daylight * 100
+
+		self._offset = offset
+		h = offset / 100
+		m = offset % 100
+		self._offsetdelta = datetime.timedelta (hours = h, minutes = m)
+	
+	def utcoffset (self, dt):
+		return self._offsetdelta
+	
+	def dst (self, dt):
+		return self.ZERO
+	
+	def tzname (self, dt):
+		return str (self._offset)
+	
+	def __repr__ (self):
+		return self.tzname (False)
 
 def parse_datetime(dt):
     """Parse a datetime instance from 'YYYY-MM-DD HH:MM' formatted string."""
-    m = re.match(r'^(\d+)-(\d+)-(\d+) (\d+):(\d+)$', dt)
+    m = re.match(r'^(?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+) (?P<hour>\d+):(?P<min>\d+)(?: (?P<tz>[+-]\d+))?$', dt)
     if not m:
         raise ValueError('bad date time: ', dt)
-    year, month, day, hour, min = map(int, m.groups())
-    return datetime.datetime(year, month, day, hour, min)
+
+    def myint (i):
+    	if i is not None: return int (i)
+	else: return i
+    d = dict ((k, myint (v))
+    	for (k, v) in m.groupdict ().iteritems ())
+
+    return datetime.datetime (d['year'], d['month'], d['day'],
+                              d['hour'], d['min'],
+			      tzinfo = TZOffset (d['tz']))
 
 
 def parse_time(t):
     """Parse a time instance from 'HH:MM' formatted string."""
+    # FIXME - parse_time should probably support timezones
     m = re.match(r'^(\d+):(\d+)$', t)
     if not m:
         raise ValueError('bad time: ', t)
     hour, min = map(int, m.groups())
-    return datetime.time(hour, min)
+    return datetime.time(hour, min, tzinfo=TZOffset())
 
 def parse_timedelta(td):
     """
@@ -612,7 +649,8 @@ class TimeLog(object):
 
     def reread(self):
         """Reload today's log."""
-        self.day = virtual_day(datetime.datetime.now(), self.virtual_midnight)
+        self.day = virtual_day(datetime.datetime.now(tzinfo=TZOffset ()),
+			self.virtual_midnight)
         min = datetime.datetime.combine(self.day, self.virtual_midnight)
         max = min + datetime.timedelta(1)
         self.history = []
@@ -630,7 +668,7 @@ class TimeLog(object):
         # XXX I don't like this solution.  Better make the min/max filtering
         # arguments optional in TimeWindow.reread
         return self.window_for(self.window.earliest_timestamp,
-                               datetime.datetime.now())
+                               datetime.datetime.now(tzinfo=TZOffset ()))
 
     def raw_append(self, line):
         """Append a line to the time log file."""
@@ -644,7 +682,8 @@ class TimeLog(object):
     def append(self, entry, now=None):
         """Append a new entry to the time log."""
         if not now:
-            now = datetime.datetime.now().replace(second=0, microsecond=0)
+            now = datetime.datetime.now(tzinfo=TZOffset ()).replace(
+	    		second=0, microsecond=0)
         last = self.window.last_time()
         if last and different_days(now, last, self.virtual_midnight):
             # next day: reset self.window
@@ -904,7 +943,7 @@ class Settings(object):
     enable_gtk_completion = True  # False enables gvim-style completion
 
     hours = 8
-    virtual_midnight = datetime.time(2, 0)
+    virtual_midnight = datetime.time(2, 0, tzinfo=TZOffset ())
 
     task_list_url = ''
     task_list_expiry = '24 hours'

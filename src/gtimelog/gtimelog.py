@@ -84,8 +84,8 @@ class TZOffset (datetime.tzinfo):
 			offset = int (offset)
 		else:
 			# time.timezone is in seconds back to UTC
-			offset = -time.timezone / 36
-			offset += time.daylight * 100
+			if time.localtime ().tm_isdst: offset = -time.altzone / 36
+			else: offset = -time.timezone / 36
 
 		self._offset = offset
 		h = offset / 100

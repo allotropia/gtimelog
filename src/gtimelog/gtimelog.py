@@ -1421,12 +1421,33 @@ class MainWindow(object):
         self.history_undo = ''
         if not self.have_completion:
             return
-        seen = sets.Set()
-        self.completion_choices.clear ()
+
+        seen = {}
+       
+        # get the last two weeks
+        now = datetime.datetime.now(TZOffset ())
+        fortnight_back = now - datetime.timedelta (days=14)
+    
+        history = self.timelog.window_for (fortnight_back, now)
+        for start, stop, duration, entry in history.all_entries ():
+            if entry not in seen:
+                seen[entry] = 1
+            else:
+                seen[entry] += 1
+        
         for entry in self.history:
             if entry not in seen:
-                seen.add(entry)
-                self.completion_choices.append([entry])
+                seen[entry] = 0
+            else:
+                pass # don't score it up if it's older than two weeks
+
+        # why can you not extract sorted keys?
+        items = seen.items ()
+        items.sort (key = lambda t: t[1], reverse = True)
+
+        self.completion_choices.clear ()
+        for entry in map (lambda t: t[0], items):
+            self.completion_choices.append([entry])
 
     def set_up_completion(self):
         """Set up autocompletion."""

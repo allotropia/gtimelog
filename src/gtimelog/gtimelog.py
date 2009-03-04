@@ -773,7 +773,7 @@ class RemoteTaskList(TaskList):
         #Even better would be to use the Expires: header on the list itself I suppose...
         self.max_age = expires
         # Slightly hacky - just ensures that the last time is less than the maximum age
-        self.last_time = datetime.datetime.now () - self.max_age * 2
+        self.last_time = datetime.datetime.now(TZOffset()) - self.max_age * 2
 
     def check_reload(self):
         """Check whether the task list needs to be reloaded.
@@ -783,8 +783,8 @@ class RemoteTaskList(TaskList):
 
         Returns True if the file was reloaded.
         """
-        if datetime.datetime.now() - self.last_time > self.max_age:
-            self.last_time = datetime.datetime.now ()
+        if datetime.datetime.now(TZOffset()) - self.last_time > self.max_age:
+            self.last_time = datetime.datetime.now (TZOffset())
             #Always redownload if past the expiry date.
             self.download()
             return True
@@ -1134,7 +1134,7 @@ class MainWindow(object):
         self.inserting_old_time = False #Allow insert of backdated log entries
 
         # I do not understand this at all.
-        self.time_before_idle = datetime.datetime.now()
+        self.time_before_idle = datetime.datetime.now(TZOffset ())
 
         # whether or not row toggle callbacks are heeded
         self._block_row_toggles = 0
@@ -1308,7 +1308,7 @@ class MainWindow(object):
         self.w(')\n')
         time_left = self.time_left_at_work(total_work)
         if time_left is not None:
-            time_to_leave = datetime.datetime.now() + time_left
+            time_to_leave = datetime.datetime.now(TZOffset()) + time_left
             if time_left < datetime.timedelta(0):
                 time_left = datetime.timedelta(0)
             self.w('Time left at work: ')

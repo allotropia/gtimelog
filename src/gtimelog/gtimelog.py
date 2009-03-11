@@ -1450,13 +1450,18 @@ class MainWindow(object):
             self.completion_choices.append([entry])
 
     def completion_match_func(self, completion, key, iter):
+        # Text is autocompleted while typing and the automatically
+        # completed text is selected. We don't want the autocompleted
+        # text to interfere with the search.
         selection = self.task_entry.get_selection_bounds()
         if selection:
             start, end = selection
             key = key[:start] + key[end:]
 
-        # key is already lower case. why?
-        text = completion.get_model().get_value(iter, 0).lower()
+        model = completion.get_model()
+        # key is already lower case. Why?
+        text = model.get_value(iter, 0).lower()
+
         # text can be None when we reload the gtimelog file.
         if not text:
             return False

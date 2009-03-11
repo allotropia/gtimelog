@@ -1450,6 +1450,10 @@ class MainWindow(object):
             self.completion_choices.append([entry])
 
     def completion_match_func(self, completion, key, iter):
+        selection = self.task_entry.get_selection_bounds()
+        if selection:
+            start, end = selection
+            key = key[:start] + key[end:]
         text = completion.get_model().get_value(iter, 0)
         return key in text
 

@@ -1455,7 +1455,8 @@ class MainWindow(object):
             start, end = selection
             key = key[:start] + key[end:]
 
-        text = completion.get_model().get_value(iter, 0)
+        # key is already lower case. why?
+        text = completion.get_model().get_value(iter, 0).lower()
         # text can be None when we reload the gtimelog file.
         if not text:
             return False

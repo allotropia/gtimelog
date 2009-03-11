@@ -1449,6 +1449,10 @@ class MainWindow(object):
         for entry in map (lambda t: t[0], items):
             self.completion_choices.append([entry])
 
+    def completion_match_func(self, completion, key, iter):
+        text = completion.get_model().get_value(iter, 0)
+        return key in text
+
     def set_up_completion(self):
         """Set up autocompletion."""
         if not self.settings.enable_gtk_completion:
@@ -1462,6 +1466,7 @@ class MainWindow(object):
         completion.set_model(self.completion_choices)
         completion.set_text_column(0)
         completion.set_inline_completion (True)
+        completion.set_match_func (self.completion_match_func)
         self.task_entry.set_completion(completion)
 
     def add_history(self, entry):

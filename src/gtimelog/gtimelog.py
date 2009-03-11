@@ -1454,7 +1454,12 @@ class MainWindow(object):
         if selection:
             start, end = selection
             key = key[:start] + key[end:]
+
         text = completion.get_model().get_value(iter, 0)
+        # text can be None when we reload the gtimelog file.
+        if not text:
+            return False
+
         return key in text
 
     def set_up_completion(self):

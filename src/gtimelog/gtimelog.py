@@ -772,8 +772,12 @@ class RemoteTaskList(TaskList):
 
         #Even better would be to use the Expires: header on the list itself I suppose...
         self.max_age = expires
-        # Slightly hacky - just ensures that the last time is less than the maximum age
-        self.last_time = datetime.datetime.now(TZOffset()) - self.max_age * 2
+
+        mtime = self.get_mtime()
+        if mtime:
+            self.last_time = datetime.datetime.fromtimestamp(mtime, TZOffset())
+        else:
+            self.last_time = datetime.datetime.now(TZOffset()) - self.max_age * 2
 
     def check_reload(self):
         """Check whether the task list needs to be reloaded.

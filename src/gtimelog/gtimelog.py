@@ -1453,6 +1453,25 @@ class MainWindow(object):
         for entry in map (lambda t: t[0], items):
             self.completion_choices.append([entry])
 
+    def completion_match_func(self, completion, key, iter):
+        # Text is autocompleted while typing and the automatically
+        # completed text is selected. We don't want the autocompleted
+        # text to interfere with the search.
+        selection = self.task_entry.get_selection_bounds()
+        if selection:
+            start, end = selection
+            key = key[:start] + key[end:]
+
+        model = completion.get_model()
+        text = model.get_value(iter, 0)
+
+        # text can be None when we reload the gtimelog file.
+        if not text:
+            return False
+
+        # key is already lower case. Why?
+        return key in text.lower()
+
     def set_up_completion(self):
         """Set up autocompletion."""
         if not self.settings.enable_gtk_completion:
@@ -1466,6 +1485,7 @@ class MainWindow(object):
         completion.set_model(self.completion_choices)
         completion.set_text_column(0)
         completion.set_inline_completion (True)
+        completion.set_match_func (self.completion_match_func)
         self.task_entry.set_completion(completion)
 
     def add_history(self, entry):

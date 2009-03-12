@@ -1459,14 +1459,14 @@ class MainWindow(object):
             key = key[:start] + key[end:]
 
         model = completion.get_model()
-        # key is already lower case. Why?
-        text = model.get_value(iter, 0).lower()
+        text = model.get_value(iter, 0)
 
         # text can be None when we reload the gtimelog file.
         if not text:
             return False
 
-        return key in text
+        # key is already lower case. Why?
+        return key in text.lower()
 
     def set_up_completion(self):
         """Set up autocompletion."""

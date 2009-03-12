@@ -1426,31 +1426,26 @@ class MainWindow(object):
         if not self.have_completion:
             return
 
-        seen = {}
-       
-        # get the last two weeks
-        now = datetime.datetime.now(TZOffset ())
-        fortnight_back = now - datetime.timedelta (days=14)
-    
-        history = self.timelog.window_for (fortnight_back, now)
-        for start, stop, duration, entry in history.all_entries ():
-            if entry not in seen:
-                seen[entry] = 1
-            else:
-                seen[entry] += 1
-        
-        for entry in self.history:
-            if entry not in seen:
-                seen[entry] = 0
-            else:
-                pass # don't score it up if it's older than two weeks
+        now = datetime.datetime.now(TZOffset())
+        history = self.timelog.whole_history()
+        count = {}
 
-        # why can you not extract sorted keys?
-        items = seen.items ()
+        for start, stop, duration, entry in history.all_entries ():
+            delta = now - stop
+            weight = 1. / (delta.days + 1)
+            if entry not in count:
+                count[entry] = weight
+            else:
+                count[entry] += weight
+
+        # apply the weights
+        # cutoff = 0.2 # how to choose this?
+        # items = filter (lambda (k, v): v > cutoff, count.items())
+        items = count.items()
         items.sort (key = lambda t: t[1], reverse = True)
 
         self.completion_choices.clear ()
-        for entry in map (lambda t: t[0], items):
+        for entry, weight in items:
             self.completion_choices.append([entry])
 
     def completion_match_func(self, completion, key, iter):

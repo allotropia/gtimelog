@@ -495,6 +495,9 @@ class TimeWindow(object):
 
         Writes a daily report template in RFC-822 format to output.
         """
+        # TODO: refactor this and share code with _report? the logic here is
+        # slightly different.
+
         # Locale is set as a side effect of 'import gtk', so strftime('%a')
         # would give us translated names
         weekday_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -544,33 +547,8 @@ class TimeWindow(object):
         print >> output, "Subject: Weekly report for %s (week %s)" % (who,
                                                                       week)
         print >> output
-        items = list(self.all_entries())
-        if not items:
-            print >> output, "No work done this week."
-            return
-        print >> output, " " * 46,
-        if estimated_column:
-            print >> output, "estimated       actual"
-        else:
-            print >> output, "                time"
-        work, slack = self.grouped_entries()
-        total_work, total_slacking = self.totals()
-        if work:
-            work = [(entry, duration) for start, entry, duration in work]
-            work.sort()
-            for entry, duration in work:
-                if not duration:
-                    continue # skip empty "arrival" entries
-                entry = entry[:1].upper() + entry[1:]
-                if estimated_column:
-                    print >> output, (u"%-46s  %-14s  %s" %
-                                (entry, '-', format_duration_long(duration)))
-                else:
-                    print >> output, (u"%-62s  %s" %
-                                (entry, format_duration_long(duration)))
-            print >> output
-        print >> output, ("Total work done this week: %s" %
-                          format_duration_long(total_work))
+
+        self._report(output, "week")
 
     def monthly_report(self, output, email, who):
         """Format a monthly report.
@@ -583,12 +561,20 @@ class TimeWindow(object):
         print >> output, "Subject: Monthly report for %s (%s)" % (who, month)
         print >> output
 
+        self._report (output, "month")
+
+    def _report(self, output, period):
+        """Format a generic report.
+
+        Writes a report template to output.
+        """
+
         items = list(self.all_entries())
         if not items:
-            print >> output, "No work done this month."
+            print >> output, "No work done this %s." % period
             return
 
-        print >> output, " " * 46
+        print >> output, " " * 62, "time"
 
         work, slack = self.grouped_entries()
         total_work, total_slacking = self.totals()
@@ -614,8 +600,8 @@ class TimeWindow(object):
                     (entry, format_duration_long(duration)))
             print >> output
 
-        print >> output, ("Total work done this month: %s" %
-                          format_duration_long(total_work))
+        print >> output, ("Total work done this %s: %s" %
+                          (period, format_duration_long(total_work)))
 
         if categories:
             print >> output

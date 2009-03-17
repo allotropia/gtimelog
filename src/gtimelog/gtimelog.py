@@ -587,6 +587,8 @@ class TimeWindow(object):
                 if not duration:
                     continue # skip empty "arrival" entries
 
+                entry = entry[:1].upper() + entry[1:]
+
                 if ': ' in entry:
                     cat, task = entry.split(': ', 1)
                     categories[cat] = categories.get(
@@ -595,7 +597,6 @@ class TimeWindow(object):
                     categories[None] = categories.get(
                         None, datetime.timedelta(0)) + duration
 
-                entry = entry[:1].upper() + entry[1:]
                 print >> output, (u"%-62s  %s" %
                     (entry, format_duration_long(duration)))
             print >> output

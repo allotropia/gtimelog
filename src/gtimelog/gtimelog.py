@@ -537,7 +537,7 @@ class TimeWindow(object):
         print >> output, ("Time spent slacking: %s" %
                           format_duration_long(total_slacking))
 
-    def weekly_report(self, output, email, who, estimated_column=False):
+    def weekly_report(self, output, email, who):
         """Format a weekly report.
 
         Writes a weekly report template in RFC-822 format to output.

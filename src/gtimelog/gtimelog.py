@@ -1477,9 +1477,28 @@ class MainWindow(object):
 
         completion = gtk.EntryCompletion()
         completion.set_model(self.completion_choices)
-        completion.set_text_column(0)
-        completion.set_inline_completion (True)
+        # FIXME: broken in GTK+ -- #575668
+        # completion.set_inline_completion (True)
         completion.set_match_func (self.completion_match_func)
+
+        def text_func(completion, cell, model, iter):
+            entry = model.get_value(iter, 0)
+            text = self.task_entry.get_text()
+            selection = self.task_entry.get_selection_bounds()
+            if selection:
+                start, end = selection
+                text = text[:start] + text[end:]
+
+            entry = re.sub('(%s)' % re.escape(text), r'<b>\1</b>', entry)
+            cell.set_property('markup', entry)
+
+        completion.set_text_column(0)
+        completion.clear()
+        # create our own renderer
+        renderer = gtk.CellRendererText()
+        completion.pack_start(renderer)
+        completion.set_cell_data_func(renderer, text_func)
+
         self.task_entry.set_completion(completion)
 
         # -- DEBUG --

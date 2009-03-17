@@ -1146,7 +1146,8 @@ class MainWindow(object):
         # Try to prevent timer routines mucking with the buffer while we're
         # mucking with the buffer.  Not sure if it is necessary.
         self.lock = False
-        self.entry_watchers = []
+        # FIXME: this should be replaced with a GLib signal...
+        self.entry_watchers = [self.add_history]
         self._init_ui()
         self._init_dbus()
         self.tick(True)
@@ -1438,15 +1439,9 @@ class MainWindow(object):
             else:
                 count[entry] += weight
 
-        # apply the weights
-        # cutoff = 0.2 # how to choose this?
-        # items = filter (lambda (k, v): v > cutoff, count.items())
-        items = count.items()
-        items.sort (key = lambda t: t[1], reverse = True)
-
         self.completion_choices.clear ()
-        for entry, weight in items:
-            self.completion_choices.append([entry])
+        for entry, weight in count.items():
+            self.completion_choices.append([entry, weight])
 
     def completion_match_func(self, completion, key, iter):
         # Text is autocompleted while typing and the automatically
@@ -1475,7 +1470,11 @@ class MainWindow(object):
         self.have_completion = hasattr(gtk, 'EntryCompletion')
         if not self.have_completion:
             return
-        self.completion_choices = gtk.ListStore(str)
+
+        self.completion_choices = gtk.ListStore(str, float)
+        # sort based on weight
+        self.completion_choices.set_sort_column_id(1, gtk.SORT_DESCENDING)
+
         completion = gtk.EntryCompletion()
         completion.set_model(self.completion_choices)
         completion.set_text_column(0)
@@ -1483,14 +1482,32 @@ class MainWindow(object):
         completion.set_match_func (self.completion_match_func)
         self.task_entry.set_completion(completion)
 
+        # -- DEBUG --
+        # renderer = gtk.CellRendererText()
+        # completion.pack_start(renderer, False)
+        # completion.set_attributes(renderer, text=1)
+
+        # FIXME: it would be awesome to have a column with a series of **
+        # for how good the match is
+
     def add_history(self, entry):
         """Add an entry to history."""
+
         self.history.append(entry)
         self.history_pos = 0
         if not self.have_completion:
             return
-        if entry not in [row[0] for row in self.completion_choices]:
-            self.completion_choices.append([entry])
+
+        match = False
+        for row in self.completion_choices:
+            if row[0] == entry:
+                match = True
+                # adjust the weight
+                self.completion_choices.set_value(row.iter, 1, row[1] + 1)
+                break
+
+        if not match:
+            self.completion_choices.append([entry, 1.])
 
     def delete_event(self, widget, data=None):
         """Try to close the window."""

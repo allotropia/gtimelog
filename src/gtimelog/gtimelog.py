@@ -1489,7 +1489,8 @@ class MainWindow(object):
                 start, end = selection
                 text = text[:start] + text[end:]
 
-            entry = re.sub('(%s)' % re.escape(text), r'<b>\1</b>', entry)
+            cre = re.compile('(%s)' % re.escape(text), re.IGNORECASE)
+            entry = cre.sub(r'<b>\1</b>', entry)
             cell.set_property('markup', entry)
 
         completion.set_text_column(0)

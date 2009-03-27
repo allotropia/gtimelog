@@ -621,8 +621,6 @@ class TimeWindow(object):
             if None in categories:
                 print >> output, u"%-62s  %s" % (
                     '(none)', format_duration_long(categories[None]))
-            print >> output
-
 
 class TimeLog(object):
     """Time log.

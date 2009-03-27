@@ -11,6 +11,7 @@ import csv
 import sys
 import sets
 import copy
+import urllib
 import urllib2
 import urlparse
 import datetime
@@ -93,16 +94,16 @@ class TZOffset (datetime.tzinfo):
 		h = offset / 100
 		m = offset % 100
 		self._offsetdelta = datetime.timedelta (hours = h, minutes = m)
-	
+
 	def utcoffset (self, dt):
 		return self._offsetdelta
-	
+
 	def dst (self, dt):
 		return self.ZERO
-	
+
 	def tzname (self, dt):
 		return str (self._offset)
-	
+
 	def __repr__ (self):
 		return self.tzname (False)
 
@@ -744,6 +745,106 @@ class TaskList(object):
         """Reload the task list."""
         self.load()
 
+class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
+	# FIXME : work out how to find the parent window
+	def find_user_password (self, realm, authuri):
+
+		# try to use GNOME Keyring if available
+		try: import gnomekeyring
+		except ImportError: gnomekeyring = None
+
+		# pop up a username/password dialog
+		d = gtk.Dialog ()
+		d.vbox.set_spacing (6)
+		d.set_has_separator (False)
+		d.set_title ('Authentication Required')
+
+		l = gtk.Label ()
+		l.set_markup ('<span size="x-large" weight="bold">Authentication Required</span>')
+		d.vbox.pack_start (l)
+
+		l = gtk.Label ('Authentication is required for the domain "%s".' % realm)
+		l.set_line_wrap (True)
+		d.vbox.pack_start (l)
+
+		t = gtk.Table (3, 2)
+		t.attach (gtk.Label ("Username:"), 0, 1, 0, 1)
+		t.attach (gtk.Label ("Password:"), 0, 1, 1, 2)
+
+		userentry = gtk.Entry ()
+		passentry = gtk.Entry ()
+		passentry.set_visibility (False)
+
+		userentry.connect ('activate', lambda entry:
+			passentry.grab_focus ())
+		passentry.connect ('activate', lambda entry:
+			d.response (gtk.RESPONSE_OK))
+
+		t.attach (userentry, 1, 2, 0, 1)
+		t.attach (passentry, 1, 2, 1, 2)
+
+		# tease apart the URL
+		o = urlparse.urlparse (authuri)
+		if o.port: port = int (o.port)
+		else: port = 0
+		object = '%s?%s' % (o.path, o.query)
+
+		if gnomekeyring:
+			# attempt to load a username and password
+			# from the keyring
+
+			try:
+			  l = gnomekeyring.find_network_password_sync (
+				None,		# user
+				o.hostname,	# domain
+				o.hostname,	# server
+				object,		# object
+				o.scheme,	# protocol
+				None,		# authtype
+				port)		# port
+			except gnomekeyring.NoMatchError:
+				pass
+			else:
+				l = l[-1] # take the last key (Why?)
+
+				userentry.set_text (l['user'])
+				passentry.set_text (l['password'])
+
+			# ask the user if she would like to save her
+			# password
+			savepasstoggle = gtk.CheckButton ("Save Password in Keyring")
+			savepasstoggle.set_active (True)
+			t.attach (savepasstoggle, 0, 2, 2, 3)
+
+		d.vbox.pack_start (t)
+
+		d.add_buttons (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+		               gtk.STOCK_OK, gtk.RESPONSE_OK)
+
+		d.show_all ()
+		r = d.run ()
+
+		username = userentry.get_text ()
+		password = passentry.get_text ()
+
+		d.destroy ()
+
+		if r == gtk.RESPONSE_OK:
+			if gnomekeyring and savepasstoggle.get_active ():
+				gnomekeyring.set_network_password_sync (
+					None,		# keyring
+					username,	# user
+					o.hostname,	# domain
+					o.hostname,	# server
+					object,		# object
+					o.scheme,	# protocol
+					None,		# authtype
+					port,		# port
+					password)	# password
+
+			return (username, password)
+		else:
+			return (None, None)
 
 class RemoteTaskList(TaskList):
     """Task list stored on a remote server.
@@ -783,112 +884,10 @@ class RemoteTaskList(TaskList):
         """Download the task list from the server."""
         if self.loading_callback:
             self.loading_callback()
-	
-	
-	class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
-		# FIXME : work out how to find the parent window
-		def find_user_password (self, realm, authuri):
-			
-			# try to use GNOME Keyring if available
-			try: import gnomekeyring
-			except ImportError: gnomekeyring = None
-
-			# pop up a username/password dialog
-			d = gtk.Dialog ()
-			d.vbox.set_spacing (6)
-			d.set_has_separator (False)
-			d.set_title ('Authentication Required')
-
-			l = gtk.Label ()
-			l.set_markup ('<span size="x-large" weight="bold">Authentication Required</span>')
-			d.vbox.pack_start (l)
-
-			l = gtk.Label ('Authentication is required for the domain "%s".' % realm)
-			l.set_line_wrap (True)
-			d.vbox.pack_start (l)
-
-			t = gtk.Table (3, 2)
-			t.attach (gtk.Label ("Username:"), 0, 1, 0, 1)
-			t.attach (gtk.Label ("Password:"), 0, 1, 1, 2)
-
-			userentry = gtk.Entry ()
-			passentry = gtk.Entry ()
-			passentry.set_visibility (False)
-
-			userentry.connect ('activate', lambda entry:
-				passentry.grab_focus ())
-			passentry.connect ('activate', lambda entry:
-				d.response (gtk.RESPONSE_OK))
-
-			t.attach (userentry, 1, 2, 0, 1)
-			t.attach (passentry, 1, 2, 1, 2)
-
-			# tease apart the URL
-			o = urlparse.urlparse (authuri)
-			if o.port: port = int (o.port)
-			else: port = 0
-			object = '%s?%s' % (o.path, o.query)
-
-			if gnomekeyring:
-				# attempt to load a username and password
-				# from the keyring
-
-				try:
-				  l = gnomekeyring.find_network_password_sync (
-					None,		# user
-					o.hostname,	# domain
-					o.hostname,	# server
-					object,		# object
-					o.scheme,	# protocol
-					None,		# authtype
-					port)		# port
-				except gnomekeyring.NoMatchError:
-					pass
-				else:
-					l = l[-1] # take the last key (Why?)
-
-					userentry.set_text (l['user'])
-					passentry.set_text (l['password'])
-
-				# ask the user if she would like to save her
-				# password
-				savepasstoggle = gtk.CheckButton ("Save Password in Keyring")
-				savepasstoggle.set_active (True)
-				t.attach (savepasstoggle, 0, 2, 2, 3)
-
-			d.vbox.pack_start (t)
-
-			d.add_buttons (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
-			               gtk.STOCK_OK, gtk.RESPONSE_OK)
-
-			d.show_all ()
-			r = d.run ()
-
-			username = userentry.get_text ()
-			password = passentry.get_text ()
-
-			d.destroy ()
-			
-			if r == gtk.RESPONSE_OK:
-				if gnomekeyring and savepasstoggle.get_active ():
-					gnomekeyring.set_network_password_sync (
-						None,		# keyring
-						username,	# user
-						o.hostname,	# domain
-						o.hostname,	# server
-						object,		# object
-						o.scheme,	# protocol
-						None,		# authtype
-						port,		# port
-						password)	# password
-
-				return (username, password)
-			else:
-				return (None, None)
 
 	passmgr = GtkPasswordRequest ()
 	auth_handler = urllib2.HTTPBasicAuthHandler (passmgr)
-	
+
 	opener = urllib2.build_opener (auth_handler)
 	urllib2.install_opener (opener)
 
@@ -910,7 +909,7 @@ class RemoteTaskList(TaskList):
 			out.close ()
 
 		fp.close ()
-	
+
         self.load()
         if self.loaded_callback:
             self.loaded_callback()
@@ -1397,10 +1396,10 @@ class MainWindow(object):
 		# for expansion
 		if item not in togglesdict or togglesdict[item]:
 			self.task_list.expand_row (path, False)
-	
+
 	togglesdict = self.load_task_store_toggle_state ()
 	self.task_store.foreach (update_toggle, togglesdict)
-	
+
 	self._block_row_toggles -= 1
 
     def set_up_history(self):
@@ -1567,7 +1566,7 @@ class MainWindow(object):
         """File -> Submit Report"""
         self.timelog.reread()
         self.set_up_history()
-        self.populate_log()		
+        self.populate_log()
         self.submit_window.show()
 
     def on_cancel_submit_button_pressed(self, widget):
@@ -1602,7 +1601,7 @@ class MainWindow(object):
 		print "ERROR READING TOGGLE STATE FROM DISK"
 		print e
 		togglesdict = {}
-	
+
 	return togglesdict
 
     def save_task_store_toggle_state (self, togglesdict):
@@ -1985,15 +1984,21 @@ class SubmitWindow(object):
                     if item[7]:
                         data[row[0]] += "%s %s\n" % (format_duration_short(parse_timedelta(item[0])), item[1])
 
+        passmgr = GtkPasswordRequest ()
+        auth_handler = urllib2.HTTPBasicAuthHandler (passmgr)
+
+        opener = urllib2.build_opener (auth_handler)
+        urllib2.install_opener (opener)
+
         try:
-            response = urllib.urlopen(self.report_url, urllib.urlencode(data)).read ()
+            response = urllib2.urlopen(self.report_url, urllib.urlencode(data)).read ()
 
             if response.startswith("Failed"):
                 self.annotate_failure (response)
             else:
                 self.hide ()
 
-        except:
+        except urllib2.URLError:
             dialog = gtk.Dialog("Server Error",
                      self.window,
                      gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,

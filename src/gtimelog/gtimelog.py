@@ -1991,25 +1991,41 @@ class SubmitWindow(object):
         urllib2.install_opener (opener)
 
         try:
-            response = urllib2.urlopen(self.report_url, urllib.urlencode(data)).read ()
-
-            if response.startswith("Failed"):
-                self.annotate_failure (response)
-            else:
-                self.hide ()
-
-        except urllib2.URLError:
-            dialog = gtk.Dialog("Server Error",
-                     self.window,
-                     gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
-                     (gtk.STOCK_OK, gtk.RESPONSE_ACCEPT))
-            label = gtk.Label ("Error communicating with the server, please try again later")
-            label.show ()
-            dialog.vbox.pack_start (label)
-            dialog.run ()
-            dialog.destroy ()
+            response = urllib2.urlopen(self.report_url, urllib.urlencode(data))
             self.hide ()
 
+        except urllib2.HTTPError, e:
+            txt = e.read()
+            if e.code == 400 and txt.startswith('Failed\n'):
+                # the server didn't like our submission
+                dialog = gtk.MessageDialog(self.window,
+                         gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+                         gtk.MESSAGE_ERROR,
+                         gtk.BUTTONS_OK,
+                         'Unable To Upload Timesheet')
+                dialog.set_title('Error')
+                dialog.format_secondary_text('Some of the entries in your timesheet refer to tasks that are not known to the server. These entries have been marked in red. Please review them and resubmit to the server when fixed.')
+                dialog.connect('response', lambda d, i: dialog.destroy())
+                dialog.show()
+                self.annotate_failure (txt)
+            else:
+                self.error_dialog(e)
+
+        except urllib2.URLError, e:
+            self.error_dialog(e)
+
+    def error_dialog(self, e):
+        print dir(e)
+        dialog = gtk.MessageDialog(self.window,
+                 gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+                 gtk.MESSAGE_ERROR,
+                 gtk.BUTTONS_OK,
+                 'Error Communicating With The Server')
+        dialog.set_title('Error')
+        dialog.format_secondary_text('%s' % e.reason)
+        dialog.run ()
+        dialog.destroy ()
+        self.hide ()
 
     def on_toggled (self, toggle, path, value=None):
         """When one of the dates is toggled"""

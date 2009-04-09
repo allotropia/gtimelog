@@ -1963,7 +1963,7 @@ class SubmitWindow(object):
         self.window = tree.get_widget("submit_window")
         self.timewindow = timewindow
         self.report_url = settings.report_to_url
-        tree.get_widget("submit_report").connect ("pressed", self.on_submit_report)
+        tree.get_widget("submit_report").connect ("clicked", self.on_submit_report)
         self.list_store = self._list_store ()
         self.tree_view = tree.get_widget("submit_tree")
         tree.get_widget("email_label").set_label (settings.report_to_url)

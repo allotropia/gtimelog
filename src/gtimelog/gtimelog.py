@@ -1566,12 +1566,15 @@ class MainWindow(object):
         self.set_up_history()
         self.populate_log()
         if self.settings.report_to_url == "":
-            dialog =gtk.MessageDialog(parent = self.main_window,
-                       flags = gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
-                       buttons = gtk.BUTTONS_OK,
-                       message_format = "Missing report_to_url in your gtimelogrc")
-            dialog.run ()
-            dialog.hide()
+            dialog = gtk.MessageDialog(self.main_window,
+                     gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+                     gtk.MESSAGE_ERROR,
+                     gtk.BUTTONS_OK,
+                     'Incomplete configuration file.')
+            dialog.set_title('Error')
+            dialog.format_secondary_text('Your configuration file is missing the report_to_url field which is necessary for timesheet uploading.')
+            dialog.connect('response', lambda d, i: dialog.destroy())
+            dialog.run()
 
         else:
             self.submit_window.show()
@@ -2000,6 +2003,16 @@ class SubmitWindow(object):
         try:
             response = urllib2.urlopen(self.report_url, urllib.urlencode(data))
             self.hide ()
+
+            dialog = gtk.MessageDialog(self.window,
+                     gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+                     gtk.MESSAGE_INFO,
+                     gtk.BUTTONS_OK,
+                     'Submitting timesheet succeeded.')
+            dialog.set_title('Success')
+            dialog.format_secondary_text('The selected timesheets have been submitted.')
+            dialog.connect('response', lambda d, i: dialog.destroy())
+            dialog.show()
 
         except urllib2.HTTPError, e:
             txt = e.read()

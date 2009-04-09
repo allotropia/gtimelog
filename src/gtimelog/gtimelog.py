@@ -1563,7 +1563,7 @@ class MainWindow(object):
         self.mail(window.daily_report)
 
     def on_submit_report_menu_activate(self, widget):
-        """File -> Submit Report"""
+        """Report -> Submit report to server"""
         self.timelog.reread()
         self.set_up_history()
         self.populate_log()

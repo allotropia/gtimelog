@@ -1567,7 +1567,16 @@ class MainWindow(object):
         self.timelog.reread()
         self.set_up_history()
         self.populate_log()
-        self.submit_window.show()
+        if self.settings.report_to_url == "":
+            dialog =gtk.MessageDialog(parent = self.main_window,
+                       flags = gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+                       buttons = gtk.BUTTONS_OK,
+                       message_format = "Missing report_to_url in your gtimelogrc")
+            dialog.run()
+            dialog.hide()
+
+        else:
+            self.submit_window.show()
 
     def on_cancel_submit_button_pressed(self, widget):
         self.submit_window.hide()

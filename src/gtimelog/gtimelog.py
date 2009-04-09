@@ -755,21 +755,19 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
 
 		# pop up a username/password dialog
 		d = gtk.Dialog ()
-		d.vbox.set_spacing (6)
 		d.set_has_separator (False)
 		d.set_title ('Authentication Required')
 
-		l = gtk.Label ()
-		l.set_markup ('<span size="x-large" weight="bold">Authentication Required</span>')
-		d.vbox.pack_start (l)
+		t = gtk.Table (4, 2)
+                t.set_border_width (5)
+                t.set_row_spacings (5)
 
 		l = gtk.Label ('Authentication is required for the domain "%s".' % realm)
 		l.set_line_wrap (True)
-		d.vbox.pack_start (l)
+		t.attach (l, 0, 2, 0, 1)
 
-		t = gtk.Table (3, 2)
-		t.attach (gtk.Label ("Username:"), 0, 1, 0, 1)
-		t.attach (gtk.Label ("Password:"), 0, 1, 1, 2)
+		t.attach (gtk.Label ("Username:"), 0, 1, 1, 2)
+		t.attach (gtk.Label ("Password:"), 0, 1, 2, 3)
 
 		userentry = gtk.Entry ()
 		passentry = gtk.Entry ()
@@ -780,8 +778,8 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
 		passentry.connect ('activate', lambda entry:
 			d.response (gtk.RESPONSE_OK))
 
-		t.attach (userentry, 1, 2, 0, 1)
-		t.attach (passentry, 1, 2, 1, 2)
+		t.attach (userentry, 1, 2, 1, 2)
+		t.attach (passentry, 1, 2, 2, 3)
 
 		# tease apart the URL
 		o = urlparse.urlparse (authuri)
@@ -814,7 +812,7 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
 			# password
 			savepasstoggle = gtk.CheckButton ("Save Password in Keyring")
 			savepasstoggle.set_active (True)
-			t.attach (savepasstoggle, 0, 2, 2, 3)
+			t.attach (savepasstoggle, 1, 2, 3, 4)
 
 		d.vbox.pack_start (t)
 
@@ -1572,7 +1570,7 @@ class MainWindow(object):
                        flags = gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
                        buttons = gtk.BUTTONS_OK,
                        message_format = "Missing report_to_url in your gtimelogrc")
-            dialog.run()
+            dialog.run ()
             dialog.hide()
 
         else:

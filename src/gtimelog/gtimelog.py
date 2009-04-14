@@ -2035,14 +2035,14 @@ class SubmitWindow(object):
             self.error_dialog(e)
 
     def error_dialog(self, e):
-        print dir(e)
+        print (e)
         dialog = gtk.MessageDialog(self.window,
                  gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
                  gtk.MESSAGE_ERROR,
                  gtk.BUTTONS_OK,
                  'Error Communicating With The Server')
         dialog.set_title('Error')
-        dialog.format_secondary_text('%s' % e.reason)
+        dialog.format_secondary_text('%s' % e)
         dialog.run ()
         dialog.destroy ()
         self.hide ()

@@ -1575,7 +1575,16 @@ class MainWindow(object):
             dialog.format_secondary_text('Your configuration file is missing the report_to_url field which is necessary for timesheet uploading.')
             dialog.connect('response', lambda d, i: dialog.destroy())
             dialog.run()
-
+        elif not self.settings.report_to_url.strip().startswith("https"):
+            dialog = gtk.MessageDialog(self.main_window,
+                     gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+                     gtk.MESSAGE_ERROR,
+                     gtk.BUTTONS_OK,
+                     'Incomplete configuration file.')
+            dialog.set_title('Error')
+            dialog.format_secondary_text('Your gtimelogrc is using http (as opposed to https) urls.  Please update your settings.')
+            dialog.connect('response', lambda d, i: dialog.destroy())
+            dialog.run()
         else:
             self.submit_window.show()
 

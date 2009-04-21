@@ -2028,17 +2028,6 @@ class SubmitWindow(object):
                 dialog.connect('response', lambda d, i: dialog.destroy())
                 dialog.show()
                 self.annotate_failure (txt)
-            elif e.code != 401:
-                print e.read()
-                dialog = gtk.MessageDialog(self.window,
-                         gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
-                         gtk.MESSAGE_ERROR,
-                         gtk.BUTTONS_OK,
-                         'Unable To Upload Timesheet')
-                dialog.set_title('Error')
-                dialog.format_secondary_text('The server returned the following error: ' + str(e.code))
-                dialog.connect('response', lambda d, i: dialog.destroy())
-                dialog.show()
             else:
                 self.error_dialog(e)
 

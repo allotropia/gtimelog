@@ -1,14 +1,15 @@
 <?xml version="1.0"?>
 <glade-interface>
-  <requires-version lib="gtk+" version="2.12"/>
+  <!-- interface-requires gtk+ 2.16 -->
+  <!-- interface-naming-policy toplevel-contextual -->
   <widget class="GtkWindow" id="submit_window">
     <property name="border_width">10</property>
     <property name="title" translatable="yes">Submit Time Log</property>
     <property name="modal">True</property>
-    <property name="window_position">GTK_WIN_POS_CENTER_ON_PARENT</property>
+    <property name="window_position">center-on-parent</property>
     <property name="default_height">500</property>
     <property name="destroy_with_parent">True</property>
-    <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
+    <property name="type_hint">dialog</property>
     <property name="deletable">False</property>
     <child>
       <widget class="GtkVBox" id="vbox4">
@@ -31,11 +32,13 @@ Any dates that are submitted more than once will be overwritten on the server.</
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">False</property>
+                    <property name="position">0</property>
                   </packing>
                 </child>
               </widget>
               <packing>
                 <property name="expand">False</property>
+                <property name="position">0</property>
               </packing>
             </child>
             <child>
@@ -46,11 +49,12 @@ Any dates that are submitted more than once will be overwritten on the server.</
                   <widget class="GtkLabel" id="label4">
                     <property name="visible">True</property>
                     <property name="label" translatable="yes">Submitting to:</property>
-                    <property name="justify">GTK_JUSTIFY_RIGHT</property>
+                    <property name="justify">right</property>
                   </widget>
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">False</property>
+                    <property name="position">0</property>
                   </packing>
                 </child>
                 <child>
@@ -65,11 +69,12 @@ Any dates that are submitted more than once will be overwritten on the server.</
                 </child>
                 <child>
                   <widget class="GtkCheckButton" id="toggle_selection">
-                    <property name="visible">True</property>
                     <property name="label" translatable="yes">_Toggle Selection</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="receives_default">False</property>
                     <property name="use_underline">True</property>
                     <property name="focus_on_click">False</property>
-                    <property name="response_id">0</property>
                     <property name="active">True</property>
                     <property name="draw_indicator">True</property>
                   </widget>
@@ -77,7 +82,7 @@ Any dates that are submitted more than once will be overwritten on the server.</
                     <property name="expand">False</property>
                     <property name="fill">False</property>
                     <property name="padding">10</property>
-                    <property name="pack_type">GTK_PACK_END</property>
+                    <property name="pack_type">end</property>
                     <property name="position">2</property>
                   </packing>
                 </child>
@@ -91,15 +96,16 @@ Any dates that are submitted more than once will be overwritten on the server.</
           <packing>
             <property name="expand">False</property>
             <property name="fill">False</property>
+            <property name="position">0</property>
           </packing>
         </child>
         <child>
           <widget class="GtkScrolledWindow" id="scrolledwindow3">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
-            <property name="hscrollbar_policy">GTK_POLICY_AUTOMATIC</property>
-            <property name="vscrollbar_policy">GTK_POLICY_AUTOMATIC</property>
-            <property name="shadow_type">GTK_SHADOW_ETCHED_IN</property>
+            <property name="hscrollbar_policy">automatic</property>
+            <property name="vscrollbar_policy">automatic</property>
+            <property name="shadow_type">etched-in</property>
             <child>
               <widget class="GtkTreeView" id="submit_tree">
                 <property name="width_request">0</property>
@@ -120,31 +126,30 @@ Any dates that are submitted more than once will be overwritten on the server.</
           <widget class="GtkHButtonBox" id="vbox3">
             <property name="visible">True</property>
             <property name="spacing">4</property>
-            <property name="layout_style">GTK_BUTTONBOX_END</property>
+            <property name="layout_style">end</property>
             <child>
               <widget class="GtkButton" id="edit_log_button">
+                <property name="label" translatable="yes">_Edit Log</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
-                <property name="label" translatable="yes">_Edit Log</property>
                 <property name="use_underline">True</property>
-                <property name="response_id">0</property>
                 <signal name="clicked" handler="on_edit_log_button_activate"/>
                 <signal name="activate" handler="on_edit_log_button_activate"/>
               </widget>
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">False</property>
+                <property name="position">0</property>
               </packing>
             </child>
             <child>
               <widget class="GtkButton" id="cancel_submit_button">
+                <property name="label" translatable="yes">gtk-cancel</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
-                <property name="label" translatable="yes">gtk-cancel</property>
                 <property name="use_stock">True</property>
-                <property name="response_id">0</property>
                 <signal name="clicked" handler="on_cancel_submit_button_pressed"/>
               </widget>
               <packing>
@@ -155,12 +160,11 @@ Any dates that are submitted more than once will be overwritten on the server.</
             </child>
             <child>
               <widget class="GtkButton" id="submit_report">
+                <property name="label" translatable="yes">_Submit</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
-                <property name="label" translatable="yes">_Submit</property>
                 <property name="use_underline">True</property>
-                <property name="response_id">0</property>
               </widget>
               <packing>
                 <property name="expand">False</property>
@@ -197,8 +201,8 @@ Any dates that are submitted more than once will be overwritten on the server.</
     </child>
     <child>
       <widget class="GtkImageMenuItem" id="quit1">
-        <property name="visible">True</property>
         <property name="label">gtk-quit</property>
+        <property name="visible">True</property>
         <property name="use_underline">True</property>
         <property name="use_stock">True</property>
         <signal name="activate" handler="on_quit_activate"/>
@@ -208,8 +212,8 @@ Any dates that are submitted more than once will be overwritten on the server.</
   <widget class="GtkMenu" id="task_list_popup_menu">
     <child>
       <widget class="GtkImageMenuItem" id="task_list_reload">
-        <property name="visible">True</property>
         <property name="label">gtk-refresh</property>
+        <property name="visible">True</property>
         <property name="use_underline">True</property>
         <property name="use_stock">True</property>
         <signal name="activate" handler="on_task_list_reload"/>
@@ -217,8 +221,8 @@ Any dates that are submitted more than once will be overwritten on the server.</
     </child>
     <child>
       <widget class="GtkImageMenuItem" id="task_list_edit">
-        <property name="visible">True</property>
         <property name="label">gtk-edit</property>
+        <property name="visible">True</property>
         <property name="use_underline">True</property>
         <property name="use_stock">True</property>
         <signal name="activate" handler="on_task_list_edit"/>
@@ -227,8 +231,8 @@ Any dates that are submitted more than once will be overwritten on the server.</
   </widget>
   <widget class="GtkDialog" id="calendar_dialog">
     <property name="title" translatable="yes">Choose a Date</property>
-    <property name="window_position">GTK_WIN_POS_MOUSE</property>
-    <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
+    <property name="window_position">mouse</property>
+    <property name="type_hint">dialog</property>
     <child internal-child="vbox">
       <widget class="GtkVBox" id="dialog-vbox2">
         <property name="visible">True</property>
@@ -244,29 +248,32 @@ Any dates that are submitted more than once will be overwritten on the server.</
         <child internal-child="action_area">
           <widget class="GtkHButtonBox" id="dialog-action_area2">
             <property name="visible">True</property>
-            <property name="layout_style">GTK_BUTTONBOX_END</property>
+            <property name="layout_style">end</property>
             <child>
               <widget class="GtkButton" id="cancelbutton1">
+                <property name="label">gtk-cancel</property>
+                <property name="response_id">-6</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="can_default">True</property>
-                <property name="label">gtk-cancel</property>
+                <property name="receives_default">False</property>
                 <property name="use_stock">True</property>
-                <property name="response_id">-6</property>
               </widget>
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">False</property>
+                <property name="position">0</property>
               </packing>
             </child>
             <child>
               <widget class="GtkButton" id="okbutton1">
+                <property name="label">gtk-ok</property>
+                <property name="response_id">-5</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="can_default">True</property>
-                <property name="label">gtk-ok</property>
+                <property name="receives_default">False</property>
                 <property name="use_stock">True</property>
-                <property name="response_id">-5</property>
               </widget>
               <packing>
                 <property name="expand">False</property>
@@ -277,7 +284,8 @@ Any dates that are submitted more than once will be overwritten on the server.</
           </widget>
           <packing>
             <property name="expand">False</property>
-            <property name="pack_type">GTK_PACK_END</property>
+            <property name="pack_type">end</property>
+            <property name="position">0</property>
           </packing>
         </child>
       </widget>
@@ -285,8 +293,8 @@ Any dates that are submitted more than once will be overwritten on the server.</
   </widget>
   <widget class="GtkDialog" id="about_dialog">
     <property name="title" translatable="yes">About TimeLog</property>
-    <property name="window_position">GTK_WIN_POS_CENTER</property>
-    <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
+    <property name="window_position">center</property>
+    <property name="type_hint">dialog</property>
     <child internal-child="vbox">
       <widget class="GtkVBox" id="dialog-vbox1">
         <property name="visible">True</property>
@@ -303,10 +311,11 @@ GTimeLog is a time tracking application.
 
 &lt;small&gt;&#xA9; 2004&#x2013;2008 Marius Gedminas&lt;/small&gt;</property>
                 <property name="use_markup">True</property>
-                <property name="justify">GTK_JUSTIFY_CENTER</property>
+                <property name="justify">center</property>
               </widget>
               <packing>
                 <property name="padding">16</property>
+                <property name="position">0</property>
               </packing>
             </child>
           </widget>
@@ -317,25 +326,28 @@ GTimeLog is a time tracking application.
         <child internal-child="action_area">
           <widget class="GtkHButtonBox" id="dialog-action_area1">
             <property name="visible">True</property>
-            <property name="layout_style">GTK_BUTTONBOX_END</property>
+            <property name="layout_style">end</property>
             <child>
               <widget class="GtkButton" id="ok_button">
+                <property name="label">gtk-ok</property>
+                <property name="response_id">-5</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="can_default">True</property>
-                <property name="label">gtk-ok</property>
+                <property name="receives_default">False</property>
                 <property name="use_stock">True</property>
-                <property name="response_id">-5</property>
               </widget>
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">False</property>
+                <property name="position">0</property>
               </packing>
             </child>
           </widget>
           <packing>
             <property name="expand">False</property>
-            <property name="pack_type">GTK_PACK_END</property>
+            <property name="pack_type">end</property>
+            <property name="position">0</property>
           </packing>
         </child>
       </widget>
@@ -344,7 +356,7 @@ GTimeLog is a time tracking application.
   <widget class="GtkWindow" id="main_window">
     <property name="visible">True</property>
     <property name="title" translatable="yes">Time Log</property>
-    <property name="window_position">GTK_WIN_POS_CENTER</property>
+    <property name="window_position">center</property>
     <property name="default_width">800</property>
     <property name="default_height">500</property>
     <property name="icon">gtimelog.png</property>
@@ -362,43 +374,50 @@ GTimeLog is a time tracking application.
                 <child>
                   <widget class="GtkMenu" id="menuitem1_menu">
                     <child>
-                      <widget class="GtkImageMenuItem" id="reload">
+                      <widget class="GtkImageMenuItem" id="edit_timelog">
+                        <property name="label">_Edit timelog.txt</property>
                         <property name="visible">True</property>
-                        <property name="tooltip" translatable="yes">Reread timelog.txt (useful if it was modified externally)</property>
-                        <property name="label" translatable="yes">_Reload</property>
+                        <property name="tooltip" translatable="yes">Open timelog.txt in a text editor</property>
                         <property name="use_underline">True</property>
-                        <signal name="activate" handler="on_reread_activate"/>
+                        <property name="use_stock">False</property>
+                        <signal name="activate" handler="on_edit_timelog_activate"/>
+                        <accelerator key="E" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                         <child internal-child="image">
-                          <widget class="GtkImage" id="image23">
+                          <widget class="GtkImage" id="image2">
                             <property name="visible">True</property>
-                            <property name="stock">gtk-refresh</property>
-                            <property name="icon_size">1</property>
+                            <property name="stock">gtk-edit</property>
+                            <property name="icon-size">1</property>
                           </widget>
                         </child>
-                        <accelerator key="R" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                       </widget>
                     </child>
                     <child>
-                      <widget class="GtkImageMenuItem" id="edit_timelog">
+                      <widget class="GtkImageMenuItem" id="reload">
+                        <property name="label">_Reload timelog.txt</property>
                         <property name="visible">True</property>
-                        <property name="tooltip" translatable="yes">Open timelog.txt in a text editor</property>
-                        <property name="label" translatable="yes">_Edit timelog.txt</property>
+                        <property name="tooltip" translatable="yes">Reread timelog.txt (useful if it was modified externally)</property>
                         <property name="use_underline">True</property>
-                        <signal name="activate" handler="on_edit_timelog_activate"/>
+                        <property name="use_stock">False</property>
+                        <signal name="activate" handler="on_reread_activate"/>
+                        <accelerator key="R" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                         <child internal-child="image">
-                          <widget class="GtkImage" id="image24">
+                          <widget class="GtkImage" id="image1">
                             <property name="visible">True</property>
-                            <property name="stock">gtk-execute</property>
-                            <property name="icon_size">1</property>
+                            <property name="stock">gtk-refresh</property>
+                            <property name="icon-size">1</property>
                           </widget>
                         </child>
-                        <accelerator key="E" signal="activate" modifiers="GDK_CONTROL_MASK"/>
+                      </widget>
+                    </child>
+                    <child>
+                      <widget class="GtkSeparatorMenuItem" id="menuitem3">
+                        <property name="visible">True</property>
                       </widget>
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="quit">
-                        <property name="visible">True</property>
                         <property name="label">gtk-quit</property>
+                        <property name="visible">True</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">True</property>
                         <signal name="activate" handler="on_quit_activate"/>
@@ -463,18 +482,20 @@ GTimeLog is a time tracking application.
                   <widget class="GtkMenu" id="menuitem2_menu">
                     <child>
                       <widget class="GtkImageMenuItem" id="submit_report_menu">
+                        <property name="label" translatable="yes">_Submit report to server</property>
                         <property name="visible">True</property>
                         <property name="tooltip" translatable="yes">Open a window to submit rows from your timesheet</property>
-                        <property name="label" translatable="yes">_Submit report to server</property>
                         <property name="use_underline">True</property>
+                        <property name="use_stock">False</property>
                         <signal name="activate" handler="on_submit_report_menu_activate"/>
+                        <accelerator key="s" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                         <child internal-child="image">
-                          <widget class="GtkImage" id="menu-item-image14">
+                          <widget class="GtkImage" id="image3">
                             <property name="visible">True</property>
                             <property name="stock">gtk-indent</property>
+                            <property name="icon-size">1</property>
                           </widget>
                         </child>
-                        <accelerator key="s" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                       </widget>
                     </child>
                     <child>
@@ -484,136 +505,155 @@ GTimeLog is a time tracking application.
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="daily_report">
+                        <property name="label">_Daily Report</property>
                         <property name="visible">True</property>
-                        <property name="label" translatable="yes">_Daily Report</property>
                         <property name="use_underline">True</property>
+                        <property name="use_stock">False</property>
                         <signal name="activate" handler="on_daily_report_activate"/>
+                        <accelerator key="D" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                         <child internal-child="image">
-                          <widget class="GtkImage" id="image25">
+                          <widget class="GtkImage" id="image4">
                             <property name="visible">True</property>
                             <property name="stock">gtk-justify-fill</property>
-                            <property name="icon_size">1</property>
+                            <property name="icon-size">1</property>
                           </widget>
                         </child>
-                        <accelerator key="D" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                       </widget>
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="yesterdays_report">
+                        <property name="label">Daily Report for _Yesterday</property>
                         <property name="visible">True</property>
-                        <property name="label" translatable="yes">Daily Report for _Yesterday</property>
                         <property name="use_underline">True</property>
+                        <property name="use_stock">False</property>
                         <signal name="activate" handler="on_yesterdays_report_activate"/>
                         <child internal-child="image">
-                          <widget class="GtkImage" id="image26">
+                          <widget class="GtkImage" id="image5">
                             <property name="visible">True</property>
                             <property name="stock">gtk-justify-fill</property>
-                            <property name="icon_size">1</property>
+                            <property name="icon-size">1</property>
                           </widget>
                         </child>
                       </widget>
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="previous_day_report">
+                        <property name="label">Daily Report for a _Previous Day</property>
                         <property name="visible">True</property>
-                        <property name="label" translatable="yes">Daily Report for a _Previous Day</property>
                         <property name="use_underline">True</property>
+                        <property name="use_stock">False</property>
                         <signal name="activate" handler="on_previous_day_report_activate"/>
                         <child internal-child="image">
-                          <widget class="GtkImage" id="image27">
+                          <widget class="GtkImage" id="image6">
                             <property name="visible">True</property>
                             <property name="stock">gtk-justify-fill</property>
-                            <property name="icon_size">1</property>
+                            <property name="icon-size">1</property>
                           </widget>
                         </child>
                       </widget>
                     </child>
                     <child>
-                      <widget class="GtkImageMenuItem" id="weekly_report">
+                      <widget class="GtkSeparatorMenuItem" id="menuitem5">
                         <property name="visible">True</property>
-                        <property name="label" translatable="yes">_Weekly Report</property>
+                      </widget>
+                    </child>
+                    <child>
+                      <widget class="GtkImageMenuItem" id="weekly_report">
+                        <property name="label">_Weekly Report</property>
+                        <property name="visible">True</property>
                         <property name="use_underline">True</property>
+                        <property name="use_stock">False</property>
                         <signal name="activate" handler="on_weekly_report_activate"/>
                         <child internal-child="image">
-                          <widget class="GtkImage" id="image28">
+                          <widget class="GtkImage" id="image7">
                             <property name="visible">True</property>
-                            <property name="stock">gtk-indent</property>
-                            <property name="icon_size">1</property>
+                            <property name="stock">gtk-justify-fill</property>
+                            <property name="icon-size">1</property>
                           </widget>
                         </child>
                       </widget>
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="last_weeks_report">
+                        <property name="label">Weekly Report for _Last Week</property>
                         <property name="visible">True</property>
-                        <property name="label" translatable="yes">Weekly Report for _Last Week</property>
                         <property name="use_underline">True</property>
+                        <property name="use_stock">False</property>
                         <signal name="activate" handler="on_last_weeks_report_activate"/>
                         <child internal-child="image">
-                          <widget class="GtkImage" id="image29">
+                          <widget class="GtkImage" id="image8">
                             <property name="visible">True</property>
-                            <property name="stock">gtk-indent</property>
-                            <property name="icon_size">1</property>
+                            <property name="stock">gtk-justify-fill</property>
+                            <property name="icon-size">1</property>
                           </widget>
                         </child>
                       </widget>
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="previous_week_report">
+                        <property name="label">Weekly Report for a Pre_vious Week</property>
                         <property name="visible">True</property>
-                        <property name="label" translatable="yes">Weekly Report for a Pre_vious Week</property>
                         <property name="use_underline">True</property>
+                        <property name="use_stock">False</property>
                         <signal name="activate" handler="on_previous_week_report_activate"/>
                         <child internal-child="image">
-                          <widget class="GtkImage" id="image30">
+                          <widget class="GtkImage" id="image9">
                             <property name="visible">True</property>
-                            <property name="stock">gtk-indent</property>
-                            <property name="icon_size">1</property>
+                            <property name="stock">gtk-justify-fill</property>
+                            <property name="icon-size">1</property>
                           </widget>
                         </child>
                       </widget>
                     </child>
                     <child>
-                      <widget class="GtkImageMenuItem" id="monthly_report">
+                      <widget class="GtkSeparatorMenuItem" id="menuitem6">
                         <property name="visible">True</property>
-                        <property name="label" translatable="yes">_Monthly Report</property>
+                      </widget>
+                    </child>
+                    <child>
+                      <widget class="GtkImageMenuItem" id="monthly_report">
+                        <property name="label">_Monthly Report</property>
+                        <property name="visible">True</property>
                         <property name="use_underline">True</property>
+                        <property name="use_stock">False</property>
                         <signal name="activate" handler="on_monthly_report_activate"/>
                         <child internal-child="image">
-                          <widget class="GtkImage" id="image1">
+                          <widget class="GtkImage" id="image10">
                             <property name="visible">True</property>
-                            <property name="stock">gtk-indent</property>
-                            <property name="icon_size">1</property>
+                            <property name="stock">gtk-justify-fill</property>
+                            <property name="icon-size">1</property>
                           </widget>
                         </child>
                       </widget>
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="last_month_report">
+                        <property name="label">Monthly Report for Last Month</property>
                         <property name="visible">True</property>
-                        <property name="label" translatable="yes">Monthly Report for Last Month</property>
                         <property name="use_underline">True</property>
+                        <property name="use_stock">False</property>
                         <signal name="activate" handler="on_last_month_report_activate"/>
                         <child internal-child="image">
-                          <widget class="GtkImage" id="image2">
+                          <widget class="GtkImage" id="image11">
                             <property name="visible">True</property>
-                            <property name="stock">gtk-indent</property>
-                            <property name="icon_size">1</property>
+                            <property name="stock">gtk-justify-fill</property>
+                            <property name="icon-size">1</property>
                           </widget>
                         </child>
                       </widget>
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="previous_month_report">
+                        <property name="label">Monthly Report for a Previous Month</property>
                         <property name="visible">True</property>
-                        <property name="label" translatable="yes">Monthly Report for a Previous Month</property>
                         <property name="use_underline">True</property>
+                        <property name="use_stock">False</property>
                         <signal name="activate" handler="on_previous_month_report_activate"/>
                         <child internal-child="image">
-                          <widget class="GtkImage" id="image3">
+                          <widget class="GtkImage" id="image12">
                             <property name="visible">True</property>
-                            <property name="stock">gtk-indent</property>
-                            <property name="icon_size">1</property>
+                            <property name="stock">gtk-justify-fill</property>
+                            <property name="icon-size">1</property>
                           </widget>
                         </child>
                       </widget>
@@ -625,30 +665,32 @@ GTimeLog is a time tracking application.
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="open_complete_spreadsheet">
+                        <property name="label">_Complete Report in Spreadsheet</property>
                         <property name="visible">True</property>
-                        <property name="label" translatable="yes">_Complete Report in Spreadsheet</property>
                         <property name="use_underline">True</property>
+                        <property name="use_stock">False</property>
                         <signal name="activate" handler="on_open_complete_spreadsheet_activate"/>
                         <child internal-child="image">
-                          <widget class="GtkImage" id="image12">
+                          <widget class="GtkImage" id="image13">
                             <property name="visible">True</property>
-                            <property name="stock">gtk-file</property>
-                            <property name="icon_size">1</property>
+                            <property name="stock">gtk-justify-fill</property>
+                            <property name="icon-size">1</property>
                           </widget>
                         </child>
                       </widget>
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="open_slack_spreadsheet">
+                        <property name="label">Work/_Slacking stats in Spreadsheet</property>
                         <property name="visible">True</property>
-                        <property name="label" translatable="yes">Work/_Slacking stats in Spreadsheet</property>
                         <property name="use_underline">True</property>
+                        <property name="use_stock">False</property>
                         <signal name="activate" handler="on_open_slack_spreadsheet_activate"/>
                         <child internal-child="image">
-                          <widget class="GtkImage" id="image13">
+                          <widget class="GtkImage" id="image14">
                             <property name="visible">True</property>
-                            <property name="stock">gtk-file</property>
-                            <property name="icon_size">1</property>
+                            <property name="stock">gtk-justify-fill</property>
+                            <property name="icon-size">1</property>
                           </widget>
                         </child>
                       </widget>
@@ -665,21 +707,21 @@ GTimeLog is a time tracking application.
                 <child>
                   <widget class="GtkMenu" id="menuitem4_menu">
                     <child>
-                      <widget class="GtkImageMenuItem" id="about">
-                        <property name="visible">True</property>
-                        <property name="label" translatable="yes">gtk-about</property>
-                        <property name="use_underline">True</property>
-                        <property name="use_stock">True</property>
-                        <signal name="activate" handler="on_about_activate"/>
-                      </widget>
-                    </child>
-                    <child>
                       <widget class="GtkMenuItem" id="online_help">
                         <property name="visible">True</property>
                         <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
                         <property name="label" translatable="yes">_Online Documentation</property>
                         <property name="use_underline">True</property>
                         <signal name="activate" handler="on_online_help_activate"/>
+                      </widget>
+                    </child>
+                    <child>
+                      <widget class="GtkImageMenuItem" id="about">
+                        <property name="label">gtk-about</property>
+                        <property name="visible">True</property>
+                        <property name="use_underline">True</property>
+                        <property name="use_stock">True</property>
+                        <signal name="activate" handler="on_about_activate"/>
                       </widget>
                     </child>
                   </widget>
@@ -690,6 +732,7 @@ GTimeLog is a time tracking application.
           <packing>
             <property name="expand">False</property>
             <property name="fill">False</property>
+            <property name="position">0</property>
           </packing>
         </child>
         <child>
@@ -701,16 +744,16 @@ GTimeLog is a time tracking application.
               <widget class="GtkScrolledWindow" id="scrolledwindow1">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
-                <property name="hscrollbar_policy">GTK_POLICY_AUTOMATIC</property>
-                <property name="vscrollbar_policy">GTK_POLICY_AUTOMATIC</property>
-                <property name="shadow_type">GTK_SHADOW_IN</property>
+                <property name="hscrollbar_policy">automatic</property>
+                <property name="vscrollbar_policy">automatic</property>
+                <property name="shadow_type">in</property>
                 <child>
                   <widget class="GtkTextView" id="log_view">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="pixels_above_lines">2</property>
                     <property name="editable">False</property>
-                    <property name="wrap_mode">GTK_WRAP_WORD</property>
+                    <property name="wrap_mode">word</property>
                     <property name="left_margin">2</property>
                     <property name="right_margin">2</property>
                     <property name="text" translatable="yes">19:20 did thist
@@ -742,15 +785,16 @@ GTimeLog is a time tracking application.
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">False</property>
+                    <property name="position">0</property>
                   </packing>
                 </child>
                 <child>
                   <widget class="GtkScrolledWindow" id="scrolledwindow2">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
-                    <property name="hscrollbar_policy">GTK_POLICY_AUTOMATIC</property>
-                    <property name="vscrollbar_policy">GTK_POLICY_AUTOMATIC</property>
-                    <property name="shadow_type">GTK_SHADOW_IN</property>
+                    <property name="hscrollbar_policy">automatic</property>
+                    <property name="vscrollbar_policy">automatic</property>
+                    <property name="shadow_type">in</property>
                     <child>
                       <widget class="GtkTreeView" id="task_list">
                         <property name="visible">True</property>
@@ -798,6 +842,7 @@ GTimeLog is a time tracking application.
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">False</property>
+                <property name="position">0</property>
               </packing>
             </child>
             <child>
@@ -813,15 +858,15 @@ GTimeLog is a time tracking application.
             </child>
             <child>
               <widget class="GtkButton" id="add_button">
+                <property name="label" translatable="yes">_Add</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="can_default">True</property>
                 <property name="has_default">True</property>
-                <property name="label" translatable="yes">_Add</property>
-                <property name="relief">GTK_RELIEF_HALF</property>
+                <property name="receives_default">False</property>
+                <property name="relief">half</property>
                 <property name="use_underline">True</property>
                 <property name="focus_on_click">False</property>
-                <property name="response_id">0</property>
               </widget>
               <packing>
                 <property name="expand">False</property>

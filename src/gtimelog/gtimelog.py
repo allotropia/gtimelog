@@ -2115,8 +2115,8 @@ class SubmitWindow(object):
             #Sort by length of time with longest first
             items.sort (lambda a,b: cmp(date_dict[date][b], date_dict[date][a]))
             for item in items:
-                submit = date_dict[date][item] > datetime.timedelta(0) and not "**" in item
-                self.list_store.append (parent,self.item_row(date_dict[date][item], item))
+                if date_dict[date][item] > datetime.timedelta(0) and not "**" in item:
+                    self.list_store.append (parent,self.item_row(date_dict[date][item], item))
 
         self.window.show ()
 

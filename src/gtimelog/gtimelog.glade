@@ -375,6 +375,7 @@ GTimeLog is a time tracking application.
                             <property name="icon_size">1</property>
                           </widget>
                         </child>
+                        <accelerator key="R" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                       </widget>
                     </child>
                     <child>
@@ -391,6 +392,7 @@ GTimeLog is a time tracking application.
                             <property name="icon_size">1</property>
                           </widget>
                         </child>
+                        <accelerator key="E" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                       </widget>
                     </child>
                     <child>
@@ -419,6 +421,7 @@ GTimeLog is a time tracking application.
                         <property name="label" translatable="yes">_Chronological</property>
                         <property name="use_underline">True</property>
                         <signal name="activate" handler="on_chronological_activate"/>
+                        <accelerator key="1" signal="activate" modifiers="GDK_MOD1_MASK"/>
                       </widget>
                     </child>
                     <child>
@@ -429,6 +432,7 @@ GTimeLog is a time tracking application.
                         <property name="active">True</property>
                         <property name="group">chronological</property>
                         <signal name="activate" handler="on_grouped_activate"/>
+                        <accelerator key="2" signal="activate" modifiers="GDK_MOD1_MASK"/>
                       </widget>
                     </child>
                     <child>
@@ -470,6 +474,7 @@ GTimeLog is a time tracking application.
                             <property name="stock">gtk-indent</property>
                           </widget>
                         </child>
+                        <accelerator key="s" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                       </widget>
                     </child>
                     <child>
@@ -490,6 +495,7 @@ GTimeLog is a time tracking application.
                             <property name="icon_size">1</property>
                           </widget>
                         </child>
+                        <accelerator key="D" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                       </widget>
                     </child>
                     <child>

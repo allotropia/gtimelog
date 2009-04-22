@@ -1965,6 +1965,15 @@ class MainWindow(object):
                     self.add_footer()
         return True
 
+COL_DATE_OR_DURATION = 0
+COL_DESCRIPTION = 1
+COL_ACTIVE = 2
+COL_ACTIVATABLE = 3
+COL_EDITABLE = 4
+COL_COLOR = 5
+COL_HAS_CHECKBOX = 6
+COL_SUBMIT = 7
+COL_ERROR_MSG = 8
 class SubmitWindow(object):
     """The window for submitting reports over the http interface"""
     def __init__(self, tree, settings):
@@ -1981,17 +1990,17 @@ class SubmitWindow(object):
         toggle = gtk.CellRendererToggle()
         toggle.connect ("toggled", self.on_toggled)
         tree.get_widget("toggle_selection").connect("clicked", self.on_toggle_selection)
-        self.tree_view.append_column(gtk.TreeViewColumn('Include?', toggle ,active=2, activatable=3, visible=6))
+        self.tree_view.append_column(gtk.TreeViewColumn('Include?', toggle ,active=COL_ACTIVE, activatable=COL_ACTIVATABLE, visible=COL_HAS_CHECKBOX))
 
         time_cell = gtk.CellRendererText()
         time_cell.connect ("edited", self.on_time_cell_edit)
-        self.tree_view.append_column(gtk.TreeViewColumn('Log Time', time_cell, text=0, editable=4, foreground=5))
+        self.tree_view.append_column(gtk.TreeViewColumn('Log Time', time_cell, text=COL_DATE_OR_DURATION, editable=COL_EDITABLE, foreground=COL_COLOR))
 
         item_cell = gtk.CellRendererText()
         item_cell.connect ("edited", self.on_item_cell_edit)
-        self.tree_view.append_column(gtk.TreeViewColumn('Log Entry', item_cell, text=1, editable=4, foreground=5))
+        self.tree_view.append_column(gtk.TreeViewColumn('Log Entry', item_cell, text=COL_DESCRIPTION, editable=COL_EDITABLE, foreground=COL_COLOR))
 
-        self.tree_view.append_column(gtk.TreeViewColumn('Error Message', gtk.CellRendererText (), text=8, foreground=5))
+        self.tree_view.append_column(gtk.TreeViewColumn('Error Message', gtk.CellRendererText (), text=COL_ERROR_MSG, foreground=COL_COLOR))
 
         selection = self.tree_view.get_selection()
         selection.set_mode(gtk.SELECTION_MULTIPLE)
@@ -2002,11 +2011,11 @@ class SubmitWindow(object):
         """The actual submit action"""
         data = {}
         for row in self.list_store:
-            if row[2]:
-                data[row[0]] = ""
+            if row[COL_ACTIVE]:
+                data[row[COL_DATE_OR_DURATION]] = ""
                 for item in row.iterchildren():
-                    if item[7]:
-                        data[row[0]] += "%s %s\n" % (format_duration_short(parse_timedelta(item[0])), item[1])
+                    if item[COL_SUBMIT]:
+                        data[row[COL_DATE_OR_DURATION]] += "%s %s\n" % (format_duration_short(parse_timedelta(item[COL_DATE_OR_DURATION])), item[COL_DESCRIPTION])
 
         passmgr = GtkPasswordRequest ()
         auth_handler = urllib2.HTTPBasicAuthHandler (passmgr)
@@ -2063,20 +2072,20 @@ class SubmitWindow(object):
 
     def on_toggled (self, toggle, path, value=None):
         """When one of the dates is toggled"""
-        self.list_store[path] = self.date_row(self.list_store[path][0],value == None and (not self.list_store[path][2]) or value )
+        self.list_store[path] = self.date_row(self.list_store[path][COL_DATE_OR_DURATION],value == None and (not self.list_store[path][COL_ACTIVE]) or value )
 
     def on_toggle_selection (self, toggle):
         """The toggle selection check box to do groups"""
         model, selection = self.tree_view.get_selection ().get_selected_rows ()
         for row in selection:
-            if model[row][3]:
+            if model[row][COL_ACTIVATABLE]:
                 self.on_toggled(toggle, row)
 
     def on_time_cell_edit (self, cell, path, text):
         """When a time cell has been edited"""
         try:
             time = parse_timedelta (text)
-            item = self.list_store[path][1]
+            item = self.list_store[path][COL_DESCRIPTION]
             self.list_store[path] = self.item_row(time, item)
         except ValueError:
             return # XXX: might want to tell the user what's wrong
@@ -2084,7 +2093,7 @@ class SubmitWindow(object):
     def on_item_cell_edit (self, cell, path, text):
         """When the description cell has been edited"""
         try:
-            time = parse_timedelta (self.list_store[path][0])
+            time = parse_timedelta (self.list_store[path][COL_DATE_OR_DURATION])
             item = text
             self.list_store[path] = self.item_row(time, item)
         except ValueError:
@@ -2122,7 +2131,7 @@ class SubmitWindow(object):
 
     #All the row based stuff together
     def _list_store (self):
-        #Col1, col2, active (date submission), activatable, editable, foreground, radio, visible (row submission), error
+        #Duration, Description, active (date submission), activatable, editable, foreground, radio, visible (row submission), error
         return gtk.TreeStore(str, str, bool, bool, bool, str, bool, bool, str)
 
     def date_row (self, date, submit=True):
@@ -2147,7 +2156,7 @@ class SubmitWindow(object):
             if m:
                 date = m.group (1)
                 for row in self.list_store:
-                    if row[0] == date:
+                    if row[COL_DATE_OR_DURATION] == date:
                         daterow = row
                         break
                 continue
@@ -2156,10 +2165,10 @@ class SubmitWindow(object):
             if m and daterow:
                 for itemrow in daterow.iterchildren ():
                     if itemrow[1].strip () == m.group (2):
-                        itemrow[5] = "red"
-                        daterow[5] = "red"
-                        itemrow[7] = False
-                        itemrow[8] = m.group (1).strip ()
+                        itemrow[COL_COLOR] = "red"
+                        daterow[COL_COLOR] = "red"
+                        itemrow[COL_SUBMIT] = False
+                        itemrow[COL_ERROR_MSG] = m.group (1).strip ()
                 continue
 
             if line and line != "Failed":

@@ -1979,7 +1979,7 @@ class SubmitWindow(object):
         self.tree_view.set_model (self.list_store)
         toggle= gtk.CellRendererToggle()
         toggle.connect ("toggled", self.on_toggled)
-        tree.get_widget("toggle_selection").connect("toggled", self.on_toggle_selection)
+        tree.get_widget("toggle_selection").connect("clicked", self.on_toggle_selection)
         self.tree_view.append_column(gtk.TreeViewColumn('Include?', toggle ,active=2, activatable=3, radio=6, visible=7))
         time_cell = gtk.CellRendererText()
         time_cell.connect ("edited", self.on_time_cell_edit)
@@ -2065,7 +2065,7 @@ class SubmitWindow(object):
         model, selection = self.tree_view.get_selection ().get_selected_rows ()
         for row in selection:
             if model[row][3]:
-                self.on_toggled(toggle, row, toggle.get_property("active"))
+                self.on_toggled(toggle, row)
 
     def on_time_cell_edit (self, cell, path, text):
         """When a time cell has been edited"""

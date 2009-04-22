@@ -1575,7 +1575,7 @@ class MainWindow(object):
             dialog.format_secondary_text('Your configuration file is missing the report_to_url field which is necessary for timesheet uploading.')
             dialog.connect('response', lambda d, i: dialog.destroy())
             dialog.run()
-        elif not self.settings.report_to_url.strip().startswith("https"):
+        elif not self.settings.report_to_url.strip().startswith("https") and not "localhost" in self.settings.report_to_url:
             dialog = gtk.MessageDialog(self.main_window,
                      gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
                      gtk.MESSAGE_ERROR,

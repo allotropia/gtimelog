@@ -1972,22 +1972,28 @@ class SubmitWindow(object):
         self.window = tree.get_widget("submit_window")
         self.timewindow = timewindow
         self.report_url = settings.report_to_url
+
         tree.get_widget("submit_report").connect ("clicked", self.on_submit_report)
         self.list_store = self._list_store ()
         self.tree_view = tree.get_widget("submit_tree")
         tree.get_widget("email_label").set_label (settings.report_to_url)
         self.tree_view.set_model (self.list_store)
-        toggle= gtk.CellRendererToggle()
+
+        toggle = gtk.CellRendererToggle()
         toggle.connect ("toggled", self.on_toggled)
         tree.get_widget("toggle_selection").connect("clicked", self.on_toggle_selection)
-        self.tree_view.append_column(gtk.TreeViewColumn('Include?', toggle ,active=2, activatable=3, radio=6, visible=7))
+        self.tree_view.append_column(gtk.TreeViewColumn('Include?', toggle ,active=2, activatable=3, visible=6))
+
         time_cell = gtk.CellRendererText()
         time_cell.connect ("edited", self.on_time_cell_edit)
         self.tree_view.append_column(gtk.TreeViewColumn('Log Time', time_cell, text=0, editable=4, foreground=5))
+
         item_cell = gtk.CellRendererText()
         item_cell.connect ("edited", self.on_item_cell_edit)
         self.tree_view.append_column(gtk.TreeViewColumn('Log Entry', item_cell, text=1, editable=4, foreground=5))
+
         self.tree_view.append_column(gtk.TreeViewColumn('Error Message', gtk.CellRendererText (), text=8, foreground=5))
+
         selection = self.tree_view.get_selection()
         selection.set_mode(gtk.SELECTION_MULTIPLE)
 
@@ -2120,11 +2126,11 @@ class SubmitWindow(object):
         return gtk.TreeStore(str, str, bool, bool, bool, str, bool, bool, str)
 
     def date_row (self, date, submit=True):
-        return [date, "", submit, True, False, submit and "black" or "grey", False, True, ""]
+        return [date, "", submit, True, False, submit and "black" or "grey", True, True, ""]
 
     def item_row (self, duration, item):
         submit = duration > datetime.timedelta(0) and not "**" in item
-        return [format_duration_long (duration), item, submit, False, True, submit and "black" or "grey", True, submit, ""]
+        return [format_duration_long (duration), item, submit, False, True, submit and "black" or "grey", False, submit, ""]
 
     def annotate_failure (self, response):
         """

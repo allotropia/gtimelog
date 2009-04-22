@@ -1156,7 +1156,7 @@ class MainWindow(object):
         self.calendar = tree.get_widget("calendar")
         self.calendar.connect("day_selected_double_click",
                               self.on_calendar_day_selected_double_click)
-        self.submit_window = SubmitWindow(tree, self.timelog.whole_history (), self.settings)
+        self.submit_window = SubmitWindow(tree, self.settings)
         self.main_window = tree.get_widget("main_window")
         self.main_window.connect("delete_event", self.delete_event)
         self.log_view = tree.get_widget("log_view")
@@ -1586,7 +1586,7 @@ class MainWindow(object):
             dialog.connect('response', lambda d, i: dialog.destroy())
             dialog.run()
         else:
-            self.submit_window.show()
+            self.submit_window.show(self.timelog.whole_history ())
 
     def on_cancel_submit_button_pressed(self, widget):
         self.submit_window.hide()
@@ -1967,10 +1967,9 @@ class MainWindow(object):
 
 class SubmitWindow(object):
     """The window for submitting reports over the http interface"""
-    def __init__(self, tree, timewindow, settings):
+    def __init__(self, tree, settings):
         self.settings = settings
         self.window = tree.get_widget("submit_window")
-        self.timewindow = timewindow
         self.report_url = settings.report_to_url
 
         tree.get_widget("submit_report").connect ("clicked", self.on_submit_report)
@@ -2091,8 +2090,9 @@ class SubmitWindow(object):
         except ValueError:
             return # XXX: might want to tell the user what's wrong
 
-    def show (self):
+    def show (self, timewindow):
         """Re-read the log file and fill in the list_store"""
+        self.timewindow = timewindow
 
         self.list_store.clear ()
         date_dict = {}

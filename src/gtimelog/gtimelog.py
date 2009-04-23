@@ -1784,7 +1784,7 @@ class MainWindow(object):
         """A task was selected in the task pane -- put it to the entry."""
         model = treeview.get_model()
         task = model[path][1]
-        self.task_entry.set_text(task)
+        self.task_entry.set_text(task + ": ")
         self.task_entry.grab_focus()
         self.task_entry.set_position(-1)
         # XXX: how does this integrate with history?

@@ -883,30 +883,34 @@ class RemoteTaskList(TaskList):
         if self.loading_callback:
             self.loading_callback()
 
-	passmgr = GtkPasswordRequest ()
-	auth_handler = urllib2.HTTPBasicAuthHandler (passmgr)
+        passmgr = GtkPasswordRequest ()
+        auth_handler = urllib2.HTTPBasicAuthHandler (passmgr)
 
-	opener = urllib2.build_opener (auth_handler)
-	urllib2.install_opener (opener)
+        opener = urllib2.build_opener (auth_handler)
+        urllib2.install_opener (opener)
 
-	try:
-		fp = urllib2.urlopen (self.url)
-	except urllib2.URLError:
-		if self.error_callback:
-			self.error_callback ()
-	else:
-		# FIXME - is there a better way to do this?
-		try:
-			out = open (self.filename, 'w')
+        try:
+            fp = urllib2.urlopen (self.url)
+        except urllib2.URLError:
+            if self.error_callback:
+                        self.error_callback ()
+        else:
+            # check if we were redirected, if so, drop the information
+            if fp.geturl() != self.url and self.error_callback:
+                self.error_callback ()
+                return
 
-			out.write (fp.read ())
-		except IOError:
-			if self.error_callback:
-				self.error_callback ()
-		finally:
-			out.close ()
+            # FIXME - is there a better way to do this?
+            try:
+                out = open (self.filename, 'w')
+                out.write (fp.read ())
+            except IOError:
+                if self.error_callback:
+                    self.error_callback ()
+            finally:
+                out.close ()
 
-		fp.close ()
+            fp.close ()
 
         self.load()
         if self.loaded_callback:

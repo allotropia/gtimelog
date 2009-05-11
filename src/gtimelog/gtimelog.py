@@ -740,7 +740,6 @@ class TaskList(object):
         except IOError:
             pass # the file's not there, so what?
 
-
     def reload(self):
         """Reload the task list."""
         self.load()
@@ -850,12 +849,13 @@ class RemoteTaskList(TaskList):
     Keeps a cached copy of the list in a local file, so you can use it offline.
     """
 
-    def __init__(self, url, cache_filename, expires=datetime.timedelta(1)):
-        self.url = url
+    def __init__(self, settings, cache_filename):
+        self.url = settings.task_list_url
         TaskList.__init__(self, cache_filename)
+        self.settings = settings
 
         #Even better would be to use the Expires: header on the list itself I suppose...
-        self.max_age = expires
+        self.max_age = settings.task_list_expiry
 
         mtime = self.get_mtime()
         if mtime:
@@ -883,17 +883,26 @@ class RemoteTaskList(TaskList):
         if self.loading_callback:
             self.loading_callback()
 
+        from M2Crypto import SSL
+        ctx = SSL.Context()
+        ctx.set_verify(SSL.verify_peer | SSL.verify_fail_if_no_peer_cert, 9)
+        ctx.load_verify_locations(self.settings.server_cert)
+
         passmgr = GtkPasswordRequest ()
         auth_handler = urllib2.HTTPBasicAuthHandler (passmgr)
 
-        opener = urllib2.build_opener (auth_handler)
-        urllib2.install_opener (opener)
+        from M2Crypto import m2urllib2
+        opener = m2urllib2.build_opener(ctx, auth_handler)
+        m2urllib2.install_opener(opener)
 
         try:
             fp = urllib2.urlopen (self.url)
         except urllib2.URLError:
             if self.error_callback:
                         self.error_callback ()
+        except SSL.SSLError, e:
+            if self.error_callback:
+                        self.error_callback (str(e))
         else:
             # check if we were redirected, if so, drop the information
             if fp.geturl() != self.url and self.error_callback:
@@ -948,6 +957,7 @@ class Settings(object):
     report_to_url = ""
 
     remind_idle = '10 minutes'
+    server_cert = ''
 
     def _config(self):
         config = ConfigParser.RawConfigParser()
@@ -971,6 +981,7 @@ class Settings(object):
                    str(self.show_office_hours))
         config.set('gtimelog', 'report_to_url', self.report_to_url)
         config.set('gtimelog', 'remind_idle', self.remind_idle)
+        config.set('gtimelog', 'server_cert', self.server_cert)
 
         return config
 
@@ -997,6 +1008,7 @@ class Settings(object):
         self.report_to_url = config.get('gtimelog','report_to_url')
         self.remind_idle = parse_timedelta (config.get('gtimelog', 'remind_idle'))
 
+        self.server_cert = os.path.expanduser(config.get('gtimelog', 'server_cert'))
         #Anything shorter than 2 minutes will tick every minute
         #if self.remind_idle > datetime.timedelta (0, 120):
         #    self.remind_idle = datetime.timedelta (0, 120)
@@ -1815,9 +1827,9 @@ class MainWindow(object):
         while gtk.events_pending():
             gtk.main_iteration()
 
-    def task_list_error(self):
+    def task_list_error(self, text = "Could not get task list."):
         self.task_list_loading_failed = True
-        self.task_pane_info_label.set_text("Could not get task list.")
+        self.task_pane_info_label.set_text(text)
         self.task_pane_info_label.show()
 
     def task_list_loaded(self):
@@ -2021,14 +2033,20 @@ class SubmitWindow(object):
                     if item[COL_SUBMIT]:
                         data[row[COL_DATE_OR_DURATION]] += "%s %s\n" % (format_duration_short(parse_timedelta(item[COL_DATE_OR_DURATION])), item[COL_DESCRIPTION])
 
+        from M2Crypto import SSL
+        ctx = SSL.Context()
+        ctx.set_verify(SSL.verify_peer | SSL.verify_fail_if_no_peer_cert, 9)
+        ctx.load_verify_locations(self.settings.server_cert)
+
         passmgr = GtkPasswordRequest ()
         auth_handler = urllib2.HTTPBasicAuthHandler (passmgr)
 
-        opener = urllib2.build_opener (auth_handler)
-        urllib2.install_opener (opener)
+        from M2Crypto import m2urllib2
+        opener = m2urllib2.build_opener(ctx, auth_handler)
+        m2urllib2.install_opener(opener)
 
         try:
-            response = urllib2.urlopen(self.report_url, urllib.urlencode(data))
+            response = m2urllib2.urlopen(self.report_url, urllib.urlencode(data))
             self.hide ()
 
             dialog = gtk.MessageDialog(self.window,
@@ -2041,7 +2059,7 @@ class SubmitWindow(object):
             dialog.connect('response', lambda d, i: dialog.destroy())
             dialog.show()
 
-        except urllib2.HTTPError, e:
+        except m2urllib2.HTTPError, e:
             txt = e.read()
             if e.code == 400 and txt.startswith('Failed\n'):
                 # the server didn't like our submission
@@ -2058,7 +2076,10 @@ class SubmitWindow(object):
             else:
                 self.error_dialog(e)
 
-        except urllib2.URLError, e:
+        except m2urllib2.URLError, e:
+            self.error_dialog(e)
+            
+        except SSL.SSLError, e:
             self.error_dialog(e)
 
     def error_dialog(self, e):
@@ -2203,9 +2224,8 @@ def main():
     timelog = TimeLog(os.path.join(configdir, 'timelog.txt'),
                       settings.virtual_midnight)
     if settings.task_list_url:
-        tasks = RemoteTaskList(settings.task_list_url,
-                               os.path.join(configdir, 'remote-tasks.txt'),
-                               settings.task_list_expiry)
+        tasks = RemoteTaskList(settings,
+                               os.path.join(configdir, 'remote-tasks.txt'))
     else:
         tasks = TaskList(os.path.join(configdir, 'tasks.txt'))
     main_window = MainWindow(timelog, settings, tasks)

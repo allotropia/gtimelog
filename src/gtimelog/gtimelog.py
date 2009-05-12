@@ -33,6 +33,8 @@ try:
 except:
     print "dbus or pynotify not found, idle timeouts are not supported"
 
+from M2Crypto import SSL
+from M2Crypto import m2urllib2
 
 # This is to let people run GTimeLog without having to install it
 resource_dir = os.path.dirname(os.path.realpath(__file__))
@@ -883,7 +885,6 @@ class RemoteTaskList(TaskList):
         if self.loading_callback:
             self.loading_callback()
 
-        from M2Crypto import SSL
         ctx = SSL.Context()
         ctx.set_verify(SSL.verify_peer | SSL.verify_fail_if_no_peer_cert, 9)
         ctx.load_verify_locations(self.settings.server_cert)
@@ -891,7 +892,6 @@ class RemoteTaskList(TaskList):
         passmgr = GtkPasswordRequest ()
         auth_handler = urllib2.HTTPBasicAuthHandler (passmgr)
 
-        from M2Crypto import m2urllib2
         opener = m2urllib2.build_opener(ctx, auth_handler)
         m2urllib2.install_opener(opener)
 
@@ -2033,7 +2033,6 @@ class SubmitWindow(object):
                     if item[COL_SUBMIT]:
                         data[row[COL_DATE_OR_DURATION]] += "%s %s\n" % (format_duration_short(parse_timedelta(item[COL_DATE_OR_DURATION])), item[COL_DESCRIPTION])
 
-        from M2Crypto import SSL
         ctx = SSL.Context()
         ctx.set_verify(SSL.verify_peer | SSL.verify_fail_if_no_peer_cert, 9)
         ctx.load_verify_locations(self.settings.server_cert)
@@ -2041,7 +2040,6 @@ class SubmitWindow(object):
         passmgr = GtkPasswordRequest ()
         auth_handler = urllib2.HTTPBasicAuthHandler (passmgr)
 
-        from M2Crypto import m2urllib2
         opener = m2urllib2.build_opener(ctx, auth_handler)
         m2urllib2.install_opener(opener)
 
@@ -2078,7 +2076,7 @@ class SubmitWindow(object):
 
         except m2urllib2.URLError, e:
             self.error_dialog(e)
-            
+
         except SSL.SSLError, e:
             self.error_dialog(e)
 

@@ -1761,7 +1761,6 @@ class MainWindow(object):
 
     def on_edit_log_button_activate(self, widget):
         self.spawn(self.settings.editor, self.timelog.filename)
-        self.submit_window.hide()
 
     def mail(self, write_draft):
         """Send an email."""

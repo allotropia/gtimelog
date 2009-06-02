@@ -887,6 +887,11 @@ class RemoteTaskList(TaskList):
 
         ctx = SSL.Context()
         ctx.set_verify(SSL.verify_peer | SSL.verify_fail_if_no_peer_cert, 9)
+
+        if not os.path.exists(self.settings.server_cert):
+            self.error_callback("Certificate file not found")
+            return
+
         ctx.load_verify_locations(self.settings.server_cert)
 
         passmgr = GtkPasswordRequest ()
@@ -2034,6 +2039,11 @@ class SubmitWindow(object):
 
         ctx = SSL.Context()
         ctx.set_verify(SSL.verify_peer | SSL.verify_fail_if_no_peer_cert, 9)
+
+        if not os.path.exists(self.settings.server_cert):
+            self.error_dialog("Provided certificate %s not found" % self.settings.server_cert)
+            return
+
         ctx.load_verify_locations(self.settings.server_cert)
 
         passmgr = GtkPasswordRequest ()

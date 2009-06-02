@@ -3,80 +3,61 @@
   <!-- interface-requires gtk+ 2.16 -->
   <!-- interface-naming-policy toplevel-contextual -->
   <widget class="GtkWindow" id="submit_window">
-    <property name="border_width">10</property>
     <property name="title" translatable="yes">Submit Time Log</property>
     <property name="modal">True</property>
     <property name="window_position">center-on-parent</property>
-    <property name="default_height">500</property>
+    <property name="default_width">700</property>
+    <property name="default_height">400</property>
     <property name="destroy_with_parent">True</property>
     <property name="type_hint">dialog</property>
     <property name="deletable">False</property>
     <child>
       <widget class="GtkVBox" id="vbox4">
         <property name="visible">True</property>
-        <property name="spacing">10</property>
         <child>
-          <widget class="GtkVBox" id="vbox5">
+          <widget class="GtkToolbar" id="toolbar1">
             <property name="visible">True</property>
-            <property name="spacing">10</property>
             <child>
-              <widget class="GtkHBox" id="hbox2">
+              <widget class="GtkToolButton" id="toggle_selection">
                 <property name="visible">True</property>
-                <child>
-                  <widget class="GtkLabel" id="label1">
-                    <property name="visible">True</property>
-                    <property name="label" translatable="yes">Tick the relevant dates below, and then click Submit. 
-Entries with ** in the description, or that take no time are not submitted.
-Any dates that are submitted more than once will be overwritten on the server.</property>
-                  </widget>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">False</property>
-                    <property name="position">0</property>
-                  </packing>
-                </child>
+                <property name="has_tooltip">True</property>
+                <property name="tooltip" translatable="yes">Toggle the checkbox for all selected rows</property>
+                <property name="is_important">True</property>
+                <property name="label" translatable="yes">Toggle Selected Items</property>
+                <property name="use_underline">True</property>
+                <property name="stock_id">gtk-apply</property>
               </widget>
               <packing>
                 <property name="expand">False</property>
-                <property name="position">0</property>
+                <property name="homogeneous">True</property>
               </packing>
             </child>
             <child>
-              <widget class="GtkHBox" id="hbox4">
+              <widget class="GtkSeparatorToolItem" id="toolbutton1">
                 <property name="visible">True</property>
-                <property name="spacing">4</property>
-                <child>
-                  <widget class="GtkLabel" id="label4">
-                    <property name="visible">True</property>
-                    <property name="label" translatable="yes">Submitting to:</property>
-                    <property name="justify">right</property>
-                  </widget>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">False</property>
-                    <property name="position">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <widget class="GtkLabel" id="email_label">
-                    <property name="visible">True</property>
-                  </widget>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">False</property>
-                    <property name="position">1</property>
-                  </packing>
-                </child>
               </widget>
               <packing>
                 <property name="expand">False</property>
-                <property name="position">1</property>
+                <property name="homogeneous">True</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="GtkToolButton" id="edit_log_button">
+                <property name="visible">True</property>
+                <property name="tooltip" translatable="yes">Edit timelog.txt</property>
+                <property name="label" translatable="yes">Edit Log</property>
+                <property name="use_underline">True</property>
+                <property name="stock_id">gtk-edit</property>
+                <signal name="clicked" handler="on_edit_log_button_clicked"/>
+              </widget>
+              <packing>
+                <property name="expand">False</property>
+                <property name="homogeneous">True</property>
               </packing>
             </child>
           </widget>
           <packing>
             <property name="expand">False</property>
-            <property name="fill">False</property>
             <property name="position">0</property>
           </packing>
         </child>
@@ -89,8 +70,6 @@ Any dates that are submitted more than once will be overwritten on the server.</
             <property name="shadow_type">etched-in</property>
             <child>
               <widget class="GtkTreeView" id="submit_tree">
-                <property name="width_request">0</property>
-                <property name="height_request">0</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="has_focus">True</property>
@@ -106,41 +85,9 @@ Any dates that are submitted more than once will be overwritten on the server.</
         <child>
           <widget class="GtkHButtonBox" id="vbox3">
             <property name="visible">True</property>
+            <property name="border_width">10</property>
             <property name="spacing">4</property>
             <property name="layout_style">end</property>
-            <child>
-              <widget class="GtkButton" id="toggle_selection">
-                <property name="label" translatable="yes">_Toggle Selected Items</property>
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-                <property name="relief">none</property>
-                <property name="use_underline">True</property>
-                <property name="yalign">0.46000000834465027</property>
-              </widget>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">False</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <widget class="GtkButton" id="edit_log_button">
-                <property name="label" translatable="yes">_Edit Log</property>
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-                <property name="relief">none</property>
-                <property name="use_underline">True</property>
-                <signal name="clicked" handler="on_edit_log_button_activate"/>
-                <signal name="activate" handler="on_edit_log_button_activate"/>
-              </widget>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">False</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
             <child>
               <widget class="GtkButton" id="cancel_submit_button">
                 <property name="label" translatable="yes">gtk-cancel</property>
@@ -153,7 +100,7 @@ Any dates that are submitted more than once will be overwritten on the server.</
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">False</property>
-                <property name="position">2</property>
+                <property name="position">0</property>
               </packing>
             </child>
             <child>
@@ -167,7 +114,7 @@ Any dates that are submitted more than once will be overwritten on the server.</
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">False</property>
-                <property name="position">3</property>
+                <property name="position">1</property>
               </packing>
             </child>
           </widget>

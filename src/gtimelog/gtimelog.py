@@ -1786,7 +1786,7 @@ class MainWindow(object):
         """File -> Edit timelog.txt"""
         self.spawn(self.settings.editor, self.timelog.filename)
 
-    def on_edit_log_button_activate(self, widget):
+    def on_edit_log_button_clicked(self, widget):
         self.spawn(self.settings.editor, self.timelog.filename)
 
     def mail(self, write_draft):
@@ -2026,7 +2026,6 @@ class SubmitWindow(object):
         tree.get_widget("submit_report").connect ("clicked", self.on_submit_report)
         self.list_store = self._list_store ()
         self.tree_view = tree.get_widget("submit_tree")
-        tree.get_widget("email_label").set_label (settings.report_to_url)
         self.tree_view.set_model (self.list_store)
 
         toggle = gtk.CellRendererToggle()

@@ -1581,8 +1581,30 @@ class MainWindow(object):
         window = self.timelog.window
         self.mail(window.daily_report)
 
-    def on_submit_report_menu_activate(self, widget):
+    def on_submit_this_week_menu_activate(self, widget):
+        self.show_submit_window (self.weekly_window(), True)
+
+    def on_submit_last_week_menu_activate(self, widget):
+        day = self.timelog.day - datetime.timedelta(7)
+        window = self.weekly_window(day=day)
+        self.show_submit_window (window, True)
+
+    def on_submit_this_month_menu_activate(self, widget):
+        window = self.monthly_window()
+        self.show_submit_window (window, True)
+
+    def on_submit_last_month_menu_activate(self, widget):
+        day = self.timelog.day - datetime.timedelta(self.timelog.day.day)
+        window = self.monthly_window(day)
+        self.show_submit_window (window, True)
+
+    def on_submit_advanced_selection_menu_activate(self, widget):
+        self.show_submit_window ()
+
+    def show_submit_window (self, window = None, auto_submit = False):
         """Report -> Submit report to server"""
+        if window is None:
+            window = self.timelog.whole_history()
         self.timelog.reread()
         self.set_up_history()
         self.populate_log()
@@ -1607,7 +1629,7 @@ class MainWindow(object):
             dialog.connect('response', lambda d, i: dialog.destroy())
             dialog.run()
         else:
-            self.submit_window.show(self.timelog.whole_history ())
+            self.submit_window.show(window, auto_submit)
 
     def on_cancel_submit_button_pressed(self, widget):
         self.submit_window.hide()
@@ -2078,6 +2100,7 @@ class SubmitWindow(object):
                 dialog.set_title('Error')
                 dialog.format_secondary_text('Some of the entries in your timesheet refer to tasks that are not known to the server. These entries have been marked in red. Please review them and resubmit to the server when fixed.')
                 dialog.connect('response', lambda d, i: dialog.destroy())
+                self.window.show ()
                 dialog.show()
                 self.annotate_failure (txt)
             else:
@@ -2131,7 +2154,7 @@ class SubmitWindow(object):
         except ValueError:
             return # XXX: might want to tell the user what's wrong
 
-    def show (self, timewindow):
+    def show (self, timewindow, auto_submit = False):
         """Re-read the log file and fill in the list_store"""
         self.timewindow = timewindow
 
@@ -2159,7 +2182,10 @@ class SubmitWindow(object):
                 if date_dict[date][item] > datetime.timedelta(0) and not "**" in item:
                     self.list_store.append (parent,self.item_row(date_dict[date][item], item))
 
-        self.window.show ()
+        if auto_submit:
+            self.on_submit_report(None)
+        else:
+            self.window.show ()
 
     #All the row based stuff together
     def _list_store (self):

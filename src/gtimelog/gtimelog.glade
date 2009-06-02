@@ -485,8 +485,61 @@ GTimeLog is a time tracking application.
                         <property name="tooltip" translatable="yes">Open a window to submit rows from your timesheet</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">False</property>
-                        <signal name="activate" handler="on_submit_report_menu_activate"/>
-                        <accelerator key="s" signal="activate" modifiers="GDK_CONTROL_MASK"/>
+                        <child>
+                          <widget class="GtkMenu" id="menu1">
+                            <property name="visible">True</property>
+                            <child>
+                              <widget class="GtkMenuItem" id="submit_this_week_menu">
+                                <property name="visible">True</property>
+                                <property name="label" translatable="yes">This Week</property>
+                                <property name="use_underline">True</property>
+                                <signal name="activate" handler="on_submit_this_week_menu_activate"/>
+                              </widget>
+                            </child>
+                            <child>
+                              <widget class="GtkMenuItem" id="submit_last_week_menu">
+                                <property name="visible">True</property>
+                                <property name="label" translatable="yes">Last Week</property>
+                                <property name="use_underline">True</property>
+                                <signal name="activate" handler="on_submit_last_week_menu_activate"/>
+                              </widget>
+                            </child>
+                            <child>
+                              <widget class="GtkSeparatorMenuItem" id="separatormenuitem2">
+                                <property name="visible">True</property>
+                              </widget>
+                            </child>
+                            <child>
+                              <widget class="GtkMenuItem" id="submit_this_month_menu">
+                                <property name="visible">True</property>
+                                <property name="label" translatable="yes">This Month</property>
+                                <property name="use_underline">True</property>
+                                <signal name="activate" handler="on_submit_this_month_menu_activate"/>
+                              </widget>
+                            </child>
+                            <child>
+                              <widget class="GtkMenuItem" id="submit_last_month_menu">
+                                <property name="visible">True</property>
+                                <property name="label" translatable="yes">Last Month</property>
+                                <property name="use_underline">True</property>
+                                <signal name="activate" handler="on_submit_last_month_menu_activate"/>
+                              </widget>
+                            </child>
+                            <child>
+                              <widget class="GtkSeparatorMenuItem" id="separatormenuitem3">
+                                <property name="visible">True</property>
+                              </widget>
+                            </child>
+                            <child>
+                              <widget class="GtkMenuItem" id="submit_advanced_selection_menu">
+                                <property name="visible">True</property>
+                                <property name="label" translatable="yes">Advanced Selection...</property>
+                                <property name="use_underline">True</property>
+                                <signal name="activate" handler="on_submit_advanced_selection_menu_activate"/>
+                              </widget>
+                            </child>
+                          </widget>
+                        </child>
                         <child internal-child="image">
                           <widget class="GtkImage" id="image3">
                             <property name="visible">True</property>

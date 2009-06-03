@@ -784,6 +784,8 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
                             port)       # port
                 except gnomekeyring.NoMatchError:
                     pass
+                except gnomekeyring.NoKeyringDaemonError:
+                    pass
                 else:
                     l = l[-1] # take the last key (Why?)
                     username = l['user']
@@ -846,6 +848,7 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
 
             if r == gtk.RESPONSE_OK:
                     if gnomekeyring and save_to_keyring:
+                        try:
                             gnomekeyring.set_network_password_sync (
                                     None,		# keyring
                                     username,	# user
@@ -856,6 +859,8 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
                                     None,		# authtype
                                     port,		# port
                                     password)	# password
+                        except gnomekeyring.NoKeyringDaemonError:
+                            pass
                     return (username, password)
             else:
                     return (None, None)

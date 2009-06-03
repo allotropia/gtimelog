@@ -19,6 +19,7 @@ import time
 import tempfile
 import ConfigParser
 import cPickle as pickle
+import threading, thread
 
 import pygtk
 pygtk.require('2.0')
@@ -40,6 +41,8 @@ from M2Crypto import m2urllib2
 resource_dir = os.path.dirname(os.path.realpath(__file__))
 ui_file = os.path.join(resource_dir, "gtimelog.glade")
 icon_file = os.path.join(resource_dir, "gtimelog-small.png")
+
+gtk.gdk.threads_init()
 
 # This is for distribution packages
 if not os.path.exists(ui_file):
@@ -749,101 +752,113 @@ class TaskList(object):
 class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
 	# FIXME : work out how to find the parent window
 	def find_user_password (self, realm, authuri):
+            username = ""
+            password = ""
 
-		# try to use GNOME Keyring if available
-		try: import gnomekeyring
-		except ImportError: gnomekeyring = None
+            # try to use GNOME Keyring if available
+            try:
+                import gnomekeyring
+            except ImportError:
+                gnomekeyring = None
 
-		# pop up a username/password dialog
-		d = gtk.Dialog ()
-		d.set_has_separator (False)
-		d.set_title ('Authentication Required')
+            if gnomekeyring:
+                # attempt to load a username and password
+                # from the keyring
 
-		t = gtk.Table (4, 2)
-                t.set_border_width (5)
-                t.set_row_spacings (5)
+                # take apart the URL
+                o = urlparse.urlparse (authuri)
+                if o.port:
+                    port = int (o.port)
+                else:
+                    port = 0
+                object = '%s?%s' % (o.path, o.query)
 
-		l = gtk.Label ('Authentication is required for the domain "%s".' % realm)
-		l.set_line_wrap (True)
-		t.attach (l, 0, 2, 0, 1)
+                try:
+                    l = gnomekeyring.find_network_password_sync (
+                            None,       # user
+                            o.hostname, # domain
+                            o.hostname, # server
+                            object,     # object
+                            o.scheme,   # protocol
+                            None,       # authtype
+                            port)       # port
+                except gnomekeyring.NoMatchError:
+                    pass
+                else:
+                    l = l[-1] # take the last key (Why?)
+                    username = l['user']
+                    password = l['password']
 
-		t.attach (gtk.Label ("Username:"), 0, 1, 1, 2)
-		t.attach (gtk.Label ("Password:"), 0, 1, 2, 3)
+                # ask the user if she would like to save her
+                # password
 
-		userentry = gtk.Entry ()
-		passentry = gtk.Entry ()
-		passentry.set_visibility (False)
+            # pop up a username/password dialog
+            gtk.gdk.threads_enter()
+            d = gtk.Dialog ()
+            d.set_has_separator (False)
+            d.set_title ('Authentication Required')
 
-		userentry.connect ('activate', lambda entry:
-			passentry.grab_focus ())
-		passentry.connect ('activate', lambda entry:
-			d.response (gtk.RESPONSE_OK))
+            t = gtk.Table (4, 2)
+            t.set_border_width (5)
+            t.set_row_spacings (5)
 
-		t.attach (userentry, 1, 2, 1, 2)
-		t.attach (passentry, 1, 2, 2, 3)
+            l = gtk.Label ('Authentication is required for the domain "%s".' % realm)
+            l.set_line_wrap (True)
+            t.attach (l, 0, 2, 0, 1)
 
-		# tease apart the URL
-		o = urlparse.urlparse (authuri)
-		if o.port: port = int (o.port)
-		else: port = 0
-		object = '%s?%s' % (o.path, o.query)
+            t.attach (gtk.Label ("Username:"), 0, 1, 1, 2)
+            t.attach (gtk.Label ("Password:"), 0, 1, 2, 3)
 
-		if gnomekeyring:
-			# attempt to load a username and password
-			# from the keyring
+            userentry = gtk.Entry ()
+            passentry = gtk.Entry ()
+            passentry.set_visibility (False)
 
-			try:
-			  l = gnomekeyring.find_network_password_sync (
-				None,		# user
-				o.hostname,	# domain
-				o.hostname,	# server
-				object,		# object
-				o.scheme,	# protocol
-				None,		# authtype
-				port)		# port
-			except gnomekeyring.NoMatchError:
-				pass
-			else:
-				l = l[-1] # take the last key (Why?)
+            userentry.set_text (username)
+            passentry.set_text (password)
 
-				userentry.set_text (l['user'])
-				passentry.set_text (l['password'])
+            userentry.connect ('activate', lambda entry:
+                    passentry.grab_focus ())
+            passentry.connect ('activate', lambda entry:
+                    d.response (gtk.RESPONSE_OK))
 
-			# ask the user if she would like to save her
-			# password
-			savepasstoggle = gtk.CheckButton ("Save Password in Keyring")
-			savepasstoggle.set_active (True)
-			t.attach (savepasstoggle, 1, 2, 3, 4)
+            t.attach (userentry, 1, 2, 1, 2)
+            t.attach (passentry, 1, 2, 2, 3)
 
-		d.vbox.pack_start (t)
+            if gnomekeyring:
+                savepasstoggle = gtk.CheckButton ("Save Password in Keyring")
+                savepasstoggle.set_active (True)
+                t.attach (savepasstoggle, 1, 2, 3, 4)
 
-		d.add_buttons (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
-		               gtk.STOCK_OK, gtk.RESPONSE_OK)
+            d.vbox.pack_start (t)
 
-		d.show_all ()
-		r = d.run ()
+            d.add_buttons (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                           gtk.STOCK_OK, gtk.RESPONSE_OK)
 
-		username = userentry.get_text ()
-		password = passentry.get_text ()
+            d.show_all ()
+            r = d.run ()
 
-		d.destroy ()
+            username = userentry.get_text ()
+            password = passentry.get_text ()
+            save_to_keyring = savepasstoggle.get_active()
 
-		if r == gtk.RESPONSE_OK:
-			if gnomekeyring and savepasstoggle.get_active ():
-				gnomekeyring.set_network_password_sync (
-					None,		# keyring
-					username,	# user
-					o.hostname,	# domain
-					o.hostname,	# server
-					object,		# object
-					o.scheme,	# protocol
-					None,		# authtype
-					port,		# port
-					password)	# password
+            d.destroy ()
+            gtk.gdk.threads_leave()
 
-			return (username, password)
-		else:
-			return (None, None)
+            if r == gtk.RESPONSE_OK:
+                    if gnomekeyring and save_to_keyring:
+                            gnomekeyring.set_network_password_sync (
+                                    None,		# keyring
+                                    username,	# user
+                                    o.hostname,	# domain
+                                    o.hostname,	# server
+                                    object,		# object
+                                    o.scheme,	# protocol
+                                    None,		# authtype
+                                    port,		# port
+                                    password)	# password
+                    return (username, password)
+            else:
+                    return (None, None)
 
 class RemoteTaskList(TaskList):
     """Task list stored on a remote server.
@@ -885,12 +900,15 @@ class RemoteTaskList(TaskList):
         if self.loading_callback:
             self.loading_callback()
 
-        ctx = SSL.Context()
-        ctx.set_verify(SSL.verify_peer | SSL.verify_fail_if_no_peer_cert, 9)
-
         if not os.path.exists(self.settings.server_cert):
             self.error_callback("Certificate file not found")
             return
+
+        threading.Thread(target=self.download_thread).start()
+
+    def download_thread (self):
+        ctx = SSL.Context()
+        ctx.set_verify(SSL.verify_peer | SSL.verify_fail_if_no_peer_cert, 9)
 
         ctx.load_verify_locations(self.settings.server_cert)
 
@@ -902,30 +920,37 @@ class RemoteTaskList(TaskList):
 
         try:
             fp = urllib2.urlopen (self.url)
-        except urllib2.URLError:
+        except urllib2.URLError, e:
+            print e
             if self.error_callback:
-                        self.error_callback ()
+                gobject.idle_add(self.error_callback)
         except SSL.SSLError, e:
+            print e
             if self.error_callback:
-                        self.error_callback (str(e))
+                gobject.idle_add(self.error_callback, str(e))
         else:
             # check if we were redirected, if so, drop the information
             if fp.geturl() != self.url and self.error_callback:
-                self.error_callback ()
+                gobject.idle_add(self.error_callback)
                 return
 
             # FIXME - is there a better way to do this?
             try:
                 out = open (self.filename, 'w')
                 out.write (fp.read ())
-            except IOError:
+            except IOError, e:
+                print e
                 if self.error_callback:
                     self.error_callback ()
             finally:
                 out.close ()
 
             fp.close ()
+            gobject.idle_add(self.load_file)
+            thread.exit()
 
+    def load_file (self):
+        """Callback used by the thread to load the file in the UI"""
         self.load()
         if self.loaded_callback:
             self.loaded_callback()
@@ -2263,7 +2288,9 @@ def main():
     main_window = MainWindow(timelog, settings, tasks)
     tray_icon = TrayIcon(main_window)
     try:
+        gtk.gdk.threads_enter()
         gtk.main()
+        gtk.gdk.threads_leave()
     except KeyboardInterrupt:
         pass
 

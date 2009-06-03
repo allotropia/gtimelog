@@ -2088,13 +2088,17 @@ class SubmitWindow(object):
                     if item[COL_SUBMIT]:
                         data[row[COL_DATE_OR_DURATION]] += "%s %s\n" % (format_duration_short(parse_timedelta(item[COL_DATE_OR_DURATION])), item[COL_DESCRIPTION])
 
-        ctx = SSL.Context()
-        ctx.set_verify(SSL.verify_peer | SSL.verify_fail_if_no_peer_cert, 9)
-
         if not os.path.exists(self.settings.server_cert):
             self.error_dialog("Provided certificate %s not found" % self.settings.server_cert)
             return
 
+        self.hide ()
+
+        threading.Thread(target=self.upload_thread, kwargs={'data': data}).start()
+
+    def upload_thread(self, data):
+        ctx = SSL.Context()
+        ctx.set_verify(SSL.verify_peer | SSL.verify_fail_if_no_peer_cert, 9)
         ctx.load_verify_locations(self.settings.server_cert)
 
         passmgr = GtkPasswordRequest ()
@@ -2105,22 +2109,12 @@ class SubmitWindow(object):
 
         try:
             response = m2urllib2.urlopen(self.report_url, urllib.urlencode(data))
-            self.hide ()
-
-            dialog = gtk.MessageDialog(self.window,
-                     gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
-                     gtk.MESSAGE_INFO,
-                     gtk.BUTTONS_OK,
-                     'Submitting timesheet succeeded.')
-            dialog.set_title('Success')
-            dialog.format_secondary_text('The selected timesheets have been submitted.')
-            dialog.connect('response', lambda d, i: dialog.destroy())
-            dialog.show()
 
         except m2urllib2.HTTPError, e:
             txt = e.read()
             if e.code == 400 and txt.startswith('Failed\n'):
                 # the server didn't like our submission
+                gtk.gdk.threads_enter()
                 dialog = gtk.MessageDialog(self.window,
                          gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
                          gtk.MESSAGE_ERROR,
@@ -2132,17 +2126,32 @@ class SubmitWindow(object):
                 self.window.show ()
                 dialog.show()
                 self.annotate_failure (txt)
+                gtk.gdk.threads_leave()
             else:
                 self.error_dialog(e)
 
         except m2urllib2.URLError, e:
             self.error_dialog(e)
-
         except SSL.SSLError, e:
             self.error_dialog(e)
+        else:
+            gtk.gdk.threads_enter()
+            self.hide ()
+
+            dialog = gtk.MessageDialog(self.window,
+                     gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+                     gtk.MESSAGE_INFO,
+                     gtk.BUTTONS_OK,
+                     'Submitting timesheet succeeded.')
+            dialog.set_title('Success')
+            dialog.format_secondary_text('The selected timesheets have been submitted.')
+            dialog.connect('response', lambda d, i: dialog.destroy())
+            dialog.show()
+            gtk.gdk.threads_leave()
 
     def error_dialog(self, e):
         print (e)
+        gtk.gdk.threads_enter()
         dialog = gtk.MessageDialog(self.window,
                  gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
                  gtk.MESSAGE_ERROR,
@@ -2153,6 +2162,7 @@ class SubmitWindow(object):
         dialog.run ()
         dialog.destroy ()
         self.hide ()
+        gtk.gdk.threads_leave()
 
     def on_toggled (self, toggle, path, value=None):
         """When one of the dates is toggled"""

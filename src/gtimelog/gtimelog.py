@@ -752,8 +752,8 @@ class TaskList(object):
 class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
 	# FIXME : work out how to find the parent window
 	def find_user_password (self, realm, authuri):
-            username = ""
-            password = ""
+            username = None
+            password = None
 
             # try to use GNOME Keyring if available
             try:
@@ -791,79 +791,73 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
                     username = l['user']
                     password = l['password']
 
-                # ask the user if she would like to save her
-                # password
+            # If not found, ask the user for it
+            if username == None:
+                # pop up a username/password dialog
+                gtk.gdk.threads_enter()
+                d = gtk.Dialog ()
+                d.set_has_separator (False)
+                d.set_title ('Authentication Required')
 
-            # pop up a username/password dialog
-            gtk.gdk.threads_enter()
-            d = gtk.Dialog ()
-            d.set_has_separator (False)
-            d.set_title ('Authentication Required')
+                t = gtk.Table (4, 2)
+                t.set_border_width (5)
+                t.set_row_spacings (5)
 
-            t = gtk.Table (4, 2)
-            t.set_border_width (5)
-            t.set_row_spacings (5)
+                l = gtk.Label ('Authentication is required for the domain "%s".' % realm)
+                l.set_line_wrap (True)
+                t.attach (l, 0, 2, 0, 1)
 
-            l = gtk.Label ('Authentication is required for the domain "%s".' % realm)
-            l.set_line_wrap (True)
-            t.attach (l, 0, 2, 0, 1)
+                t.attach (gtk.Label ("Username:"), 0, 1, 1, 2)
+                t.attach (gtk.Label ("Password:"), 0, 1, 2, 3)
 
-            t.attach (gtk.Label ("Username:"), 0, 1, 1, 2)
-            t.attach (gtk.Label ("Password:"), 0, 1, 2, 3)
+                userentry = gtk.Entry ()
+                passentry = gtk.Entry ()
+                passentry.set_visibility (False)
 
-            userentry = gtk.Entry ()
-            passentry = gtk.Entry ()
-            passentry.set_visibility (False)
+                userentry.connect ('activate', lambda entry:
+                        passentry.grab_focus ())
+                passentry.connect ('activate', lambda entry:
+                        d.response (gtk.RESPONSE_OK))
 
-            userentry.set_text (username)
-            passentry.set_text (password)
+                t.attach (userentry, 1, 2, 1, 2)
+                t.attach (passentry, 1, 2, 2, 3)
 
-            userentry.connect ('activate', lambda entry:
-                    passentry.grab_focus ())
-            passentry.connect ('activate', lambda entry:
-                    d.response (gtk.RESPONSE_OK))
+                if gnomekeyring:
+                    savepasstoggle = gtk.CheckButton ("Save Password in Keyring")
+                    savepasstoggle.set_active (True)
+                    t.attach (savepasstoggle, 1, 2, 3, 4)
 
-            t.attach (userentry, 1, 2, 1, 2)
-            t.attach (passentry, 1, 2, 2, 3)
+                d.vbox.pack_start (t)
 
-            if gnomekeyring:
-                savepasstoggle = gtk.CheckButton ("Save Password in Keyring")
-                savepasstoggle.set_active (True)
-                t.attach (savepasstoggle, 1, 2, 3, 4)
+                d.add_buttons (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                               gtk.STOCK_OK, gtk.RESPONSE_OK)
 
-            d.vbox.pack_start (t)
+                d.show_all ()
+                r = d.run ()
 
-            d.add_buttons (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
-                           gtk.STOCK_OK, gtk.RESPONSE_OK)
+                username = userentry.get_text ()
+                password = passentry.get_text ()
+                save_to_keyring = savepasstoggle.get_active()
 
-            d.show_all ()
-            r = d.run ()
+                d.destroy ()
+                gtk.gdk.threads_leave()
 
-            username = userentry.get_text ()
-            password = passentry.get_text ()
-            save_to_keyring = savepasstoggle.get_active()
-
-            d.destroy ()
-            gtk.gdk.threads_leave()
-
-            if r == gtk.RESPONSE_OK:
-                    if gnomekeyring and save_to_keyring:
-                        try:
-                            gnomekeyring.set_network_password_sync (
-                                    None,		# keyring
-                                    username,	# user
-                                    o.hostname,	# domain
-                                    o.hostname,	# server
-                                    object,		# object
-                                    o.scheme,	# protocol
-                                    None,		# authtype
-                                    port,		# port
-                                    password)	# password
-                        except gnomekeyring.NoKeyringDaemonError:
-                            pass
-                    return (username, password)
-            else:
-                    return (None, None)
+                if r == gtk.RESPONSE_OK:
+                        if gnomekeyring and save_to_keyring:
+                            try:
+                                gnomekeyring.set_network_password_sync (
+                                        None,		# keyring
+                                        username,	# user
+                                        o.hostname,	# domain
+                                        o.hostname,	# server
+                                        object,		# object
+                                        o.scheme,	# protocol
+                                        None,		# authtype
+                                        port,		# port
+                                        password)	# password
+                            except gnomekeyring.NoKeyringDaemonError:
+                                pass
+            return (username, password)
 
 class RemoteTaskList(TaskList):
     """Task list stored on a remote server.

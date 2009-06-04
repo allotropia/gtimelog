@@ -2058,6 +2058,7 @@ class SubmitWindow(object):
         self.tree_view.append_column(gtk.TreeViewColumn('Include?', toggle ,active=COL_ACTIVE, activatable=COL_ACTIVATABLE, visible=COL_HAS_CHECKBOX))
 
         time_cell = gtk.CellRendererText()
+        time_cell.set_property('xalign', 1.0)
         time_cell.connect ("edited", self.on_time_cell_edit)
         self.tree_view.append_column(gtk.TreeViewColumn('Log Time', time_cell, text=COL_DATE_OR_DURATION, editable=COL_EDITABLE, foreground=COL_COLOR))
 

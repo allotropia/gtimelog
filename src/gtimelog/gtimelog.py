@@ -1873,9 +1873,6 @@ class MainWindow(object):
         self.task_list_loading_failed = False
         self.task_pane_info_label.set_text("Loading...")
         self.task_pane_info_label.show()
-        # let the ui update become visible
-        while gtk.events_pending():
-            gtk.main_iteration()
 
     def task_list_error(self, text = "Could not get task list."):
         self.task_list_loading_failed = True

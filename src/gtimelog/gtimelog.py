@@ -2080,15 +2080,16 @@ class SubmitWindow(object):
                     if item[COL_SUBMIT]:
                         data[row[COL_DATE_OR_DURATION]] += "%s %s\n" % (format_duration_short(parse_timedelta(item[COL_DATE_OR_DURATION])), item[COL_DESCRIPTION])
 
-        if not os.path.exists(self.settings.server_cert):
-            self.error_dialog("Provided certificate %s not found" % self.settings.server_cert)
-            return
 
         self.hide ()
 
         threading.Thread(target=self.upload_thread, kwargs={'data': data}).start()
 
     def upload_thread(self, data):
+        if not os.path.exists(self.settings.server_cert):
+            self.error_dialog("Provided certificate %s not found" % self.settings.server_cert)
+            return
+
         ctx = SSL.Context()
         ctx.set_verify(SSL.verify_peer | SSL.verify_fail_if_no_peer_cert, 9)
         ctx.load_verify_locations(self.settings.server_cert)

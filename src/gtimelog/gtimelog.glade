@@ -4,7 +4,6 @@
   <!-- interface-naming-policy toplevel-contextual -->
   <widget class="GtkWindow" id="submit_window">
     <property name="title" translatable="yes">Submit Time Log</property>
-    <property name="modal">True</property>
     <property name="window_position">center-on-parent</property>
     <property name="default_width">700</property>
     <property name="default_height">400</property>

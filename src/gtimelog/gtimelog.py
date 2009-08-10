@@ -837,7 +837,8 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
 
                 username = userentry.get_text ()
                 password = passentry.get_text ()
-                save_to_keyring = savepasstoggle.get_active()
+                if gnomekeyring:
+                    save_to_keyring = savepasstoggle.get_active()
 
                 d.destroy ()
                 gtk.gdk.threads_leave()

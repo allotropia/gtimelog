@@ -1628,11 +1628,13 @@ class MainWindow(object):
 
     def show_submit_window (self, window = None, auto_submit = False):
         """Report -> Submit report to server"""
+
         if window is None:
             window = self.timelog.whole_history()
         self.timelog.reread()
         self.set_up_history()
         self.populate_log()
+
         if self.settings.report_to_url == "":
             dialog = gtk.MessageDialog(self.main_window,
                      gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
@@ -2042,6 +2044,9 @@ class SubmitWindow(object):
     """The window for submitting reports over the http interface"""
     def __init__(self, tree, settings):
         self.settings = settings
+        self.progress_window = tree.get_widget("progress_window")
+        self.progressbar = tree.get_widget("progressbar")
+        tree.get_widget("hide_button").connect ("clicked", self.hide_progress_window)
         self.window = tree.get_widget("submit_window")
         self.report_url = settings.report_to_url
 
@@ -2081,10 +2086,22 @@ class SubmitWindow(object):
                     if item[COL_SUBMIT]:
                         data[row[COL_DATE_OR_DURATION]] += "%s %s\n" % (format_duration_short(parse_timedelta(item[COL_DATE_OR_DURATION])), item[COL_DESCRIPTION])
 
-
         self.hide ()
+        self.show_progress_window()
 
         threading.Thread(target=self.upload_thread, kwargs={'data': data}).start()
+
+    def progress_window_tick (self):
+        self.progressbar.pulse()
+        return True
+
+    def show_progress_window (self):
+        self.timeout_id = gobject.timeout_add(200, self.progress_window_tick)
+        self.progress_window.show()
+
+    def hide_progress_window (self, button = None):
+        gobject.source_remove (self.timeout_id)
+        self.progress_window.hide()
 
     def upload_thread(self, data):
         if not os.path.exists(self.settings.server_cert):
@@ -2117,6 +2134,7 @@ class SubmitWindow(object):
                 dialog.set_title('Error')
                 dialog.format_secondary_text('Some of the entries in your timesheet refer to tasks that are not known to the server. These entries have been marked in red. Please review them and resubmit to the server when fixed.')
                 dialog.connect('response', lambda d, i: dialog.destroy())
+                self.hide_progress_window()
                 self.window.show ()
                 dialog.show()
                 self.annotate_failure (txt)
@@ -2140,6 +2158,7 @@ class SubmitWindow(object):
             dialog.set_title('Success')
             dialog.format_secondary_text('The selected timesheets have been submitted.')
             dialog.connect('response', lambda d, i: dialog.destroy())
+            self.hide_progress_window()
             dialog.show()
             gtk.gdk.threads_leave()
 

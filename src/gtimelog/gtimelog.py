@@ -89,6 +89,7 @@ class TZOffset (datetime.tzinfo):
 	ZERO = datetime.timedelta (0)
 
 	def __init__ (self, offset = None):
+		# offset is an integer in 'hhmm' form. That is, UTC +5.5 = 530
 		if offset is not None:
 			offset = int (offset)
 		else:
@@ -97,6 +98,11 @@ class TZOffset (datetime.tzinfo):
 				offset = -time.altzone / 36
 			else:
 				offset = -time.timezone / 36
+			# (offset % 100) needs to be adjusted to be in minutes
+			# now (e.g. UTC +5.5 => offset = 550, when it should
+			# be 530) - yes, treating hhmm as an integer is a pain
+			m = ((offset % 100) * 60) / 100
+			offset -= (offset % 100) - m
 
 		self._offset = offset
 		h = offset / 100

@@ -750,8 +750,15 @@ class TaskList(object):
         self.load()
 
 class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
+    def __init__(self, *args, **kwargs):
+        urllib2.HTTPPasswordMgr.__init__(self, *args, **kwargs)
+
+        self._tries = 0
+
 	# FIXME : work out how to find the parent window
-	def find_user_password (self, realm, authuri):
+    def find_user_password (self, realm, authuri):
+            self._tries += 1
+
             username = None
             password = None
 
@@ -792,7 +799,7 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
                     password = l['password']
 
             # If not found, ask the user for it
-            if username == None:
+            if username == None or self._tries > 1:
                 # pop up a username/password dialog
                 gtk.gdk.threads_enter()
                 d = gtk.Dialog ()

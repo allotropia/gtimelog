@@ -1223,9 +1223,63 @@ class MainWindow(object):
         self.tasks.error_callback = self.task_list_error
         self.task_list = tree.get_widget("task_list")
         self.task_store = gtk.TreeStore(str, str)
-        self.task_list.set_model(self.task_store)
-	self.task_list.connect ("row-expanded", self.on_row_expander_changed, True)
-	self.task_list.connect ("row-collapsed", self.on_row_expander_changed, False)
+        task_filter = tree.get_widget("task_filter")
+
+        filter = self.task_store.filter_new ()
+        self.refilter_timeout = 0
+
+        def _refilter():
+            filter.refilter()
+            self.update_toggle_state()
+            self.refilter_timeout = 0
+            return False
+
+        def _task_filter_changed(task_filter):
+            txt = task_filter.get_text()
+
+            task_filter.set_icon_sensitive(gtk.ENTRY_ICON_SECONDARY,
+                    len(txt) > 0)
+
+            if self.refilter_timeout != 0:
+                gobject.source_remove(self.refilter_timeout)
+            self.refilter_timeout = gobject.timeout_add(200, _refilter)
+
+        def _task_filter_clear(task_filter, icon_pos, event):
+            txt = task_filter.set_text("")
+
+        def _task_filter_filter(model, iter):
+
+            txt = task_filter.get_text()
+
+            if len(txt) == 0: return True
+
+            depth = model.iter_depth(iter)
+
+            if depth == 2:
+                return txt.lower() in model.get_value(iter, 0).lower()
+
+            elif depth < 2:
+                child = model.iter_children(iter)
+
+                while child is not None:
+                    if _task_filter_filter(model, child): return True
+                    child = model.iter_next(child)
+
+                return False
+
+            else:
+                return True
+
+        task_filter.connect("changed", _task_filter_changed)
+        task_filter.connect("icon-release", _task_filter_clear)
+
+        filter.set_visible_func(_task_filter_filter)
+        self.task_list.set_model(filter)
+
+        self.task_list.connect ("row-expanded",
+                self.on_row_expander_changed, True)
+        self.task_list.connect ("row-collapsed",
+                self.on_row_expander_changed, False)
         column = gtk.TreeViewColumn("Task", gtk.CellRendererText(), text=0)
         self.task_list.append_column(column)
         self.task_list.connect("row_activated", self.task_list_row_activated)
@@ -1415,7 +1469,7 @@ class MainWindow(object):
             structure of the tasks (seperated by :) and then
             recurses into that structure bunging it into the treeview
         """
-	self._block_row_toggles += 1
+        self._block_row_toggles += 1
 
         task_list = {}
         self.task_store.clear()
@@ -1439,19 +1493,23 @@ class MainWindow(object):
 
         recursive_append(task_list, "", None)
 
-	# Use the on-disk toggle state to work out whether a row is expanded
-	# or not
-	def update_toggle (model, path, iter, togglesdict):
-		item = model.get_value (iter, 1)
-		# expand the row if we know nothing about it, or its marked
-		# for expansion
-		if item not in togglesdict or togglesdict[item]:
-			self.task_list.expand_row (path, False)
+        self.update_toggle_state()
+        self._block_row_toggles -= 1
 
-	togglesdict = self.load_task_store_toggle_state ()
-	self.task_store.foreach (update_toggle, togglesdict)
+    def update_toggle_state(self):
+        # Use the on-disk toggle state to work out whether a row is expanded
+        # or not
+        def update_toggle (model, path, iter, togglesdict):
+            item = model.get_value (iter, 1)
+            # expand the row if we know nothing about it, or its marked
+            # for expansion
+            if item not in togglesdict or togglesdict[item]:
+                self.task_list.expand_row (path, False)
 
-	self._block_row_toggles -= 1
+        self._block_row_toggles += 1
+        togglesdict = self.load_task_store_toggle_state ()
+        self.task_store.foreach (update_toggle, togglesdict)
+        self._block_row_toggles -= 1
 
     def set_up_history(self):
         """Set up history."""
@@ -1715,15 +1773,16 @@ class MainWindow(object):
     def on_row_expander_changed(self, treeview, iter, path, expanded):
         """Someone toggled a task list expander"""
 
-	if self._block_row_toggles > 0: return
+        if self._block_row_toggles > 0: return
 
-	togglesdict = self.load_task_store_toggle_state ()
-	item = self.task_store.get_value (iter, 1)
-	togglesdict[item] = expanded
-	# FIXME - hypothetically we could look at the togglesdict here to
-	# make a guess at the previous toggle state of all of the children
-	# of this iter; but I'm not sure that it's super important
-	self.save_task_store_toggle_state (togglesdict)
+        togglesdict = self.load_task_store_toggle_state ()
+        model = treeview.get_model()
+        item = model.get_value (iter, 1)
+        togglesdict[item] = expanded
+        # FIXME - hypothetically we could look at the togglesdict here to
+        # make a guess at the previous toggle state of all of the children
+        # of this iter; but I'm not sure that it's super important
+        self.save_task_store_toggle_state (togglesdict)
 
     def choose_date(self):
         """Pop up a calendar dialog.

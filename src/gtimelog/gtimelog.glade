@@ -1,4 +1,4 @@
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <glade-interface>
   <!-- interface-requires gtk+ 2.16 -->
   <!-- interface-naming-policy toplevel-contextual -->
@@ -252,7 +252,7 @@
 
 GTimeLog is a time tracking application.
 
-&lt;small&gt;&#xA9; 2004&#x2013;2008 Marius Gedminas&lt;/small&gt;</property>
+&lt;small&gt;© 2004–2008 Marius Gedminas&lt;/small&gt;</property>
                 <property name="use_markup">True</property>
                 <property name="justify">center</property>
               </widget>
@@ -814,6 +814,23 @@ GTimeLog is a time tracking application.
                     <property name="position">2</property>
                   </packing>
                 </child>
+                <child>
+                  <widget class="GtkEntry" id="task_filter">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="invisible_char">•</property>
+                    <property name="primary_icon_stock">gtk-find</property>
+                    <property name="secondary_icon_stock">gtk-clear</property>
+                    <property name="secondary_icon_activatable">True</property>
+                    <property name="secondary_icon_sensitive">False</property>
+                    <property name="secondary_icon_tooltip_text" translatable="yes">Clear</property>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="padding">3</property>
+                    <property name="position">3</property>
+                  </packing>
+                </child>
               </widget>
               <packing>
                 <property name="resize">False</property>
@@ -894,7 +911,6 @@ GTimeLog is a time tracking application.
     <child internal-child="vbox">
       <widget class="GtkVBox" id="dialog-vbox3">
         <property name="visible">True</property>
-        <property name="orientation">vertical</property>
         <property name="spacing">2</property>
         <child>
           <widget class="GtkHBox" id="hbox1">
@@ -916,7 +932,6 @@ GTimeLog is a time tracking application.
             <child>
               <widget class="GtkVBox" id="vbox1">
                 <property name="visible">True</property>
-                <property name="orientation">vertical</property>
                 <property name="spacing">10</property>
                 <child>
                   <widget class="GtkLabel" id="label1">

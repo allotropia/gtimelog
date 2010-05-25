@@ -1307,6 +1307,7 @@ class MainWindow(object):
         self.set_up_history()
         self.populate_log()
 
+        self.auto_submit()
 
     def _init_dbus(self):
         try:
@@ -1690,6 +1691,19 @@ class MainWindow(object):
 
     def on_submit_advanced_selection_menu_activate(self, widget):
         self.show_submit_window ()
+
+    def auto_submit(self):
+        day = self.timelog.day
+
+        min = day - datetime.timedelta(30)
+        min = datetime.datetime.combine(min,
+                        self.timelog.virtual_midnight)
+        max = datetime.datetime.combine(day,
+                        self.timelog.virtual_midnight)
+
+        timewindow = self.timelog.window_for(min, max)
+
+        self.submit_window.auto_submit_report(timewindow)
 
     def show_submit_window (self, window = None, auto_submit = False):
         """Report -> Submit report to server"""
@@ -2140,7 +2154,17 @@ class SubmitWindow(object):
         selection = self.tree_view.get_selection()
         selection.set_mode(gtk.SELECTION_MULTIPLE)
 
-        self.shown = False
+        self.submitting = False
+
+    def auto_submit_report(self, timewindow):
+        if self.submitting:
+            return False
+
+        self.submitting = True
+        self.timewindow = timewindow
+        self.update_submission_list()
+
+        self.do_submit_report(automatic=True)
 
     def do_submit_report(self, automatic=False):
         """The actual submit action"""
@@ -2168,7 +2192,11 @@ class SubmitWindow(object):
         self.progress_window.show()
 
     def hide_progress_window (self, button = None):
-        gobject.source_remove (self.timeout_id)
+        try:
+            gobject.source_remove (self.timeout_id)
+        except AttributeError:
+            pass # race condition?
+
         self.progress_window.hide()
 
     def upload_thread(self, data, automatic):
@@ -2216,18 +2244,21 @@ class SubmitWindow(object):
             self.error_dialog(e)
         else:
             gtk.gdk.threads_enter()
+            self.submitting = False
             self.hide ()
 
-            dialog = gtk.MessageDialog(self.window,
-                     gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
-                     gtk.MESSAGE_INFO,
-                     gtk.BUTTONS_OK,
-                     'Submitting timesheet succeeded.')
-            dialog.set_title('Success')
-            dialog.format_secondary_text('The selected timesheets have been submitted.')
-            dialog.connect('response', lambda d, i: dialog.destroy())
-            self.hide_progress_window()
-            dialog.show()
+            if not automatic or self.progress_window.get_visible():
+                dialog = gtk.MessageDialog(self.window,
+                                           gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+                                           gtk.MESSAGE_INFO,
+                                           gtk.BUTTONS_OK,
+                                           'Submitting timesheet succeeded.')
+                dialog.set_title('Success')
+                dialog.format_secondary_text('The selected timesheets have been submitted.')
+                dialog.connect('response', lambda d, i: dialog.destroy())
+                dialog.show()
+                self.hide_progress_window()
+
             gtk.gdk.threads_leave()
 
     def error_dialog(self, e, title = 'Error Communicating With The Server'):
@@ -2242,6 +2273,7 @@ class SubmitWindow(object):
         dialog.format_secondary_text('%s' % e)
         dialog.run ()
         dialog.destroy ()
+        self.submitting = False
         self.hide ()
         gtk.gdk.threads_leave()
 
@@ -2302,6 +2334,12 @@ class SubmitWindow(object):
 
     def show(self, timewindow, auto_submit = False):
         """Shows the window with the items included in the given time window, for detailed selection"""
+        if self.submitting:
+            if not self.window.get_visible():
+                self.show_progress_window()
+            return
+
+        self.submitting = True
         self.timewindow = timewindow
 
         self.update_submission_list()

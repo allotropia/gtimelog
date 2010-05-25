@@ -25,7 +25,6 @@ import pygtk
 pygtk.require('2.0')
 import gobject
 import gtk
-import gtk.glade
 import pango
 try:
     import dbus
@@ -39,14 +38,14 @@ from M2Crypto import m2urllib2
 
 # This is to let people run GTimeLog without having to install it
 resource_dir = os.path.dirname(os.path.realpath(__file__))
-ui_file = os.path.join(resource_dir, "gtimelog.glade")
+ui_file = os.path.join(resource_dir, "gtimelog.ui")
 icon_file = os.path.join(resource_dir, "gtimelog-small.png")
 
 gtk.gdk.threads_init()
 
 # This is for distribution packages
 if not os.path.exists(ui_file):
-    ui_file = "/usr/share/gtimelog/gtimelog.glade"
+    ui_file = "/usr/share/gtimelog/gtimelog.ui"
 if not os.path.exists(icon_file):
     icon_file = "/usr/share/pixmaps/gtimelog-small.png"
 
@@ -1190,40 +1189,45 @@ class MainWindow(object):
 
     def _init_ui(self):
         """Initialize the user interface."""
-        tree = gtk.glade.XML(ui_file)
+        tree = gtk.Builder()
+        tree.add_from_file(ui_file)
+
         # Set initial state of menu items *before* we hook up signals
-        chronological_menu_item = tree.get_widget("chronological")
+        chronological_menu_item = tree.get_object("chronological")
         chronological_menu_item.set_active(self.chronological)
-        show_task_pane_item = tree.get_widget("show_task_pane")
+        show_task_pane_item = tree.get_object("show_task_pane")
         show_task_pane_item.set_active(self.show_tasks)
+
         # Now hook up signals
-        tree.signal_autoconnect(self)
+        tree.connect_signals(self)
+
         # Store references to UI elements we're going to need later
-        self.tray_icon_popup_menu = tree.get_widget("tray_icon_popup_menu")
-        self.tray_show = tree.get_widget("tray_show")
-        self.tray_hide = tree.get_widget("tray_hide")
-        self.about_dialog = tree.get_widget("about_dialog")
-        self.about_dialog_ok_btn = tree.get_widget("ok_button")
+        self.tray_icon_popup_menu = tree.get_object("tray_icon_popup_menu")
+        self.tray_show = tree.get_object("tray_show")
+        self.tray_hide = tree.get_object("tray_hide")
+        self.about_dialog = tree.get_object("about_dialog")
+        self.about_dialog_ok_btn = tree.get_object("ok_button")
         self.about_dialog_ok_btn.connect("clicked", self.close_about_dialog)
-        self.calendar_dialog = tree.get_widget("calendar_dialog")
-        self.calendar = tree.get_widget("calendar")
+        self.calendar_dialog = tree.get_object("calendar_dialog")
+        self.calendar = tree.get_object("calendar")
         self.calendar.connect("day_selected_double_click",
                               self.on_calendar_day_selected_double_click)
         self.submit_window = SubmitWindow(tree, self.settings)
-        self.main_window = tree.get_widget("main_window")
+        self.main_window = tree.get_object("main_window")
         self.main_window.connect("delete_event", self.delete_event)
-        self.log_view = tree.get_widget("log_view")
+        self.log_view = tree.get_object("log_view")
         self.set_up_log_view_columns()
-        self.task_pane = tree.get_widget("task_list_pane")
+
+        self.task_pane = tree.get_object("task_list_pane")
         if not self.show_tasks:
             self.task_pane.hide()
-        self.task_pane_info_label = tree.get_widget("task_pane_info_label")
+        self.task_pane_info_label = tree.get_object("task_pane_info_label")
         self.tasks.loading_callback = self.task_list_loading
         self.tasks.loaded_callback = self.task_list_loaded
         self.tasks.error_callback = self.task_list_error
-        self.task_list = tree.get_widget("task_list")
+        self.task_list = tree.get_object("task_list")
         self.task_store = gtk.TreeStore(str, str)
-        task_filter = tree.get_widget("task_filter")
+        task_filter = tree.get_object("task_filter")
 
         filter = self.task_store.filter_new ()
         self.refilter_timeout = 0
@@ -1283,18 +1287,18 @@ class MainWindow(object):
         column = gtk.TreeViewColumn("Task", gtk.CellRendererText(), text=0)
         self.task_list.append_column(column)
         self.task_list.connect("row_activated", self.task_list_row_activated)
-        self.task_list_popup_menu = tree.get_widget("task_list_popup_menu")
+        self.task_list_popup_menu = tree.get_object("task_list_popup_menu")
         self.task_list.connect_object("button_press_event",
                                       self.task_list_button_press,
                                       self.task_list_popup_menu)
-        task_list_edit_menu_item = tree.get_widget("task_list_edit")
+        task_list_edit_menu_item = tree.get_object("task_list_edit")
         if not self.settings.edit_task_list_cmd:
             task_list_edit_menu_item.set_sensitive(False)
-        self.time_label = tree.get_widget("time_label")
-        self.task_entry = tree.get_widget("task_entry")
+        self.time_label = tree.get_object("time_label")
+        self.task_entry = tree.get_object("task_entry")
         self.task_entry.connect("changed", self.task_entry_changed)
         self.task_entry.connect("key_press_event", self.task_entry_key_press)
-        self.add_button = tree.get_widget("add_button")
+        self.add_button = tree.get_object("add_button")
         self.add_button.connect("clicked", self.add_entry)
         buffer = self.log_view.get_buffer()
         self.log_buffer = buffer
@@ -1302,6 +1306,7 @@ class MainWindow(object):
         buffer.create_tag('duration', foreground='red')
         buffer.create_tag('time', foreground='green')
         buffer.create_tag('slacking', foreground='gray')
+
         self.set_up_completion()
         self.set_up_task_list()
         self.set_up_history()
@@ -2124,20 +2129,20 @@ class SubmitWindow(object):
     """The window for submitting reports over the http interface"""
     def __init__(self, tree, settings):
         self.settings = settings
-        self.progress_window = tree.get_widget("progress_window")
-        self.progressbar = tree.get_widget("progressbar")
-        tree.get_widget("hide_button").connect ("clicked", self.hide_progress_window)
-        self.window = tree.get_widget("submit_window")
+        self.progress_window = tree.get_object("progress_window")
+        self.progressbar = tree.get_object("progressbar")
+        tree.get_object("hide_button").connect ("clicked", self.hide_progress_window)
+        self.window = tree.get_object("submit_window")
         self.report_url = settings.report_to_url
 
-        tree.get_widget("submit_report").connect ("clicked", self.on_submit_report)
+        tree.get_object("submit_report").connect ("clicked", self.on_submit_report)
         self.list_store = self._list_store ()
-        self.tree_view = tree.get_widget("submit_tree")
+        self.tree_view = tree.get_object("submit_tree")
         self.tree_view.set_model (self.list_store)
 
         toggle = gtk.CellRendererToggle()
         toggle.connect ("toggled", self.on_toggled)
-        tree.get_widget("toggle_selection").connect("clicked", self.on_toggle_selection)
+        tree.get_object("toggle_selection").connect("clicked", self.on_toggle_selection)
         self.tree_view.append_column(gtk.TreeViewColumn('Include?', toggle ,active=COL_ACTIVE, activatable=COL_ACTIVATABLE, visible=COL_HAS_CHECKBOX))
 
         time_cell = gtk.CellRendererText()

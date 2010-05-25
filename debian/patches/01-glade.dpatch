@@ -1,20 +1,15 @@
 #! /bin/sh /usr/share/dpatch/dpatch-run
 ## glade.dpatch
-## Gustavo Franco <stratus@debian.org>
-##
-## All lines beginning with `## DP:' are a description of the patch.
-## DP: Fixes gtimelog.png path in gtimelog.glade
-
-@DPATCH@
-diff -Nruad gtimelog.orig/src/gtimelog/gtimelog.glade gtimelog/src/gtimelog/gtimelog.glade
---- gtimelog.orig/src/gtimelog/gtimelog.glade	2009-01-21 19:33:50.000000000 +0000
-+++ gtimelog/src/gtimelog/gtimelog.glade	2009-01-21 19:34:15.000000000 +0000
-@@ -8,7 +8,7 @@
-     <property name="window_position">GTK_WIN_POS_CENTER</property>
+diff --git a/src/gtimelog/gtimelog.ui b/src/gtimelog/gtimelog.ui
+index 227ce63..aa04b0d 100644
+--- a/src/gtimelog/gtimelog.ui
++++ b/src/gtimelog/gtimelog.ui
+@@ -318,7 +318,7 @@ GTimeLog is a time tracking application.
+     <property name="window_position">center</property>
      <property name="default_width">800</property>
      <property name="default_height">500</property>
 -    <property name="icon">gtimelog.png</property>
 +    <property name="icon">/usr/share/pixmaps/gtimelog.png</property>
      <child>
-       <widget class="GtkVBox" id="vbox1">
+       <object class="GtkVBox" id="vbox1">
          <property name="visible">True</property>

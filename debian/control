@@ -13,7 +13,7 @@ XS-Dm-Upload-Allowed: yes
 
 Package: gtimelog
 Architecture: all
-Depends: ${python:Depends}, python-gtk2 (>= 1.99.14-1), python-glade2,
+Depends: ${python:Depends}, python-gtk2 (>= 2.16.0-1),
          python-eggtrayicon | python-gnome2-extras (<< 2.19.1-1),
          python-m2crypto
 Suggests: mutt, vim-gnome

@@ -2142,7 +2142,7 @@ class SubmitWindow(object):
 
         self.shown = False
 
-    def on_submit_report (self, button):
+    def do_submit_report(self, automatic=False):
         """The actual submit action"""
         data = {}
         for row in self.list_store:
@@ -2152,10 +2152,12 @@ class SubmitWindow(object):
                     if item[COL_SUBMIT]:
                         data[row[COL_DATE_OR_DURATION]] += "%s %s\n" % (format_duration_short(parse_timedelta(item[COL_DATE_OR_DURATION])), item[COL_DESCRIPTION])
 
+        threading.Thread(target=self.upload_thread, kwargs={'data': data, 'automatic': automatic}).start()
+
+    def on_submit_report (self, button):
         self.hide ()
         self.show_progress_window()
-
-        threading.Thread(target=self.upload_thread, kwargs={'data': data}).start()
+        self.do_submit_report()
 
     def progress_window_tick (self):
         self.progressbar.pulse()
@@ -2169,7 +2171,7 @@ class SubmitWindow(object):
         gobject.source_remove (self.timeout_id)
         self.progress_window.hide()
 
-    def upload_thread(self, data):
+    def upload_thread(self, data, automatic):
         if not os.path.exists(self.settings.server_cert):
             self.error_dialog("Provided certificate %s not found" % self.settings.server_cert)
             return
@@ -2228,14 +2230,14 @@ class SubmitWindow(object):
             dialog.show()
             gtk.gdk.threads_leave()
 
-    def error_dialog(self, e):
+    def error_dialog(self, e, title = 'Error Communicating With The Server'):
         print (e)
         gtk.gdk.threads_enter()
         dialog = gtk.MessageDialog(self.window,
                  gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
                  gtk.MESSAGE_ERROR,
                  gtk.BUTTONS_OK,
-                 'Error Communicating With The Server')
+                 title)
         dialog.set_title('Error')
         dialog.format_secondary_text('%s' % e)
         dialog.run ()
@@ -2272,15 +2274,13 @@ class SubmitWindow(object):
         except ValueError:
             return # XXX: might want to tell the user what's wrong
 
-    def show (self, timewindow, auto_submit = False):
+    def update_submission_list(self):
         """Re-read the log file and fill in the list_store"""
-        self.timewindow = timewindow
-
-        self.list_store.clear ()
+        self.list_store.clear()
         date_dict = {}
 
         for (start, finish, duration, entry) in self.timewindow.all_entries ():
-            entry = entry.strip ()
+            entry = entry.strip()
             #Neatly store the things under the day on which they started
             (date, time) = str(start).split(" ")
             if not date in date_dict:
@@ -2289,21 +2289,27 @@ class SubmitWindow(object):
                 date_dict[date][entry] = datetime.timedelta(0)
             date_dict[date][entry] += duration
 
-        keys = date_dict.keys ()
-        keys.sort ()
+        keys = date_dict.keys()
+        keys.sort()
         for date in keys:
             parent = self.list_store.append(None, self.date_row(date))
-            items = date_dict[date].keys ()
+            items = date_dict[date].keys()
             #Sort by length of time with longest first
             items.sort (lambda a,b: cmp(date_dict[date][b], date_dict[date][a]))
             for item in items:
                 if date_dict[date][item] > datetime.timedelta(0) and not "**" in item:
-                    self.list_store.append (parent,self.item_row(date_dict[date][item], item))
+                    self.list_store.append(parent,self.item_row(date_dict[date][item], item))
+
+    def show(self, timewindow, auto_submit = False):
+        """Shows the window with the items included in the given time window, for detailed selection"""
+        self.timewindow = timewindow
+
+        self.update_submission_list()
 
         if auto_submit:
             self.on_submit_report(None)
         else:
-            self.window.show ()
+            self.window.show()
 
     #All the row based stuff together
     def _list_store (self):

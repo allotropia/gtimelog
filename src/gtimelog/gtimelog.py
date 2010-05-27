@@ -41,6 +41,9 @@ resource_dir = os.path.dirname(os.path.realpath(__file__))
 ui_file = os.path.join(resource_dir, "gtimelog.ui")
 icon_file = os.path.join(resource_dir, "gtimelog-small.png")
 
+# Where we store configuration and other interesting files.
+configdir = os.path.expanduser('~/.gtimelog')
+
 gtk.gdk.threads_init()
 
 # This is for distribution packages
@@ -1216,6 +1219,7 @@ class MainWindow(object):
         self.main_window = tree.get_object("main_window")
         self.main_window.connect("delete_event", self.delete_event)
         self.log_view = tree.get_object("log_view")
+        self.infobars = tree.get_object("infobars")
         self.set_up_log_view_columns()
 
         self.task_pane = tree.get_object("task_list_pane")
@@ -1307,6 +1311,12 @@ class MainWindow(object):
         buffer.create_tag('time', foreground='green')
         buffer.create_tag('slacking', foreground='gray')
 
+        # Reminders infrastructure
+        self.weekly_report_reminder_set = False
+        self.monthly_report_reminder_set = False
+        self.reminder_infobar = None
+        self.reminders = []
+
         self.set_up_completion()
         self.set_up_task_list()
         self.set_up_history()
@@ -1374,6 +1384,51 @@ class MainWindow(object):
         buffer.delete_mark(self.footer_mark)
         self.footer_mark = None
 
+    def get_last_acked_reminder(self, filename):
+        try:
+            last_acked = int(open(os.path.join(configdir, filename)).read().strip())
+        except (IOError, ValueError):
+            return None
+
+        return last_acked
+
+    @property
+    def weekly_report_reminder_acked(self):
+        week_number = datetime.datetime.now().isocalendar()[1]
+        last_acked_week = self.get_last_acked_reminder('reminder-last-acked-week')
+
+        if last_acked_week is None or last_acked_week != week_number:
+            return False
+
+        return True
+
+    @property
+    def monthly_report_reminder_acked(self):
+        month_number = datetime.datetime.now().month
+        last_acked_month = self.get_last_acked_reminder('reminder-last-acked-month')
+
+        if last_acked_month is None or last_acked_month != month_number:
+            return False
+
+        return True
+
+    def ack_reminder(self, filename, number):
+        try:
+            open(os.path.join(configdir, filename), 'w').write('%d' % number)
+        except IOError, e:
+            print 'Unable to record ack...: ' + e.message
+            pass
+
+    def ack_weekly_reminder(self, *args):
+        self.weekly_report_reminder_set = False
+        week_number = datetime.datetime.now().isocalendar()[1]
+        self.ack_reminder('reminder-last-acked-week', week_number)
+
+    def ack_monthly_reminder(self, *args):
+        self.monthly_report_reminder_set = False
+        month_number = datetime.datetime.now().month
+        self.ack_reminder('reminder-last-acked-month', month_number)
+
     def add_footer(self):
         buffer = self.log_buffer
         self.footer_mark = buffer.create_mark('footer', buffer.get_end_iter(),
@@ -1430,6 +1485,24 @@ class MainWindow(object):
                 self.w(format_duration(hours - total), 'duration')
                 self.w(' left')
             self.w(')')
+
+        # We poke the user about having last week's logging fixed up
+        # at the beginning of each week, unless we're about to start a
+        # new month, in which case we poke the user about last month.
+        if self.monthly_window().count_days() < 5 and not self.monthly_report_reminder_set \
+                and not self.monthly_report_reminder_acked:
+            self.clear_reminders()
+            msg = "<b><big>Please check your time log for last month.</big></b>\n\nIt must be " \
+                "accurate for billing. Please make any changes today and submit."
+            self.push_reminder(msg, self.ack_monthly_reminder, "Edit timelog", self.edit_timelog)
+            self.monthly_report_reminder_set = True
+        elif as_hours(week_total_work) > 3 and not self.weekly_report_reminder_set \
+                and not self.weekly_report_reminder_acked and not self.monthly_report_reminder_set:
+            msg = "<b><big>Please check your time log for last week.</big></b>\n\nIt must be " \
+                "accurate for estimating invoices purposes. Please make any changes today " \
+                "and submit."
+            self.push_reminder(msg, self.ack_weekly_reminder, "Edit timelog", self.edit_timelog)
+            self.weekly_report_reminder_set = True
 
     def time_left_at_work(self, total_work):
         """Calculate time left to work."""
@@ -1541,6 +1614,54 @@ class MainWindow(object):
         self.completion_choices.clear ()
         for entry, weight in count.items():
             self.completion_choices.append([entry, weight])
+
+    def push_reminder(self, msg, close_handler = None, action_label = None, handler = None):
+        self.reminders.append(dict(msg = msg, close_handler = close_handler,
+                                   action_label = action_label, handler = handler))
+        self.update_reminder()
+
+    def clear_reminders(self):
+        self.reminders = []
+        self.update_reminder()
+
+    def reminder_response_cb(self, infobar, response, reminder):
+        if response == gtk.RESPONSE_OK:
+            if reminder['handler']:
+                reminder['handler']()
+
+        if reminder['close_handler']:
+            reminder['close_handler']()
+
+        self.reminders.remove(reminder)
+        self.update_reminder()
+
+    def update_reminder(self):
+        if self.reminder_infobar is not None:
+            self.reminder_infobar.destroy()
+            self.reminder_infobar = None
+
+        if not self.reminders:
+            return
+
+        # We always present the latest reminder first
+        reminder = self.reminders[-1]
+
+        self.reminder_infobar = gtk.InfoBar()
+        self.reminder_infobar.set_message_type(gtk.MESSAGE_INFO)
+
+        label = gtk.Label()
+        label.set_line_wrap(True)
+        label.set_markup(reminder['msg'])
+        self.reminder_infobar.get_content_area().pack_start(label)
+
+        if reminder['action_label'] and reminder['handler']:
+            self.reminder_infobar.add_button(reminder['action_label'], gtk.RESPONSE_OK)
+
+        self.reminder_infobar.add_button('_Close', gtk.RESPONSE_CLOSE)
+
+        self.reminder_infobar.connect('response', self.reminder_response_cb, reminder)
+        self.infobars.pack_start(self.reminder_infobar)
+        self.reminder_infobar.show_all()
 
     def completion_match_func(self, completion, key, iter):
         # Text is autocompleted while typing and the automatically
@@ -1894,9 +2015,12 @@ class MainWindow(object):
         f.close()
         self.spawn(self.settings.spreadsheet, tempfn)
 
+    def edit_timelog(self):
+        self.spawn(self.settings.editor, self.timelog.filename)
+
     def on_edit_timelog_activate(self, widget):
         """File -> Edit timelog.txt"""
-        self.spawn(self.settings.editor, self.timelog.filename)
+        self.edit_timelog()
 
     def on_edit_log_button_clicked(self, widget):
         self.spawn(self.settings.editor, self.timelog.filename)
@@ -2073,6 +2197,15 @@ class MainWindow(object):
         self.inserting_old_time = False
         self.tick (True) #Reset label caption
 
+    def process_new_day_tasks(self):
+        """
+           A new day has started, timelog-wise. We may need to reset
+           any reminders that were left untouched, for one thing.
+        """
+        if not self.monthly_report_reminder_set:
+            self.clear_reminders()
+        self.auto_submit()
+
     def tick(self, force_update=False):
         """Tick every second."""
 
@@ -2108,6 +2241,7 @@ class MainWindow(object):
         if not self.inserting_old_time: #We override the text on the label when we do that
             if last_time is None:
                 self.time_label.set_text(now.strftime("Arrival message:"))
+                self.process_new_day_tasks()
             else:
                 self.time_label.set_text(format_duration(now - last_time))
                 # Update "time left to work"
@@ -2252,7 +2386,7 @@ class SubmitWindow(object):
             self.submitting = False
             self.hide ()
 
-            if not automatic or self.progress_window.get_visible():
+            if not automatic or self.progress_window.get_property('visible'):
                 dialog = gtk.MessageDialog(self.window,
                                            gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
                                            gtk.MESSAGE_INFO,
@@ -2340,7 +2474,7 @@ class SubmitWindow(object):
     def show(self, timewindow, auto_submit = False):
         """Shows the window with the items included in the given time window, for detailed selection"""
         if self.submitting:
-            if not self.window.get_visible():
+            if not self.window.get_property('visible'):
                 self.show_progress_window()
             return
 
@@ -2410,7 +2544,6 @@ def main():
         print "Sample configuration file written to gtimelogrc.sample"
         return
 
-    configdir = os.path.expanduser('~/.gtimelog')
     try:
         os.makedirs(configdir) # create it if it doesn't exist
     except OSError:

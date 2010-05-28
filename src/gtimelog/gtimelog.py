@@ -1635,6 +1635,13 @@ class MainWindow(object):
         self.reminders.remove(reminder)
         self.update_reminder()
 
+    # fake responses so this works even with our "custom-made" infobar
+    def fake_ok_response(self, button, reminder):
+        self.reminder_response_cb(None, gtk.RESPONSE_OK, reminder)
+
+    def fake_close_response(self, button, reminder):
+        self.reminder_response_cb(None, gtk.RESPONSE_CLOSE, reminder)
+
     def update_reminder(self):
         if self.reminder_infobar is not None:
             self.reminder_infobar.destroy()
@@ -1646,20 +1653,53 @@ class MainWindow(object):
         # We always present the latest reminder first
         reminder = self.reminders[-1]
 
-        self.reminder_infobar = gtk.InfoBar()
-        self.reminder_infobar.set_message_type(gtk.MESSAGE_INFO)
-
         label = gtk.Label()
         label.set_line_wrap(True)
         label.set_markup(reminder['msg'])
-        self.reminder_infobar.get_content_area().pack_start(label)
 
-        if reminder['action_label'] and reminder['handler']:
-            self.reminder_infobar.add_button(reminder['action_label'], gtk.RESPONSE_OK)
+        use_infobar = False
+        try:
+            dummy = gtk.InfoBar
+            use_infobar = True
+        except AttributeError:
+            pass
 
-        self.reminder_infobar.add_button('_Close', gtk.RESPONSE_CLOSE)
+        if use_infobar:
+            self.reminder_infobar = gtk.InfoBar()
+            self.reminder_infobar.set_message_type(gtk.MESSAGE_INFO)
 
-        self.reminder_infobar.connect('response', self.reminder_response_cb, reminder)
+            self.reminder_infobar.get_content_area().pack_start(label)
+
+            if reminder['action_label'] and reminder['handler']:
+                self.reminder_infobar.add_button(reminder['action_label'], gtk.RESPONSE_OK)
+
+            self.reminder_infobar.add_button('_Close', gtk.RESPONSE_CLOSE)
+            self.reminder_infobar.connect('response', self.reminder_response_cb, reminder)
+        else:
+            self.reminder_infobar = gtk.EventBox()
+            self.reminder_infobar.modify_bg(gtk.STATE_NORMAL, gtk.gdk.color_parse("#ffffbf"))
+
+            content_area = gtk.HBox()
+            content_area.set_border_width(6)
+            self.reminder_infobar.add(content_area)
+
+            # add the message label
+            content_area.pack_start(label)
+
+            vbox = gtk.VButtonBox()
+            vbox.set_layout(gtk.BUTTONBOX_END)
+
+            if reminder['action_label'] and reminder['handler']:
+                button = gtk.Button(reminder['action_label'])
+                button.connect('clicked', self.fake_ok_response, reminder)
+                vbox.pack_start(button)
+
+            button = gtk.Button('_Close')
+            button.connect('clicked', self.fake_close_response, reminder)
+            vbox.pack_start(button)
+
+            content_area.pack_start(vbox, expand = False)
+
         self.infobars.pack_start(self.reminder_infobar)
         self.reminder_infobar.show_all()
 

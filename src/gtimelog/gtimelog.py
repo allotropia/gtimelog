@@ -783,6 +783,7 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
                 object = '%s?%s' % (o.path, o.query)
 
                 try:
+                    gtk.gdk.threads_enter()
                     l = gnomekeyring.find_network_password_sync (
                             None,       # user
                             o.hostname, # domain
@@ -791,6 +792,7 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
                             o.scheme,   # protocol
                             None,       # authtype
                             port)       # port
+                    gtk.gdk.threads_leave()
                 except gnomekeyring.NoMatchError:
                     pass
                 except gnomekeyring.NoKeyringDaemonError:
@@ -850,7 +852,6 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
                     save_to_keyring = savepasstoggle.get_active()
 
                 d.destroy ()
-                gtk.gdk.threads_leave()
 
                 if r == gtk.RESPONSE_OK:
                         if gnomekeyring and save_to_keyring:
@@ -867,6 +868,8 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
                                         password)	# password
                             except gnomekeyring.NoKeyringDaemonError:
                                 pass
+                gtk.gdk.threads_leave()
+
             return (username, password)
 
 class RemoteTaskList(TaskList):

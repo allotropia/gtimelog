@@ -1215,7 +1215,7 @@ class MainWindow(object):
         self.calendar = tree.get_object("calendar")
         self.calendar.connect("day_selected_double_click",
                               self.on_calendar_day_selected_double_click)
-        self.submit_window = SubmitWindow(tree, self.settings)
+        self.submit_window = SubmitWindow(tree, self.settings, application = self)
         self.main_window = tree.get_object("main_window")
         self.main_window.connect("delete_event", self.delete_event)
         self.log_view = tree.get_object("log_view")
@@ -1839,24 +1839,24 @@ class MainWindow(object):
         self.mail(window.daily_report)
 
     def on_submit_this_week_menu_activate(self, widget):
-        self.show_submit_window (self.weekly_window(), True)
+        self.submit(self.weekly_window(), True)
 
     def on_submit_last_week_menu_activate(self, widget):
         day = self.timelog.day - datetime.timedelta(7)
         window = self.weekly_window(day=day)
-        self.show_submit_window (window, True)
+        self.submit(window, True)
 
     def on_submit_this_month_menu_activate(self, widget):
         window = self.monthly_window()
-        self.show_submit_window (window, True)
+        self.submit(window, True)
 
     def on_submit_last_month_menu_activate(self, widget):
         day = self.timelog.day - datetime.timedelta(self.timelog.day.day)
         window = self.monthly_window(day)
-        self.show_submit_window (window, True)
+        self.submit(window, True)
 
     def on_submit_advanced_selection_menu_activate(self, widget):
-        self.show_submit_window ()
+        self.submit()
 
     def auto_submit(self):
         day = self.timelog.day
@@ -1871,7 +1871,10 @@ class MainWindow(object):
 
         self.submit_window.auto_submit_report(timewindow)
 
-    def show_submit_window (self, window = None, auto_submit = False):
+    def show_submit_window(self):
+        self.submit_window.show()
+
+    def submit(self, window = None, auto_submit = False):
         """Report -> Submit report to server"""
 
         if window is None:
@@ -1901,7 +1904,7 @@ class MainWindow(object):
             dialog.connect('response', lambda d, i: dialog.destroy())
             dialog.run()
         else:
-            self.submit_window.show(window, auto_submit)
+            self.submit_window.submit(window, auto_submit)
 
     def on_cancel_submit_button_pressed(self, widget):
         self.submit_window.hide()
@@ -2280,8 +2283,9 @@ class MainWindow(object):
 
         if not self.inserting_old_time: #We override the text on the label when we do that
             if last_time is None:
-                self.time_label.set_text(now.strftime("Arrival message:"))
-                self.process_new_day_tasks()
+                if self.time_label.get_text() != 'Arrival message:':
+                    self.time_label.set_text(now.strftime("Arrival message:"))
+                    self.process_new_day_tasks()
             else:
                 self.time_label.set_text(format_duration(now - last_time))
                 # Update "time left to work"
@@ -2301,7 +2305,7 @@ COL_SUBMIT = 7
 COL_ERROR_MSG = 8
 class SubmitWindow(object):
     """The window for submitting reports over the http interface"""
-    def __init__(self, tree, settings):
+    def __init__(self, tree, settings, application = None):
         self.settings = settings
         self.progress_window = tree.get_object("progress_window")
         self.progressbar = tree.get_object("progressbar")
@@ -2332,6 +2336,8 @@ class SubmitWindow(object):
 
         selection = self.tree_view.get_selection()
         selection.set_mode(gtk.SELECTION_MULTIPLE)
+
+        self.application = application
 
         self.submitting = False
 
@@ -2378,6 +2384,16 @@ class SubmitWindow(object):
 
         self.progress_window.hide()
 
+    def push_error_infobar(self, primary = None, secondary = None):
+            main_window = self.application
+            if primary is None:
+                primary = 'Bad entries in your timelog'
+            if secondary is None:
+                secondary = 'Some entries in your timesheet are not known to the server. ' \
+                    'Please correct them, and submit.'
+            main_window.push_reminder('<b><big>%s</big></b>\n\n%s' % (primary, secondary), None,
+                                      'View problems', main_window.show_submit_window)
+
     def upload_thread(self, data, automatic):
         if not os.path.exists(self.settings.server_cert):
             self.error_dialog("Provided certificate %s not found" % self.settings.server_cert)
@@ -2401,26 +2417,32 @@ class SubmitWindow(object):
             if e.code == 400 and txt.startswith('Failed\n'):
                 # the server didn't like our submission
                 gtk.gdk.threads_enter()
-                dialog = gtk.MessageDialog(self.window,
-                         gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
-                         gtk.MESSAGE_ERROR,
-                         gtk.BUTTONS_OK,
-                         'Unable To Upload Timesheet')
-                dialog.set_title('Error')
-                dialog.format_secondary_text('Some of the entries in your timesheet refer to tasks that are not known to the server. These entries have been marked in red. Please review them and resubmit to the server when fixed.')
-                dialog.connect('response', lambda d, i: dialog.destroy())
+
                 self.hide_progress_window()
-                self.window.show ()
-                dialog.show()
                 self.annotate_failure (txt)
+
+                if automatic:
+                    self.submitting = False
+                    self.push_error_infobar()
+                else:
+                    dialog = gtk.MessageDialog(self.window,
+                             gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+                             gtk.MESSAGE_ERROR,
+                             gtk.BUTTONS_OK,
+                             'Unable To Upload Timesheet')
+                    dialog.set_title('Error')
+                    dialog.format_secondary_text('Some of the entries in your timesheet refer to tasks that are not known to the server. These entries have been marked in red. Please review them and resubmit to the server when fixed.')
+                    dialog.connect('response', lambda d, i: dialog.destroy())
+                    self.window.show ()
+                    dialog.show()
                 gtk.gdk.threads_leave()
             else:
-                self.error_dialog(e)
+                self.error_dialog(e, automatic = automatic)
 
         except m2urllib2.URLError, e:
-            self.error_dialog(e)
+            self.error_dialog(e, automatic = automatic)
         except SSL.SSLError, e:
-            self.error_dialog(e)
+            self.error_dialog(e, automatic = automatic)
         else:
             gtk.gdk.threads_enter()
             self.submitting = False
@@ -2440,18 +2462,21 @@ class SubmitWindow(object):
 
             gtk.gdk.threads_leave()
 
-    def error_dialog(self, e, title = 'Error Communicating With The Server'):
+    def error_dialog(self, e, title = 'Error Communicating With The Server', automatic = False):
         print (e)
         gtk.gdk.threads_enter()
-        dialog = gtk.MessageDialog(self.window,
-                 gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
-                 gtk.MESSAGE_ERROR,
-                 gtk.BUTTONS_OK,
-                 title)
-        dialog.set_title('Error')
-        dialog.format_secondary_text('%s' % e)
-        dialog.run ()
-        dialog.destroy ()
+        if automatic:
+            self.push_error_infobar(title, e)
+        else:
+            dialog = gtk.MessageDialog(self.window,
+                     gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+                     gtk.MESSAGE_ERROR,
+                     gtk.BUTTONS_OK,
+                     title)
+            dialog.set_title('Error')
+            dialog.format_secondary_text('%s' % e)
+            dialog.run ()
+            dialog.destroy ()
         self.submitting = False
         self.hide ()
         gtk.gdk.threads_leave()
@@ -2511,7 +2536,10 @@ class SubmitWindow(object):
                 if date_dict[date][item] > datetime.timedelta(0) and not "**" in item:
                     self.list_store.append(parent,self.item_row(date_dict[date][item], item))
 
-    def show(self, timewindow, auto_submit = False):
+    def show(self):
+        self.window.show()
+
+    def submit(self, timewindow, auto_submit = False):
         """Shows the window with the items included in the given time window, for detailed selection"""
         if self.submitting:
             if not self.window.get_property('visible'):

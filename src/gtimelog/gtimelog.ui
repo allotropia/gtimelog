@@ -53,7 +53,8 @@
               <object class="GtkToolButton" id="edit_log_button">
                 <property name="visible">True</property>
                 <property name="tooltip_text" translatable="yes">Edit timelog.txt</property>
-                <property name="label" translatable="yes">Edit Log</property>
+                <property name="is_important">True</property>
+                <property name="label" translatable="yes">Edit timelog</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-edit</property>
                 <signal name="clicked" handler="on_edit_log_button_clicked"/>
@@ -774,9 +775,9 @@ GTimeLog is a time tracking application.
                     <property name="secondary_icon_stock">gtk-clear</property>
                     <property name="secondary_icon_activatable">True</property>
                     <property name="secondary_icon_tooltip_text">Clear</property>
-                    <accelerator key="s" signal="grab-focus" modifiers="GDK_MOD1_MASK"/>
-                    <accelerator key="s" signal="grab-focus" modifiers="GDK_CONTROL_MASK"/>
                     <accelerator key="k" signal="grab-focus" modifiers="GDK_CONTROL_MASK"/>
+                    <accelerator key="s" signal="grab-focus" modifiers="GDK_CONTROL_MASK"/>
+                    <accelerator key="s" signal="grab-focus" modifiers="GDK_MOD1_MASK"/>
                   </object>
                   <packing>
                     <property name="expand">False</property>

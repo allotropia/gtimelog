@@ -1313,6 +1313,7 @@ class MainWindow(object):
         buffer.create_tag('duration', foreground='red')
         buffer.create_tag('time', foreground='green')
         buffer.create_tag('slacking', foreground='gray')
+        buffer.create_tag('invalid', foreground='red')
 
         # Reminders infrastructure
         self.weekly_report_reminder_set = False
@@ -1521,6 +1522,34 @@ class MainWindow(object):
             total_time = total_work + current_task_time
         return datetime.timedelta(hours=self.settings.hours) - total_time
 
+    def entry_is_valid(self, entry):
+        parts = entry.split(':', 4)
+
+        # All entries have 4 task identifiers, and a detail, so we should always have
+        # 5 parts here
+        if len(parts) != 5:
+            return False
+
+        parts = [part.strip().lower() for part in parts]
+
+        try:
+            task_list = self.tasks_dict
+        except AttributeError:
+            self.update_tasks_dict()
+            task_list = self.tasks_dict
+
+        # If we can go into the dictionary using our parts, it's
+        # because this is a valid entry
+        try:
+            dummy = task_list[parts[0]]
+            dummy = dummy[parts[1]]
+            dummy = dummy[parts[2]]
+            dummy = dummy[parts[3]]
+        except KeyError:
+            return False
+
+        return True
+
     def write_item(self, item):
         buffer = self.log_buffer
         start, stop, duration, entry = item
@@ -1528,7 +1557,17 @@ class MainWindow(object):
         period = '\t(%s-%s)\t' % (start.astimezone (TZOffset()).strftime('%H:%M'),
                                   stop.astimezone(TZOffset()).strftime('%H:%M'))
         self.w(period, 'time')
-        tag = '**' in entry and 'slacking' or None
+
+        # We only consider entries with duration != 0 to be invalid,
+        # because our first entry is an arrival message, which can be
+        # invalid
+        if '**' in entry:
+            tag = 'slacking'
+        elif not self.entry_is_valid(entry) and duration.seconds != 0:
+            tag = 'invalid'
+        else:
+            tag = None
+
         self.w(entry + '\n', tag)
         where = buffer.get_end_iter()
         where.backward_cursor_position()
@@ -1545,14 +1584,7 @@ class MainWindow(object):
         self.log_view.scroll_to_mark(end_mark, 0)
         buffer.delete_mark(end_mark)
 
-    def set_up_task_list(self):
-        """Set up a fully hierarchical task list
-            Creates a dictionary of dictionaries that mirrors the
-            structure of the tasks (seperated by :) and then
-            recurses into that structure bunging it into the treeview
-        """
-        self._block_row_toggles += 1
-
+    def update_tasks_dict(self):
         task_list = {}
         self.task_store.clear()
         for item in self.tasks.items:
@@ -1562,6 +1594,16 @@ class MainWindow(object):
                     if not pos in parent:
                         parent[pos] = {}
                     parent = parent[pos]
+        self.tasks_dict = task_list
+
+    def set_up_task_list(self):
+        """Set up a fully hierarchical task list
+            Creates a dictionary of dictionaries that mirrors the
+            structure of the tasks (seperated by :) and then
+            recurses into that structure bunging it into the treeview
+        """
+        self._block_row_toggles += 1
+        self.update_tasks_dict()
 
         def recursive_append (source, prefix, parent):
             tl = source.keys()
@@ -1573,7 +1615,7 @@ class MainWindow(object):
                     child = self.task_store.append(parent, [key, prefix + key + ": "])
                     recursive_append (source[key], prefix + key + ": ", child)
 
-        recursive_append(task_list, "", None)
+        recursive_append(self.tasks_dict, "", None)
 
         self.update_toggle_state()
         self._block_row_toggles -= 1

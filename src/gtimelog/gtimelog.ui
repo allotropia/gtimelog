@@ -338,8 +338,8 @@ GTimeLog is a time tracking application.
                     <child>
                       <object class="GtkImageMenuItem" id="edit_timelog_item">
                         <property name="visible">True</property>
-                        <property name="related_action">edit_timelog</property>
                         <property name="use_action_appearance">True</property>
+                        <property name="related_action">edit_timelog</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">True</property>
                         <accelerator key="e" signal="activate" modifiers="GDK_CONTROL_MASK"/>
@@ -348,8 +348,8 @@ GTimeLog is a time tracking application.
                     <child>
                       <object class="GtkImageMenuItem" id="reload_item">
                         <property name="visible">True</property>
-                        <property name="related_action">reload</property>
                         <property name="use_action_appearance">True</property>
+                        <property name="related_action">reload</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">True</property>
                         <accelerator key="r" signal="activate" modifiers="GDK_CONTROL_MASK"/>
@@ -363,8 +363,8 @@ GTimeLog is a time tracking application.
                     <child>
                       <object class="GtkImageMenuItem" id="quit_item">
                         <property name="visible">True</property>
-                        <property name="related_action">quit</property>
                         <property name="use_action_appearance">True</property>
+                        <property name="related_action">quit</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">True</property>
                         <accelerator key="q" signal="activate" modifiers="GDK_CONTROL_MASK"/>
@@ -382,6 +382,62 @@ GTimeLog is a time tracking application.
                 <child type="submenu">
                   <object class="GtkMenu" id="menu2">
                     <property name="visible">True</property>
+                    <child>
+                      <object class="GtkRadioMenuItem" id="view_today">
+                        <property name="visible">True</property>
+                        <property name="label" translatable="yes">_Today</property>
+                        <property name="use_underline">True</property>
+                        <property name="active">True</property>
+                        <property name="draw_as_radio">True</property>
+                        <signal name="activate" handler="on_view_today_activate"/>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkRadioMenuItem" id="view_week">
+                        <property name="visible">True</property>
+                        <property name="label" translatable="yes">_Week</property>
+                        <property name="use_underline">True</property>
+                        <property name="draw_as_radio">True</property>
+                        <property name="group">view_today</property>
+                        <accelerator key="w" signal="activate" modifiers="GDK_CONTROL_MASK"/>
+                        <signal name="activate" handler="on_view_week_activate"/>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkRadioMenuItem" id="view_month">
+                        <property name="visible">True</property>
+                        <property name="label" translatable="yes">_Month</property>
+                        <property name="use_underline">True</property>
+                        <property name="draw_as_radio">True</property>
+                        <property name="group">view_today</property>
+                        <signal name="activate" handler="on_view_month_activate"/>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkRadioMenuItem" id="view_last_week">
+                        <property name="visible">True</property>
+                        <property name="label" translatable="yes">_Last Week</property>
+                        <property name="use_underline">True</property>
+                        <property name="draw_as_radio">True</property>
+                        <property name="group">view_today</property>
+                        <signal name="activate" handler="on_view_last_week_activate"/>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkRadioMenuItem" id="view_last_month">
+                        <property name="visible">True</property>
+                        <property name="label" translatable="yes">L_ast Month</property>
+                        <property name="use_underline">True</property>
+                        <property name="draw_as_radio">True</property>
+                        <property name="group">view_today</property>
+                        <signal name="activate" handler="on_view_last_month_activate"/>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkSeparatorMenuItem" id="menuitem2">
+                        <property name="visible">True</property>
+                      </object>
+                    </child>
                     <child>
                       <object class="GtkRadioMenuItem" id="chronological">
                         <property name="visible">True</property>
@@ -775,9 +831,9 @@ GTimeLog is a time tracking application.
                     <property name="secondary_icon_stock">gtk-clear</property>
                     <property name="secondary_icon_activatable">True</property>
                     <property name="secondary_icon_tooltip_text">Clear</property>
-                    <accelerator key="k" signal="grab-focus" modifiers="GDK_CONTROL_MASK"/>
-                    <accelerator key="s" signal="grab-focus" modifiers="GDK_CONTROL_MASK"/>
                     <accelerator key="s" signal="grab-focus" modifiers="GDK_MOD1_MASK"/>
+                    <accelerator key="s" signal="grab-focus" modifiers="GDK_CONTROL_MASK"/>
+                    <accelerator key="k" signal="grab-focus" modifiers="GDK_CONTROL_MASK"/>
                   </object>
                   <packing>
                     <property name="expand">False</property>

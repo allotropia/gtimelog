@@ -1157,8 +1157,17 @@ class TrayIcon(object):
         return tip
 
 
+TODAY = 0
+WEEK = 1
+MONTH = 2
+LAST_WEEK = 3
+LAST_MONTH = 4
+
 class MainWindow(object):
     """Main application window."""
+
+    # Time window to display in default view
+    display_window = TODAY
 
     # Initial view mode
     chronological = True
@@ -1367,16 +1376,36 @@ class MainWindow(object):
                             self.timelog.virtual_midnight)
         today = today.strftime('%A, %Y-%m-%d (week %V)')
         self.w(today + '\n\n', 'today')
+
+        # First, what time window we are going to show?
+        if self.display_window == WEEK:
+            time_window = self.weekly_window()
+        elif self.display_window == MONTH:
+            time_window = self.monthly_window()
+        elif self.display_window == LAST_WEEK:
+            day = self.timelog.day - datetime.timedelta(7)
+            time_window = self.weekly_window(day=day)
+        elif self.display_window == LAST_MONTH:
+            day = self.timelog.day - datetime.timedelta(self.timelog.day.day)
+            time_window = self.monthly_window(day)
+        else:
+            time_window = self.timelog.window
+
+        # Now, let's decide how that window is going to be presented, and present it.
         if self.chronological:
-            for item in self.timelog.window.all_entries():
+            for item in time_window.all_entries():
                 self.write_item(item)
         else:
-            work, slack = self.timelog.window.grouped_entries()
+            work, slack = time_window.grouped_entries()
             for start, entry, duration in work + slack:
+                if not duration.seconds:
+                    continue
                 self.write_group(entry, duration)
             where = buffer.get_end_iter()
             where.backward_cursor_position()
             buffer.place_cursor(where)
+
+        # Finally, add general information.
         self.add_footer()
         self.scroll_to_end()
         self.lock = False
@@ -1443,7 +1472,7 @@ class MainWindow(object):
         work_days_this_week = weekly_window.count_days()
 
         self.w('\n')
-        self.w('Total work done: ')
+        self.w('Total work done today: ')
         self.w(format_duration(total_work), 'duration')
         self.w(' (')
         self.w(format_duration(week_total_work), 'duration')
@@ -1454,7 +1483,7 @@ class MainWindow(object):
             self.w(format_duration(per_diem), 'duration')
             self.w(' per day')
         self.w(')\n')
-        self.w('Total slacking: ')
+        self.w('Total slacking today: ')
         self.w(format_duration(total_slacking), 'duration')
         self.w(' (')
         self.w(format_duration(week_total_slacking), 'duration')
@@ -1470,7 +1499,7 @@ class MainWindow(object):
             time_to_leave = datetime.datetime.now(TZOffset()) + time_left
             if time_left < datetime.timedelta(0):
                 time_left = datetime.timedelta(0)
-            self.w('Time left at work: ')
+            self.w('Time left at work today: ')
             self.w(format_duration(time_left), 'duration')
             self.w(' (till ')
             self.w(time_to_leave.strftime('%H:%M'), 'time')
@@ -1867,6 +1896,26 @@ class MainWindow(object):
         """Help -> Online Documentation selected"""
         import webbrowser
         webbrowser.open(self.help_url)
+
+    def on_view_today_activate(self, widget):
+        self.display_window = TODAY
+        self.populate_log()
+
+    def on_view_week_activate(self, widget):
+        self.display_window = WEEK
+        self.populate_log()
+
+    def on_view_month_activate(self, widget):
+        self.display_window = MONTH
+        self.populate_log()
+
+    def on_view_last_week_activate(self, widget):
+        self.display_window = LAST_WEEK
+        self.populate_log()
+
+    def on_view_last_month_activate(self, widget):
+        self.display_window = LAST_MONTH
+        self.populate_log()
 
     def on_chronological_activate(self, widget):
         """View -> Chronological"""

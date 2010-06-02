@@ -1335,6 +1335,8 @@ class MainWindow(object):
         self.set_up_history()
         self.populate_log()
 
+        self.restore_ui_state(os.path.join(configdir, 'uistaterc'))
+
         self.auto_submit()
 
     def _init_dbus(self):
@@ -1346,6 +1348,43 @@ class MainWindow(object):
         except:
             self.screensaving = False
             self.screensaver = None
+
+    def restore_ui_state(self, filename):
+        try:
+            config = ConfigParser.RawConfigParser()
+            config.read([filename])
+
+            width = int(config.get('MainWindow', 'width'))
+            height = int(config.get('MainWindow', 'height'))
+
+            self.main_window.resize(width, height)
+
+            x = int(config.get('MainWindow', 'x'))
+            y = int(config.get('MainWindow', 'y'))
+
+            self.main_window.move(x, y)
+        except Exception, e:
+            print e.message
+
+    def save_ui_state(self, filename):
+        try:
+            uistaterc = open(filename, 'w')
+
+            config = ConfigParser.RawConfigParser()
+            config.add_section('MainWindow')
+
+            x, y = self.main_window.get_position()
+            config.set('MainWindow', 'x', x)
+            config.set('MainWindow', 'y', y)
+
+            width, height = self.main_window.get_size()
+            config.set('MainWindow', 'width', width)
+            config.set('MainWindow', 'height', height)
+
+            config.write(uistaterc)
+            uistaterc.close()
+        except Exception, e:
+            print e.message
 
     def set_up_log_view_columns(self):
         """Set up tab stops in the log view."""
@@ -2729,6 +2768,8 @@ def main():
         gtk.gdk.threads_enter()
         gtk.main()
         gtk.gdk.threads_leave()
+
+        main_window.save_ui_state(os.path.join(configdir, 'uistaterc'))
     except KeyboardInterrupt:
         pass
 

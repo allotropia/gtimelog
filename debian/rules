@@ -1,14 +1,11 @@
 #! /usr/bin/make -f 
 
-# Include dpatch stuff.
-include /usr/share/dpatch/dpatch.make
-
-clean: unpatch
+clean:
 	dh_testdir
 	dh_clean
 	rm -rf build
 
-build: patch
+build:
 
 install:
 	dh_testdir
@@ -17,11 +14,11 @@ install:
 	dh_installdirs
 
 	python setup.py build
-	install -m 755 build/lib/gtimelog/gtimelog.py debian/gtimelog/usr/bin/gtimelog
-	install -m 644 build/lib/gtimelog/gtimelog.ui debian/gtimelog/usr/share/gtimelog/
-	install -m 644 build/lib/gtimelog/gtimelog.png debian/gtimelog/usr/share/pixmaps/
-	install -m 644 build/lib/gtimelog/gtimelog-small.png debian/gtimelog/usr/share/pixmaps/
-	install -m 644 gtimelog.desktop debian/gtimelog/usr/share/applications/
+	install -m 755 build/lib/gtimelog/gtimelog.py debian/collabora-gtimelog/usr/bin/gtimelog
+	install -m 644 build/lib/gtimelog/gtimelog.ui debian/collabora-gtimelog/usr/share/gtimelog/
+	install -m 644 build/lib/gtimelog/gtimelog.png debian/collabora-gtimelog/usr/share/pixmaps/
+	install -m 644 build/lib/gtimelog/gtimelog-small.png debian/collabora-gtimelog/usr/share/pixmaps/
+	install -m 644 gtimelog.desktop debian/collabora-gtimelog/usr/share/applications/
 
 binary-indep: install
 	dh_testdir

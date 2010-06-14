@@ -1333,9 +1333,9 @@ class MainWindow(object):
         self.reminders = []
 
         self.set_up_completion()
+        # This causes the log to be populated
         self.set_up_task_list()
         self.set_up_history()
-        self.populate_log()
 
         self.restore_ui_state(os.path.join(configdir, 'uistaterc'))
 
@@ -1689,6 +1689,8 @@ class MainWindow(object):
 
         self.update_toggle_state()
         self._block_row_toggles -= 1
+
+        self.populate_log()
 
     def update_toggle_state(self):
         # Use the on-disk toggle state to work out whether a row is expanded
@@ -2272,6 +2274,7 @@ class MainWindow(object):
     def task_list_loaded(self):
         if not self.task_list_loading_failed:
             self.task_pane_info_label.hide()
+            self.set_up_task_list()
 
     def task_entry_changed(self, widget):
         """Reset history position when the task entry is changed."""

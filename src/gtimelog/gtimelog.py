@@ -793,7 +793,6 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
                             o.scheme,   # protocol
                             None,       # authtype
                             port)       # port
-                    gtk.gdk.threads_leave()
                 except gnomekeyring.NoMatchError:
                     pass
                 except gnomekeyring.NoKeyringDaemonError:
@@ -802,6 +801,8 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
                     l = l[-1] # take the last key (Why?)
                     username = l['user']
                     password = l['password']
+
+                gtk.gdk.threads_leave()
 
             # If not found, ask the user for it
             if username == None or self._tries > 1:

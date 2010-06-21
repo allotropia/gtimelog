@@ -1544,7 +1544,18 @@ class MainWindow(object):
             self.w(format_duration(time_left), 'duration')
             self.w(' (till ')
             self.w(time_to_leave.strftime('%H:%M'), 'time')
-            self.w(')')
+            self.w(')\n')
+        week_time_left = self.week_time_left_at_work(week_total_work)
+        if week_time_left is not None and \
+                week_time_left <= datetime.timedelta(hours=self.settings.hours):
+            time_to_leave = datetime.datetime.now(TZOffset()) + week_time_left
+            if week_time_left < datetime.timedelta(0):
+                week_time_left = datetime.timedelta(0)
+            self.w('Time left at work for the week: ')
+            self.w(format_duration(week_time_left), 'duration')
+            self.w(' (till ')
+            self.w(time_to_leave.strftime('%H:%M'), 'time')
+            self.w(')\n')
 
         if self.settings.show_office_hours:
             self.w('\nAt office today: ')
@@ -1620,6 +1631,20 @@ class MainWindow(object):
             return False
 
         return True
+
+    def week_time_left_at_work(self, week_total_work):
+        """Calculate time left to work for the week."""
+        last_time = self.timelog.window.last_time()
+        if last_time is None:
+            return None
+        now = datetime.datetime.now(TZOffset ())
+        current_task = self.task_entry.get_text()
+        current_task_time = now - last_time
+        if '**' in current_task:
+            total_time = week_total_work
+        else:
+            total_time = week_total_work + current_task_time
+        return datetime.timedelta(hours=self.settings.hours * 5) - total_time
 
     def write_item(self, item):
         buffer = self.log_buffer

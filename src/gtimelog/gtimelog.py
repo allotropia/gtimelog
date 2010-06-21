@@ -2521,7 +2521,7 @@ class SubmitWindow(object):
         except AttributeError:
             pass # race condition?
 
-        self.progress_window.hide()
+        gobject.idle_add(lambda: self.progress_window.hide())
 
     def push_error_infobar(self, primary = None, secondary = None):
             main_window = self.application

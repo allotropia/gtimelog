@@ -1748,6 +1748,8 @@ class MainWindow(object):
 
         for start, stop, duration, entry in history.all_entries ():
             delta = now - stop
+            if delta.days > 90:
+                continue
             weight = 1. / (delta.days + 1)
             if entry not in count:
                 count[entry] = weight

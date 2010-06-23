@@ -1595,9 +1595,10 @@ class MainWindow(object):
     def entry_is_valid(self, entry):
         parts = entry.split(':', 4)
 
-        # All entries have 4 task identifiers, and a detail, so we should always have
-        # 5 parts here
-        if len(parts) != 5:
+        # All entries have 4 task identifiers, and a detail, but not
+        # always the detail! So as a first step, check we have at
+        # least 4 parts.
+        if len(parts) < 4:
             return False
 
         parts = [part.strip().lower() for part in parts]

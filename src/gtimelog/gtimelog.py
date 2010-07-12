@@ -20,6 +20,7 @@ import tempfile
 import ConfigParser
 import cPickle as pickle
 import threading, thread
+from cgi import escape
 
 import pygtk
 pygtk.require('2.0')
@@ -1894,8 +1895,8 @@ class MainWindow(object):
                 start, end = selection
                 text = text[:start] + text[end:]
 
-            cre = re.compile('(%s)' % re.escape(text), re.IGNORECASE)
-            entry = cre.sub(r'<b>\1</b>', entry)
+            entry = re.sub('(%s)' % re.escape(text), r'<b>\1</b>',
+                escape (entry), re.IGNORECASE)
             cell.set_property('markup', entry)
 
         completion.set_text_column(0)

@@ -675,6 +675,11 @@ class TimeLog(object):
         print >> f, line
         f.close()
 
+    def append_entry(self, entry, now):
+        self.window.items.append((now, entry))
+        line = '%s: %s' % (now.strftime("%Y-%m-%d %H:%M %z"), entry)
+        self.raw_append(line)
+
     def append(self, entry, now=None):
         """Append a new entry to the time log."""
         if not now:
@@ -682,12 +687,18 @@ class TimeLog(object):
 	    		second=0, microsecond=0)
         last = self.window.last_time()
         if last and different_days(now, last, self.virtual_midnight):
-            # next day: reset self.window
-            self.reread()
-        self.window.items.append((now, entry))
-        line = '%s: %s' % (now.strftime("%Y-%m-%d %H:%M %z"), entry)
-        self.raw_append(line)
+            # We are working past the virtual midnight. We need to
+            # finish the first day, and add an arrival notice at the
+            # beginning of the next day, and also reload the log!
+            midnight = now.replace(hour = self.virtual_midnight.hour,
+                minute = self.virtual_midnight.minute)
+            one_minute_delta = datetime.timedelta(0, 60)
 
+            self.append_entry(entry, midnight - one_minute_delta)
+            self.reread()
+            self.append_entry('-automatic arrival-', midnight + one_minute_delta)
+
+        self.append_entry(entry, now)
 
 class TaskList(object):
     """Task list.

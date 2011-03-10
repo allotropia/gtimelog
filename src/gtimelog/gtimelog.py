@@ -1216,6 +1216,9 @@ class MainWindow(object):
         self.tick(True)
         gobject.timeout_add(1000, self.tick)
 
+    COL_TASK_NAME = 0
+    COL_TASK_PATH = 1
+
     def _init_ui(self):
         """Initialize the user interface."""
         tree = gtk.Builder()
@@ -1314,7 +1317,8 @@ class MainWindow(object):
                 self.on_row_expander_changed, True)
         self.task_list.connect ("row-collapsed",
                 self.on_row_expander_changed, False)
-        column = gtk.TreeViewColumn("Task", gtk.CellRendererText(), text=0)
+        column = gtk.TreeViewColumn("Task", gtk.CellRendererText(),
+            text=MainWindow.COL_TASK_NAME)
         self.task_list.append_column(column)
         self.task_list.connect("row_activated", self.task_list_row_activated)
         self.task_list_popup_menu = tree.get_object("task_list_popup_menu")

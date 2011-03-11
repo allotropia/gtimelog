@@ -474,6 +474,14 @@ GTimeLog is a time tracking application.
                         <signal name="toggled" handler="on_show_task_pane_toggled"/>
                       </object>
                     </child>
+                    <child>
+                      <object class="GtkCheckMenuItem" id="show_unavailable_tasks">
+                        <property name="visible">True</property>
+                        <property name="label" translatable="yes">Show _unavailable tasks</property>
+                        <property name="use_underline">True</property>
+                        <signal name="toggled" handler="on_show_unavailable_tasks_toggled"/>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>

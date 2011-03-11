@@ -1186,6 +1186,7 @@ class MainWindow(object):
     # Initial view mode
     chronological = True
     show_tasks = True
+    show_unavailable_tasks = False
 
     # URL to use for Help -> Online Documentation
     help_url = "http://mg.pov.lt/gtimelog"
@@ -1230,6 +1231,11 @@ class MainWindow(object):
         chronological_menu_item.set_active(self.chronological)
         show_task_pane_item = tree.get_object("show_task_pane")
         show_task_pane_item.set_active(self.show_tasks)
+
+        self.show_unavailable_tasks_item = tree.get_object(
+            "show_unavailable_tasks")
+        self.show_unavailable_tasks_item.set_active(self.show_unavailable_tasks)
+        self.show_unavailable_tasks_item.set_sensitive(self.show_tasks)
 
         # Now hook up signals
         tree.connect_signals(self)
@@ -1286,6 +1292,12 @@ class MainWindow(object):
             txt = task_filter.set_text("")
 
         def _task_filter_filter(model, iter):
+            # If the user hasn't ticked "Show unavailable tasks" and the task
+            # is unavailable, never show it, even when searching.
+            if not self.show_unavailable_tasks:
+                unavailable, = model.get(iter, MainWindow.COL_TASK_UNAVAILABLE)
+                if unavailable:
+                    return False
 
             txt = task_filter.get_text()
 
@@ -2317,8 +2329,14 @@ class MainWindow(object):
         """View -> Tasks"""
         if self.task_pane.get_property("visible"):
             self.task_pane.hide()
+            self.show_unavailable_tasks_item.set_sensitive(False)
         else:
             self.task_pane.show()
+            self.show_unavailable_tasks_item.set_sensitive(True)
+
+    def on_show_unavailable_tasks_toggled(self, item):
+        self.show_unavailable_tasks = item.get_active()
+        self.task_list.get_model().refilter()
 
     def task_list_row_activated(self, treeview, path, view_column):
         """A task was selected in the task pane -- put it to the entry."""

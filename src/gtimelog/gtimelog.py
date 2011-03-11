@@ -1218,6 +1218,7 @@ class MainWindow(object):
 
     COL_TASK_NAME = 0
     COL_TASK_PATH = 1
+    COL_TASK_UNAVAILABLE = 2
 
     def _init_ui(self):
         """Initialize the user interface."""
@@ -1259,7 +1260,7 @@ class MainWindow(object):
         self.tasks.loaded_callback = self.task_list_loaded
         self.tasks.error_callback = self.task_list_error
         self.task_list = tree.get_object("task_list")
-        self.task_store = gtk.TreeStore(str, str)
+        self.task_store = gtk.TreeStore(str, str, bool)
         task_filter = tree.get_object("task_filter")
 
         filter = self.task_store.filter_new ()
@@ -1317,9 +1318,28 @@ class MainWindow(object):
                 self.on_row_expander_changed, True)
         self.task_list.connect ("row-collapsed",
                 self.on_row_expander_changed, False)
-        column = gtk.TreeViewColumn("Task", gtk.CellRendererText(),
-            text=MainWindow.COL_TASK_NAME)
+
+        renderer = gtk.CellRendererText()
+        column = gtk.TreeViewColumn("Task", renderer)
+
+        # We grey out unavailable subtrees.
+        def task_column_data_func(column, cell, model, iter):
+            text, grey = model.get(iter,
+                MainWindow.COL_TASK_NAME, MainWindow.COL_TASK_UNAVAILABLE)
+
+            renderer.set_property('text', text)
+
+            if grey:
+                renderer.set_property('foreground', '#aaaaaa')
+                renderer.set_property('foreground-set', True)
+            else:
+                renderer.set_property('foreground', '#000000')
+                renderer.set_property('foreground-set', False)
+
+        column.set_cell_data_func(renderer, task_column_data_func)
+
         self.task_list.append_column(column)
+
         self.task_list.connect("row_activated", self.task_list_row_activated)
         self.task_list_popup_menu = tree.get_object("task_list_popup_menu")
         self.task_list.connect_object("button_press_event",
@@ -1722,9 +1742,11 @@ class MainWindow(object):
             tl.sort()
             for key in tl:
                 if source[key] == {}:
-                    child = self.task_store.append(parent, [key, prefix + key])
+                    child = self.task_store.append(parent,
+                        (key, prefix + key, False))
                 else:
-                    child = self.task_store.append(parent, [key, prefix + key + ": "])
+                    child = self.task_store.append(parent,
+                        (key, prefix + key + ": ", False))
                     recursive_append (source[key], prefix + key + ": ", child)
 
         recursive_append(self.tasks_dict, "", None)

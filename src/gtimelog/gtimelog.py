@@ -1737,9 +1737,9 @@ class MainWindow(object):
         self._block_row_toggles += 1
         self.update_tasks_dict()
 
-        def recursive_append (source, prefix, parent):
+        def recursive_append(source, prefix, parent, parent_is_unavailable):
             for key, subtasks in sorted(source.items()):
-                is_unavailable = (key[0] == '*')
+                is_unavailable = parent_is_unavailable or (key[0] == '*')
 
                 if subtasks == {}:
                     child = self.task_store.append(parent,
@@ -1747,9 +1747,10 @@ class MainWindow(object):
                 else:
                     child = self.task_store.append(parent,
                         (key, prefix + key + ": ", is_unavailable))
-                    recursive_append(subtasks, prefix + key + ": ", child)
+                    recursive_append(subtasks, prefix + key + ": ", child,
+                        is_unavailable)
 
-        recursive_append(self.tasks_dict, "", None)
+        recursive_append(self.tasks_dict, "", None, False)
 
         self.update_toggle_state()
         self._block_row_toggles -= 1

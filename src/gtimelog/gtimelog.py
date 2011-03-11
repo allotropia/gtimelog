@@ -1738,16 +1738,14 @@ class MainWindow(object):
         self.update_tasks_dict()
 
         def recursive_append (source, prefix, parent):
-            tl = source.keys()
-            tl.sort()
-            for key in tl:
-                if source[key] == {}:
+            for key, subtasks in sorted(source.items()):
+                if subtasks == {}:
                     child = self.task_store.append(parent,
                         (key, prefix + key, False))
                 else:
                     child = self.task_store.append(parent,
                         (key, prefix + key + ": ", False))
-                    recursive_append (source[key], prefix + key + ": ", child)
+                    recursive_append(subtasks, prefix + key + ": ", child)
 
         recursive_append(self.tasks_dict, "", None)
 

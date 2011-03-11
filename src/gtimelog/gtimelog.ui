@@ -468,7 +468,7 @@ GTimeLog is a time tracking application.
                     <child>
                       <object class="GtkCheckMenuItem" id="show_task_pane">
                         <property name="visible">True</property>
-                        <property name="label" translatable="yes">_Show tasks pane</property>
+                        <property name="label" translatable="yes">_Show Tasks Pane</property>
                         <property name="use_underline">True</property>
                         <property name="active">True</property>
                         <signal name="toggled" handler="on_show_task_pane_toggled"/>
@@ -477,7 +477,7 @@ GTimeLog is a time tracking application.
                     <child>
                       <object class="GtkCheckMenuItem" id="show_unavailable_tasks">
                         <property name="visible">True</property>
-                        <property name="label" translatable="yes">Show _unavailable tasks</property>
+                        <property name="label" translatable="yes">Show _Unavailable Tasks</property>
                         <property name="use_underline">True</property>
                         <signal name="toggled" handler="on_show_unavailable_tasks_toggled"/>
                       </object>
@@ -496,7 +496,7 @@ GTimeLog is a time tracking application.
                     <property name="visible">True</property>
                     <child>
                       <object class="GtkImageMenuItem" id="menuitem9">
-                        <property name="label" translatable="yes">_Submit report to server</property>
+                        <property name="label" translatable="yes">_Submit Report to Server</property>
                         <property name="visible">True</property>
                         <property name="tooltip_text" translatable="yes">Open a window to submit rows from your timesheet</property>
                         <property name="use_underline">True</property>
@@ -687,7 +687,7 @@ GTimeLog is a time tracking application.
                     </child>
                     <child>
                       <object class="GtkImageMenuItem" id="open_slack_spreadsheet">
-                        <property name="label" translatable="yes">Work/_Slacking stats in Spreadsheet</property>
+                        <property name="label" translatable="yes">Work/_Slacking Statistics in Spreadsheet</property>
                         <property name="visible">True</property>
                         <property name="use_underline">True</property>
                         <property name="image">image17</property>

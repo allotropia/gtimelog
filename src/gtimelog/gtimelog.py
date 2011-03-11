@@ -1743,6 +1743,9 @@ class MainWindow(object):
             for key, subtasks in sorted(source.items()):
                 is_unavailable = parent_is_unavailable or (key[0] == '*')
 
+                if key[0] == '*':
+                    key = key[1:]
+
                 if subtasks == {}:
                     child = self.task_store.append(parent,
                         (key, prefix + key, is_unavailable))

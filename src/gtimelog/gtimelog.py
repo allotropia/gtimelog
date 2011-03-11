@@ -1739,12 +1739,14 @@ class MainWindow(object):
 
         def recursive_append (source, prefix, parent):
             for key, subtasks in sorted(source.items()):
+                is_unavailable = (key[0] == '*')
+
                 if subtasks == {}:
                     child = self.task_store.append(parent,
-                        (key, prefix + key, False))
+                        (key, prefix + key, is_unavailable))
                 else:
                     child = self.task_store.append(parent,
-                        (key, prefix + key + ": ", False))
+                        (key, prefix + key + ": ", is_unavailable))
                     recursive_append(subtasks, prefix + key + ": ", child)
 
         recursive_append(self.tasks_dict, "", None)

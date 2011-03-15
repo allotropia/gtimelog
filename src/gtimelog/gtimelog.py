@@ -2339,13 +2339,21 @@ class MainWindow(object):
         self.task_list.get_model().refilter()
 
     def task_list_row_activated(self, treeview, path, view_column):
-        """A task was selected in the task pane -- put it to the entry."""
         model = treeview.get_model()
-        task = model[path][1]
-        self.task_entry.set_text(task + ": ")
-        self.task_entry.grab_focus()
-        self.task_entry.set_position(-1)
-        # XXX: how does this integrate with history?
+
+        if model.iter_has_child(model.get_iter(path)):
+            """A category was clicked: expand or collapse it."""
+            if treeview.row_expanded(path):
+                treeview.collapse_row(path)
+            else:
+                treeview.expand_row(path, False)
+        else:
+            """A task was selected in the task pane -- put it to the entry."""
+            task = model[path][MainWindow.COL_TASK_PATH]
+            self.task_entry.set_text(task + ": ")
+            self.task_entry.grab_focus()
+            self.task_entry.set_position(-1)
+            # XXX: how does this integrate with history?
 
     def task_list_button_press(self, menu, event):
         if event.button == 3:

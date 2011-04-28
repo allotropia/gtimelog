@@ -1186,6 +1186,7 @@ class MainWindow(object):
     # Initial view mode
     chronological = True
     show_tasks = True
+    show_unavailable_tasks = False
 
     # URL to use for Help -> Online Documentation
     help_url = "http://mg.pov.lt/gtimelog"
@@ -1216,6 +1217,10 @@ class MainWindow(object):
         self.tick(True)
         gobject.timeout_add(1000, self.tick)
 
+    COL_TASK_NAME = 0
+    COL_TASK_PATH = 1
+    COL_TASK_UNAVAILABLE = 2
+
     def _init_ui(self):
         """Initialize the user interface."""
         tree = gtk.Builder()
@@ -1226,6 +1231,11 @@ class MainWindow(object):
         chronological_menu_item.set_active(self.chronological)
         show_task_pane_item = tree.get_object("show_task_pane")
         show_task_pane_item.set_active(self.show_tasks)
+
+        self.show_unavailable_tasks_item = tree.get_object(
+            "show_unavailable_tasks")
+        self.show_unavailable_tasks_item.set_active(self.show_unavailable_tasks)
+        self.show_unavailable_tasks_item.set_sensitive(self.show_tasks)
 
         # Now hook up signals
         tree.connect_signals(self)
@@ -1256,7 +1266,7 @@ class MainWindow(object):
         self.tasks.loaded_callback = self.task_list_loaded
         self.tasks.error_callback = self.task_list_error
         self.task_list = tree.get_object("task_list")
-        self.task_store = gtk.TreeStore(str, str)
+        self.task_store = gtk.TreeStore(str, str, bool)
         task_filter = tree.get_object("task_filter")
 
         filter = self.task_store.filter_new ()
@@ -1282,6 +1292,12 @@ class MainWindow(object):
             txt = task_filter.set_text("")
 
         def _task_filter_filter(model, iter):
+            # If the user hasn't ticked "Show unavailable tasks" and the task
+            # is unavailable, never show it, even when searching.
+            if not self.show_unavailable_tasks:
+                unavailable, = model.get(iter, MainWindow.COL_TASK_UNAVAILABLE)
+                if unavailable:
+                    return False
 
             txt = task_filter.get_text()
 
@@ -1314,8 +1330,28 @@ class MainWindow(object):
                 self.on_row_expander_changed, True)
         self.task_list.connect ("row-collapsed",
                 self.on_row_expander_changed, False)
-        column = gtk.TreeViewColumn("Task", gtk.CellRendererText(), text=0)
+
+        renderer = gtk.CellRendererText()
+        column = gtk.TreeViewColumn("Task", renderer)
+
+        # We grey out unavailable subtrees.
+        def task_column_data_func(column, cell, model, iter):
+            text, grey = model.get(iter,
+                MainWindow.COL_TASK_NAME, MainWindow.COL_TASK_UNAVAILABLE)
+
+            renderer.set_property('text', text)
+
+            if grey:
+                renderer.set_property('foreground', '#aaaaaa')
+                renderer.set_property('foreground-set', True)
+            else:
+                renderer.set_property('foreground', '#000000')
+                renderer.set_property('foreground-set', False)
+
+        column.set_cell_data_func(renderer, task_column_data_func)
+
         self.task_list.append_column(column)
+
         self.task_list.connect("row_activated", self.task_list_row_activated)
         self.task_list_popup_menu = tree.get_object("task_list_popup_menu")
         self.task_list.connect_object("button_press_event",
@@ -1713,17 +1749,35 @@ class MainWindow(object):
         self._block_row_toggles += 1
         self.update_tasks_dict()
 
-        def recursive_append (source, prefix, parent):
-            tl = source.keys()
-            tl.sort()
-            for key in tl:
-                if source[key] == {}:
-                    child = self.task_store.append(parent, [key, prefix + key])
-                else:
-                    child = self.task_store.append(parent, [key, prefix + key + ": "])
-                    recursive_append (source[key], prefix + key + ": ", child)
+        def recursive_append(source, prefix, parent, parent_is_unavailable):
+            all_unavailable = True
 
-        recursive_append(self.tasks_dict, "", None)
+            for key, subtasks in sorted(source.items()):
+                is_unavailable = parent_is_unavailable or (key[0] == '*')
+
+                if key[0] == '*':
+                    key = key[1:]
+
+                if subtasks == {}:
+                    child = self.task_store.append(parent,
+                        (key, prefix + key, is_unavailable))
+                else:
+                    child = self.task_store.append(parent,
+                        (key, prefix + key + ": ", is_unavailable))
+                    all_subtasks_unavailable = recursive_append(subtasks,
+                        prefix + key + ": ", child, is_unavailable)
+
+                    if all_subtasks_unavailable:
+                        self.task_store.set_value(child,
+                            MainWindow.COL_TASK_UNAVAILABLE, True)
+                        is_unavailable = True
+
+                if not is_unavailable:
+                    all_unavailable = False
+
+            return all_unavailable
+
+        recursive_append(self.tasks_dict, "", None, False)
 
         self.update_toggle_state()
         self._block_row_toggles -= 1
@@ -2275,17 +2329,31 @@ class MainWindow(object):
         """View -> Tasks"""
         if self.task_pane.get_property("visible"):
             self.task_pane.hide()
+            self.show_unavailable_tasks_item.set_sensitive(False)
         else:
             self.task_pane.show()
+            self.show_unavailable_tasks_item.set_sensitive(True)
+
+    def on_show_unavailable_tasks_toggled(self, item):
+        self.show_unavailable_tasks = item.get_active()
+        self.task_list.get_model().refilter()
 
     def task_list_row_activated(self, treeview, path, view_column):
-        """A task was selected in the task pane -- put it to the entry."""
         model = treeview.get_model()
-        task = model[path][1]
-        self.task_entry.set_text(task + ": ")
-        self.task_entry.grab_focus()
-        self.task_entry.set_position(-1)
-        # XXX: how does this integrate with history?
+
+        if model.iter_has_child(model.get_iter(path)):
+            """A category was clicked: expand or collapse it."""
+            if treeview.row_expanded(path):
+                treeview.collapse_row(path)
+            else:
+                treeview.expand_row(path, False)
+        else:
+            """A task was selected in the task pane -- put it to the entry."""
+            task = model[path][MainWindow.COL_TASK_PATH]
+            self.task_entry.set_text(task + ": ")
+            self.task_entry.grab_focus()
+            self.task_entry.set_position(-1)
+            # XXX: how does this integrate with history?
 
     def task_list_button_press(self, menu, event):
         if event.button == 3:

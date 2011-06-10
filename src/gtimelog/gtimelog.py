@@ -776,6 +776,7 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
 
             username = None
             password = None
+            save_to_keyring = False
 
             # try to use GNOME Keyring if available
             try:
@@ -806,9 +807,13 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
                             None,       # authtype
                             port)       # port
                 except gnomekeyring.NoMatchError:
-                    pass
+                    gnomekeyring = None
                 except gnomekeyring.NoKeyringDaemonError:
-                    pass
+                    gnomekeyring = None
+                except IOError:
+                    gnomekeyring = None
+                except gnomekeyring.IOError: # thanks, gnomekeyring python binding maker
+                    gnomekeyring = None
                 else:
                     l = l[-1] # take the last key (Why?)
                     username = l['user']
@@ -881,6 +886,8 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
                                         port,		# port
                                         password)	# password
                             except gnomekeyring.NoKeyringDaemonError:
+                                pass
+                            except gnomekeyring.IOError:
                                 pass
                 gtk.gdk.threads_leave()
 

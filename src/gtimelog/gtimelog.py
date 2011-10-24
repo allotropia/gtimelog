@@ -1075,99 +1075,83 @@ class Settings(object):
         finally:
             f.close()
 
-
 class TrayIcon(object):
     """Tray icon for gtimelog."""
 
     def __init__(self, gtimelog_window):
-        pass
-#         self.gtimelog_window = gtimelog_window
-#         self.timelog = gtimelog_window.timelog
-#         self.trayicon = None
-#         try:
-#             import egg.trayicon
-#         except ImportError:
-#             return # nothing to do here, move along
-#                    # or install python-gnome2-extras
-#         self.tooltips = Gtk.Tooltips()
-#         self.eventbox = Gtk.EventBox()
-#         hbox = Gtk.HBox()
-#         icon = Gtk.Image()
-#         icon.set_from_file(icon_file)
-#         hbox.add(icon)
-#         if self.gtimelog_window.settings.show_time_label:
-#             self.time_label = Gtk.Label()
-#             hbox.add(self.time_label)
-#         self.eventbox.add(hbox)
-#         self.trayicon = egg.trayicon.TrayIcon("GTimeLog")
-#         self.trayicon.add(self.eventbox)
-#         self.last_tick = False
-#         self.tick(force_update=True)
-#         self.trayicon.show_all()
-#         tray_icon_popup_menu = gtimelog_window.tray_icon_popup_menu
-#         self.eventbox.connect_object("button-press-event", self.on_press,
-#                                      tray_icon_popup_menu)
-#         self.eventbox.connect("button-release-event", self.on_release)
-#         GObject.timeout_add(1000, self.tick)
-#         self.gtimelog_window.entry_watchers.append(self.entry_added)
-#         self.gtimelog_window.tray_icon = self
-# 
-#     def on_press(self, widget, event):
-#         """A mouse button was pressed on the tray icon label."""
-#         if event.button != 3:
-#             return
-#         main_window = self.gtimelog_window.main_window
-#         if main_window.get_property("visible"):
-#             self.gtimelog_window.tray_show.hide()
-#             self.gtimelog_window.tray_hide.show()
-#         else:
-#             self.gtimelog_window.tray_show.show()
-#             self.gtimelog_window.tray_hide.hide()
-#         widget.popup(None, None, None, event.button, event.time)
-# 
-#     def on_release(self, widget, event):
-#         """A mouse button was released on the tray icon label."""
-#         if event.button != 1:
-#             return
-#         main_window = self.gtimelog_window.main_window
-#         if main_window.get_property("visible"):
-#            main_window.hide()
-#         else:
-#            main_window.present()
-# 
-#     def entry_added(self, entry):
-#         """An entry has been added."""
-#         self.tick(force_update=True)
-# 
-#     def tick(self, force_update=False):
-#         """Tick every second."""
-#         now = datetime.datetime.now(TZOffset()).replace(second=0, microsecond=0)
-#         if now != self.last_tick or force_update: # Do not eat CPU too much
-#             self.last_tick = now
-#             last_time = self.timelog.window.last_time()
-#             if self.gtimelog_window.settings.show_time_label:
-#                 if last_time is None:
-#                     self.time_label.set_text(now.strftime("%H:%M"))
-#                 else:
-#                     self.time_label.set_text(format_duration_short(now - last_time))
-#         # FIXME - this should be wired up async
-#         self.tooltips.set_tip(self.trayicon, self.tip())
-#         return True
-# 
-#     def tip(self):
-#         """Compute tooltip text."""
-#         current_task = self.gtimelog_window.task_entry.get_text()
-#         if not current_task:
-#             current_task = "nothing"
-#         tip = "GTimeLog: working on %s" % current_task
-#         total_work, total_slacking = self.timelog.window.totals()
-#         tip += "\nWork done today: %s" % format_duration(total_work)
-#         time_left = self.gtimelog_window.time_left_at_work(total_work)
-#         if time_left is not None:
-#             if time_left < datetime.timedelta(0):
-#                 time_left = datetime.timedelta(0)
-#             tip += "\nTime left at work: %s" % format_duration(time_left)
-#         return tip
+        self.gtimelog_window = gtimelog_window
+        self.timelog = gtimelog_window.timelog
+
+        self.trayicon = Gtk.StatusIcon.new_from_file(icon_file)
+
+        # self.trayicon.add(self.eventbox)
+        self.last_tick = False
+        self.tick(force_update=True)
+
+        tray_icon_popup_menu = gtimelog_window.tray_icon_popup_menu
+        self.trayicon.connect_object("button-press-event", self.on_press,
+                                     tray_icon_popup_menu)
+        self.trayicon.connect("button-release-event", self.on_release)
+        GObject.timeout_add(1000, self.tick)
+        self.gtimelog_window.entry_watchers.append(self.entry_added)
+        self.gtimelog_window.tray_icon = self
+
+    def on_press(self, widget, event):
+        """A mouse button was pressed on the tray icon label."""
+        if event.button != 3:
+            return
+        main_window = self.gtimelog_window.main_window
+        if main_window.get_property("visible"):
+            self.gtimelog_window.tray_show.hide()
+            self.gtimelog_window.tray_hide.show()
+        else:
+            self.gtimelog_window.tray_show.show()
+            self.gtimelog_window.tray_hide.hide()
+        widget.popup(None, None, None, None, event.button, event.time)
+
+    def on_release(self, widget, event):
+        """A mouse button was released on the tray icon label."""
+        if event.button != 1:
+            return
+        main_window = self.gtimelog_window.main_window
+        if main_window.get_property("visible"):
+           main_window.hide()
+        else:
+           main_window.present()
+
+    def entry_added(self, entry):
+        """An entry has been added."""
+        self.tick(force_update=True)
+
+    def tick(self, force_update=False):
+        """Tick every second."""
+        now = datetime.datetime.now(TZOffset()).replace(second=0, microsecond=0)
+        if now != self.last_tick or force_update: # Do not eat CPU too much
+            self.last_tick = now
+            last_time = self.timelog.window.last_time()
+
+        # FIXME - this should be wired up async
+        self.trayicon.set_tooltip_text(self.tip())
+        return True
+
+    def get_pixbuf(self):
+
+        return image
+
+    def tip(self):
+        """Compute tooltip text."""
+        current_task = self.gtimelog_window.task_entry.get_text()
+        if not current_task:
+            current_task = "nothing"
+        tip = "GTimeLog: working on %s" % current_task
+        total_work, total_slacking = self.timelog.window.totals()
+        tip += "\nWork done today: %s" % format_duration(total_work)
+        time_left = self.gtimelog_window.time_left_at_work(total_work)
+        if time_left is not None:
+            if time_left < datetime.timedelta(0):
+                time_left = datetime.timedelta(0)
+            tip += "\nTime left at work: %s" % format_duration(time_left)
+        return tip
 
 
 TODAY = 0

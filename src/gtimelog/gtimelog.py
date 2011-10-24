@@ -44,8 +44,6 @@ icon_file = os.path.join(resource_dir, "gtimelog-small.png")
 # Where we store configuration and other interesting files.
 configdir = os.path.expanduser('~/.gtimelog')
 
-Gdk.threads_init()
-
 # This is for distribution packages
 if not os.path.exists(ui_file):
     ui_file = "/usr/share/gtimelog/gtimelog.ui"
@@ -796,7 +794,6 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
                 object = '%s?%s' % (o.path, o.query)
 
                 try:
-                    Gdk.threads_enter()
                     l = gnomekeyring.find_network_password_sync (
                             None,       # user
                             o.hostname, # domain
@@ -818,12 +815,9 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
                     username = l['user']
                     password = l['password']
 
-                Gdk.threads_leave()
-
             # If not found, ask the user for it
             if username == None or self._tries > 1:
                 # pop up a username/password dialog
-                Gdk.threads_enter()
                 d = Gtk.Dialog ()
                 d.set_title ('Authentication Required')
 
@@ -887,7 +881,6 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
                                 pass
                             except gnomekeyring.IOError:
                                 pass
-                Gdk.threads_leave()
 
             return (username, password)
 
@@ -2668,8 +2661,6 @@ class SubmitWindow(object):
             txt = e.read()
             if e.code == 400 and txt.startswith('Failed\n'):
                 # the server didn't like our submission
-                Gdk.threads_enter()
-
                 self.hide_progress_window()
                 self.annotate_failure (txt)
 
@@ -2687,7 +2678,6 @@ class SubmitWindow(object):
                     dialog.connect('response', lambda d, i: dialog.destroy())
                     self.window.show ()
                     dialog.show()
-                Gdk.threads_leave()
             else:
                 self.error_dialog(e, automatic = automatic)
 
@@ -2696,7 +2686,6 @@ class SubmitWindow(object):
         except SSL.SSLError, e:
             self.error_dialog(e, automatic = automatic)
         else:
-            Gdk.threads_enter()
             self.submitting = False
             self.hide ()
 
@@ -2712,11 +2701,8 @@ class SubmitWindow(object):
                 dialog.show()
                 self.hide_progress_window()
 
-            Gdk.threads_leave()
-
     def error_dialog(self, e, title = 'Error Communicating With The Server', automatic = False):
         print (e)
-        Gdk.threads_enter()
         if automatic:
             self.push_error_infobar(title, e)
         else:
@@ -2731,7 +2717,6 @@ class SubmitWindow(object):
             dialog.destroy ()
         self.submitting = False
         self.hide ()
-        Gdk.threads_leave()
 
     def on_toggled (self, toggle, path, value=None):
         """When one of the dates is toggled"""
@@ -2885,9 +2870,7 @@ def main():
     tray_icon = TrayIcon(main_window)
 
     try:
-        Gdk.threads_enter()
         Gtk.main()
-        Gdk.threads_leave()
 
         main_window.save_ui_state(os.path.join(configdir, 'uistaterc'))
     except KeyboardInterrupt:

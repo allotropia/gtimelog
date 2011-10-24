@@ -1913,7 +1913,7 @@ class MainWindow(object):
         self.infobars.pack_start(self.reminder_infobar, True, True, 0)
         self.reminder_infobar.show_all()
 
-    def completion_match_func(self, completion, key, iter):
+    def completion_match_func(self, completion, key, iter, user_data):
         # Text is autocompleted while typing and the automatically
         # completed text is selected. We don't want the autocompleted
         # text to interfere with the search.
@@ -1951,7 +1951,7 @@ class MainWindow(object):
         # completion.set_inline_completion (True)
         completion.set_match_func (self.completion_match_func, None)
 
-        def text_func(completion, cell, model, iter):
+        def text_func(completion, cell, model, iter, user_data):
             entry = model.get_value(iter, 0)
             text = self.task_entry.get_text()
             selection = self.task_entry.get_selection_bounds()

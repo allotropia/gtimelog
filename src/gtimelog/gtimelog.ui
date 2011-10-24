@@ -927,7 +927,6 @@ GTimeLog is a time tracking application.
     <property name="skip_taskbar_hint">True</property>
     <property name="deletable">False</property>
     <property name="transient_for">main_window</property>
-    <property name="has_separator">False</property>
     <child internal-child="vbox">
       <object class="GtkVBox" id="dialog-vbox3">
         <property name="visible">True</property>
@@ -983,7 +982,6 @@ GTimeLog is a time tracking application.
                 <child>
                   <object class="GtkProgressBar" id="progressbar">
                     <property name="visible">True</property>
-                    <property name="activity_mode">True</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>

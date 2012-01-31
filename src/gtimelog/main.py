@@ -1205,9 +1205,8 @@ class MainWindow(object):
 
     def on_yesterdays_report_activate(self, widget):
         """File -> Daily Report for Yesterday"""
-        max = self.timelog.window.min_timestamp
-        min = max - datetime.timedelta(1)
-        window = self.timelog.window_for(min, max)
+        day = self.timelog.day - datetime.timedelta(1)
+        window = self.timelog.window_for_day(day)
         self.mail(window.daily_report)
 
     def on_previous_day_report_activate(self, widget):
@@ -1280,12 +1279,7 @@ class MainWindow(object):
     def weekly_window(self, day=None):
         if not day:
             day = self.timelog.day
-        monday = day - datetime.timedelta(day.weekday())
-        min = datetime.datetime.combine(monday,
-                                        self.timelog.virtual_midnight)
-        max = min + datetime.timedelta(7)
-        window = self.timelog.window_for(min, max)
-        return window
+        return self.timelog.window_for_week(day)
 
     def on_weekly_report_activate(self, widget):
         """File -> Weekly Report"""
@@ -1308,14 +1302,7 @@ class MainWindow(object):
     def monthly_window(self, day=None):
         if not day:
             day = self.timelog.day
-        first_of_this_month = first_of_month(day)
-        first_of_next_month = next_month(day)
-        min = datetime.datetime.combine(first_of_this_month,
-                                        self.timelog.virtual_midnight)
-        max = datetime.datetime.combine(first_of_next_month,
-                                        self.timelog.virtual_midnight)
-        window = self.timelog.window_for(min, max)
-        return window
+        return self.timelog.window_for_month(day)
 
     def weekdays_in_month(self, day=None):
         """Counts the weekdays in the month of 'day'. If 'day' is not

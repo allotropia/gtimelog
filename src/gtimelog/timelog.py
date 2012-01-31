@@ -584,10 +584,13 @@ class TimeLog(object):
         self.autoarrival = autoarrival
         self.reread()
 
+    def virtual_today(self):
+        """Return today's date, adjusted for virtual midnight."""
+        return virtual_day(datetime.datetime.now(TZOffset()), self.virtual_midnight)
+
     def reread(self):
         """Reload today's log."""
-        self.day = virtual_day(datetime.datetime.now(TZOffset()),
-                               self.virtual_midnight)
+        self.day = self.virtual_today()
         min = datetime.datetime.combine(self.day, self.virtual_midnight)
         max = min + datetime.timedelta(1)
         self.history = []
@@ -600,6 +603,29 @@ class TimeLog(object):
         """Return a TimeWindow for a specified time interval."""
         return TimeWindow(self.filename, min, max, self.virtual_midnight)
 
+    def window_for_day(self, date):
+        """Return a TimeWindow for the specified day."""
+        min = datetime.datetime.combine(date, self.virtual_midnight)
+        max = min + datetime.timedelta(1)
+        return self.window_for(min, max)
+
+    def window_for_week(self, date):
+        """Return a TimeWindow for the week that contains date."""
+        monday = date - datetime.timedelta(date.weekday())
+        min = datetime.datetime.combine(monday, self.virtual_midnight)
+        max = min + datetime.timedelta(7)
+        return self.window_for(min, max)
+
+    def window_for_month(self, date):
+        """Return a TimeWindow for the month that contains date."""
+        first_of_this_month = first_of_month(date)
+        first_of_next_month = next_month(date)
+        min = datetime.datetime.combine(first_of_this_month,
+                                        self.virtual_midnight)
+        max = datetime.datetime.combine(first_of_next_month,
+                                        self.virtual_midnight)
+        return self.window_for(min, max)
+
     def whole_history(self):
         """Return a TimeWindow for the whole history."""
         # XXX I don't like this solution.  Better make the min/max filtering
@@ -607,7 +633,8 @@ class TimeLog(object):
         return self.window_for(self.window.earliest_timestamp,
                                datetime.datetime.now(TZOffset()))
 
-    def _raw_append(self, line):
+    def raw_append(self, line):
+        """Append a line to the time log file."""
         f = codecs.open(self.filename, "a", encoding='UTF-8')
         if self.need_space:
             self.need_space = False
@@ -619,7 +646,7 @@ class TimeLog(object):
         """Append a line to the time log file."""
         self.window.items.append((now, entry))
         line = '%s: %s' % (now.strftime("%Y-%m-%d %H:%M %z"), entry)
-        self._raw_append(line)
+        self.raw_append(line)
 
     def append(self, entry, now=None):
         """Append a new entry to the time log."""

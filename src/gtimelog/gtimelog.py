@@ -813,7 +813,8 @@ class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
                             None,       # authtype
                             port)       # port
                 except gnomekeyring.NoMatchError:
-                    gnomekeyring = None
+                    # We didn't find any passwords, just continue
+                    pass
                 except gnomekeyring.NoKeyringDaemonError:
                     gnomekeyring = None
                 except IOError:

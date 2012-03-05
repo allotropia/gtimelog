@@ -19,7 +19,6 @@ import time
 import tempfile
 import ConfigParser
 import cPickle as pickle
-import threading, thread
 from cgi import escape
 
 import gi
@@ -33,8 +32,7 @@ try:
 except:
     print "dbus or pynotify not found, idle timeouts are not supported"
 
-from M2Crypto import SSL
-from M2Crypto import m2urllib2
+from gi.repository import Soup
 
 # This is to let people run GTimeLog without having to install it
 resource_dir = os.path.dirname(os.path.realpath(__file__))
@@ -761,128 +759,128 @@ class TaskList(object):
         """Reload the task list."""
         self.load()
 
-class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
-    def __init__(self, *args, **kwargs):
-        urllib2.HTTPPasswordMgr.__init__(self, *args, **kwargs)
+# Global HTTP stuff
+def http_auth_cb(session, message, auth, retrying, *args):
+    session.pause_message(message)
 
-        self._tries = 0
+    uri = message.get_uri()
+    authuri = uri.to_string(False)
 
-	# FIXME : work out how to find the parent window
-    def find_user_password (self, realm, authuri):
-            self._tries += 1
+    username = None
+    password = None
 
-            username = None
-            password = None
-            save_to_keyring = False
+    # try to use GNOME Keyring if available
+    try:
+        import gnomekeyring
+    except ImportError:
+        gnomekeyring = None
 
-            # try to use GNOME Keyring if available
-            try:
-                import gnomekeyring
-            except ImportError:
-                gnomekeyring = None
+    # FIXME - would be nice to make all keyring calls async, to dodge
+    # the possibility of blocking the UI
+    if gnomekeyring:
+        # attempt to load a username and password
+        # from the keyring
 
-            if gnomekeyring:
-                # attempt to load a username and password
-                # from the keyring
+        # take apart the URL
+        o = urlparse.urlparse (authuri)
+        if o.port:
+            port = int (o.port)
+        else:
+            port = 0
+        object = '%s?%s' % (o.path, o.query)
 
-                # take apart the URL
-                o = urlparse.urlparse (authuri)
-                if o.port:
-                    port = int (o.port)
-                else:
-                    port = 0
-                object = '%s?%s' % (o.path, o.query)
+        try:
+            l = gnomekeyring.find_network_password_sync (
+                    None,       # user
+                    o.hostname, # domain
+                    o.hostname, # server
+                    object,     # object
+                    o.scheme,   # protocol
+                    None,       # authtype
+                    port)       # port
+        except gnomekeyring.NoMatchError:
+            pass
+        except gnomekeyring.NoKeyringDaemonError:
+            pass
+        else:
+            l = l[-1] # take the last key (Why?)
+            username = l['user']
+            password = l['password']
 
+    # If not found, ask the user for it
+    if username == None or retrying:
+        # pop up a username/password dialog
+        d = gtk.Dialog ()
+        d.set_has_separator (False)
+        d.set_title ('Authentication Required')
+
+        t = gtk.Table (4, 2)
+        t.set_border_width (5)
+        t.set_row_spacings (5)
+
+        l = gtk.Label ('Authentication is required for the domain "%s".' % auth.get_realm())
+        l.set_line_wrap (True)
+        t.attach (l, 0, 2, 0, 1)
+
+        t.attach (gtk.Label ("Username:"), 0, 1, 1, 2)
+        t.attach (gtk.Label ("Password:"), 0, 1, 2, 3)
+
+        userentry = gtk.Entry ()
+        passentry = gtk.Entry ()
+        passentry.set_visibility (False)
+
+        userentry.connect ('activate', lambda entry:
+                passentry.grab_focus ())
+        passentry.connect ('activate', lambda entry:
+                d.response (gtk.RESPONSE_OK))
+
+        t.attach (userentry, 1, 2, 1, 2)
+        t.attach (passentry, 1, 2, 2, 3)
+
+        if gnomekeyring:
+            savepasstoggle = gtk.CheckButton ("Save Password in Keyring")
+            savepasstoggle.set_active (True)
+            t.attach (savepasstoggle, 1, 2, 3, 4)
+
+        d.vbox.pack_start (t)
+
+        d.add_buttons (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                       gtk.STOCK_OK, gtk.RESPONSE_OK)
+
+        d.show_all ()
+        r = d.run ()
+
+        username = userentry.get_text ()
+        password = passentry.get_text ()
+        if gnomekeyring:
+            save_to_keyring = savepasstoggle.get_active()
+
+        d.destroy ()
+
+        if r == gtk.RESPONSE_OK:
+            if gnomekeyring and save_to_keyring:
                 try:
-                    l = gnomekeyring.find_network_password_sync (
-                            None,       # user
-                            o.hostname, # domain
-                            o.hostname, # server
-                            object,     # object
-                            o.scheme,   # protocol
-                            None,       # authtype
-                            port)       # port
-                except gnomekeyring.NoMatchError:
-                    gnomekeyring = None
+                    gnomekeyring.set_network_password_sync (
+                            None,		# keyring
+                            username,	# user
+                            o.hostname,	# domain
+                            o.hostname,	# server
+                            object,		# object
+                            o.scheme,	# protocol
+                            None,		# authtype
+                            port,		# port
+                            password)	# password
                 except gnomekeyring.NoKeyringDaemonError:
-                    gnomekeyring = None
-                except IOError:
-                    gnomekeyring = None
-                except gnomekeyring.IOError: # thanks, gnomekeyring python binding maker
-                    gnomekeyring = None
-                else:
-                    l = l[-1] # take the last key (Why?)
-                    username = l['user']
-                    password = l['password']
+                    pass
 
-            # If not found, ask the user for it
-            if username == None or self._tries > 1:
-                # pop up a username/password dialog
-                d = Gtk.Dialog ()
-                d.set_title ('Authentication Required')
+    if username and password:
+        auth.authenticate(username, password)
 
-                t = Gtk.Table (4, 2)
-                t.set_border_width (5)
-                t.set_row_spacings (5)
+    session.unpause_message(message)
+    return
 
-                l = Gtk.Label(label='Authentication is required for the domain "%s".' % realm)
-                l.set_line_wrap (True)
-                t.attach (l, 0, 2, 0, 1)
-
-                t.attach (Gtk.Label(label="Username:"), 0, 1, 1, 2)
-                t.attach (Gtk.Label(label="Password:"), 0, 1, 2, 3)
-
-                userentry = Gtk.Entry ()
-                passentry = Gtk.Entry ()
-                passentry.set_visibility (False)
-
-                userentry.connect ('activate', lambda entry:
-                        passentry.grab_focus ())
-                passentry.connect ('activate', lambda entry:
-                        d.response (Gtk.ResponseType.OK))
-
-                t.attach (userentry, 1, 2, 1, 2)
-                t.attach (passentry, 1, 2, 2, 3)
-
-                if gnomekeyring:
-                    savepasstoggle = Gtk.CheckButton ("Save Password in Keyring")
-                    savepasstoggle.set_active (True)
-                    t.attach (savepasstoggle, 1, 2, 3, 4)
-
-                d.vbox.pack_start (t)
-
-                d.add_buttons (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-                               Gtk.STOCK_OK, Gtk.ResponseType.OK)
-
-                d.show_all ()
-                r = d.run ()
-
-                username = userentry.get_text ()
-                password = passentry.get_text ()
-                if gnomekeyring:
-                    save_to_keyring = savepasstoggle.get_active()
-
-                d.destroy ()
-
-                if r == Gtk.ResponseType.OK:
-                        if gnomekeyring and save_to_keyring:
-                            try:
-                                gnomekeyring.set_network_password_sync (
-                                        None,		# keyring
-                                        username,	# user
-                                        o.hostname,	# domain
-                                        o.hostname,	# server
-                                        object,		# object
-                                        o.scheme,	# protocol
-                                        None,		# authtype
-                                        port,		# port
-                                        password)	# password
-                            except gnomekeyring.NoKeyringDaemonError:
-                                pass
-                            except gnomekeyring.IOError:
-                                pass
-
-            return (username, password)
+soup_session = Soup.SessionAsync();
+soup_session.connect('authenticate', http_auth_cb)
 
 class RemoteTaskList(TaskList):
     """Task list stored on a remote server.
@@ -919,6 +917,19 @@ class RemoteTaskList(TaskList):
             return True
         return TaskList.check_reload(self)
 
+    def download_finished_cb(self, session, message, *args):
+        if message.status_code == 200:
+            try:
+                out = open (self.filename, 'w')
+                out.write (message.response_body.data)
+            except IOError, e:
+                print e
+                if self.error_callback:
+                    self.error_callback ()
+            finally:
+                out.close ()
+                self.load_file()
+
     def download(self):
         """Download the task list from the server."""
         if self.loading_callback:
@@ -928,53 +939,11 @@ class RemoteTaskList(TaskList):
             self.error_callback("Certificate file not found")
             return
 
-        threading.Thread(target=self.download_thread).start()
-
-    def download_thread (self):
-        ctx = SSL.Context()
-        ctx.set_verify(SSL.verify_peer | SSL.verify_fail_if_no_peer_cert, 9)
-
-        ctx.load_verify_locations(self.settings.server_cert)
-
-        passmgr = GtkPasswordRequest ()
-        auth_handler = urllib2.HTTPBasicAuthHandler (passmgr)
-
-        opener = m2urllib2.build_opener(ctx, auth_handler)
-        m2urllib2.install_opener(opener)
-
-        try:
-            fp = urllib2.urlopen (self.url)
-        except urllib2.URLError, e:
-            print e
-            if self.error_callback:
-                GObject.idle_add(self.error_callback)
-        except SSL.SSLError, e:
-            print e
-            if self.error_callback:
-                GObject.idle_add(self.error_callback, str(e))
-        else:
-            # check if we were redirected, if so, drop the information
-            if fp.geturl() != self.url and self.error_callback:
-                GObject.idle_add(self.error_callback)
-                return
-
-            # FIXME - is there a better way to do this?
-            try:
-                out = open (self.filename, 'w')
-                out.write (fp.read ())
-            except IOError, e:
-                print e
-                if self.error_callback:
-                    self.error_callback ()
-            finally:
-                out.close ()
-
-            fp.close ()
-            GObject.idle_add(self.load_file)
-            thread.exit()
+        message = Soup.Message.new('GET', self.url)
+        soup_session.queue_message(message, self.download_finished_cb, None)
 
     def load_file (self):
-        """Callback used by the thread to load the file in the UI"""
+        """Load the file in the UI"""
         self.load()
         if self.loaded_callback:
             self.loaded_callback()
@@ -1364,7 +1333,7 @@ class MainWindow(object):
         self.reminders = []
 
         self.set_up_completion()
-        # This causes the log to be populated
+        # This also triggers populating the main view
         self.set_up_task_list()
         self.set_up_history()
 
@@ -1765,6 +1734,8 @@ class MainWindow(object):
         self.update_toggle_state()
         self._block_row_toggles -= 1
 
+        # Tasks may have changed, so we may need to reconsider some of
+        # the entries as being valid, so populate the log
         self.populate_log()
 
     def update_toggle_state(self):
@@ -2590,7 +2561,7 @@ class SubmitWindow(object):
                     if item[COL_SUBMIT]:
                         data[row[COL_DATE_OR_DURATION]] += "%s %s\n" % (format_duration_short(parse_timedelta(item[COL_DATE_OR_DURATION])), item[COL_DESCRIPTION])
 
-        threading.Thread(target=self.upload_thread, kwargs={'data': data, 'automatic': automatic}).start()
+        self.upload(data, automatic)
 
     def on_submit_report (self, button):
         self.hide ()
@@ -2623,27 +2594,10 @@ class SubmitWindow(object):
             main_window.push_reminder('<b><big>%s</big></b>\n\n%s' % (primary, secondary), None,
                                       'View problems', main_window.show_submit_window)
 
-    def upload_thread(self, data, automatic):
-        if not os.path.exists(self.settings.server_cert):
-            self.error_dialog("Provided certificate %s not found" % self.settings.server_cert)
-            return
+    def upload_finished(self, session, message, automatic):
+        txt = message.response_body.data
 
-        ctx = SSL.Context()
-        ctx.set_verify(SSL.verify_peer | SSL.verify_fail_if_no_peer_cert, 9)
-        ctx.load_verify_locations(self.settings.server_cert)
-
-        passmgr = GtkPasswordRequest ()
-        auth_handler = urllib2.HTTPBasicAuthHandler (passmgr)
-
-        opener = m2urllib2.build_opener(ctx, auth_handler)
-        m2urllib2.install_opener(opener)
-
-        try:
-            response = m2urllib2.urlopen(self.report_url, urllib.urlencode(data))
-
-        except m2urllib2.HTTPError, e:
-            txt = e.read()
-            if e.code == 400 and txt.startswith('Failed\n'):
+        if message.status_code == 400 or txt.startswith('Failed'):
                 # the server didn't like our submission
                 self.hide_progress_window()
                 self.annotate_failure (txt)
@@ -2662,14 +2616,7 @@ class SubmitWindow(object):
                     dialog.connect('response', lambda d, i: dialog.destroy())
                     self.window.show ()
                     dialog.show()
-            else:
-                self.error_dialog(e, automatic = automatic)
-
-        except m2urllib2.URLError, e:
-            self.error_dialog(e, automatic = automatic)
-        except SSL.SSLError, e:
-            self.error_dialog(e, automatic = automatic)
-        else:
+        elif message.status_code == 200:
             self.submitting = False
             self.hide ()
 
@@ -2684,6 +2631,18 @@ class SubmitWindow(object):
                 dialog.connect('response', lambda d, i: dialog.destroy())
                 dialog.show()
                 self.hide_progress_window()
+        else:
+            self.error_dialog(txt, automatic = automatic)
+
+    def upload(self, data, automatic):
+        if not os.path.exists(self.settings.server_cert):
+            self.error_dialog("Provided certificate %s not found" % self.settings.server_cert)
+            return
+
+        message = Soup.Message.new('POST', self.report_url)
+        message.request_body.append(urllib.urlencode(data))
+        message.request_body.complete()
+        soup_session.queue_message(message, self.upload_finished, automatic)
 
     def error_dialog(self, e, title = 'Error Communicating With The Server', automatic = False):
         print (e)
@@ -2843,6 +2802,8 @@ def main():
         settings.save(settings_file)
     else:
         settings.load(settings_file)
+        if settings.server_cert and os.path.exists(settings.server_cert):
+            soup_session.set_property('ssl-ca-file', settings.server_cert)
     timelog = TimeLog(os.path.join(configdir, 'timelog.txt'),
                       settings.virtual_midnight)
     if settings.task_list_url:

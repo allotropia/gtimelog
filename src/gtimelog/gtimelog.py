@@ -9,10 +9,8 @@ import re
 import os
 import csv
 import sys
-import sets
 import copy
 import urllib
-import urllib2
 import urlparse
 import datetime
 import time

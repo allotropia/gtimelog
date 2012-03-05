@@ -2661,9 +2661,11 @@ class SubmitWindow(object):
         self.submitting = False
         self.hide ()
 
-    def on_toggled (self, toggle, path, value=None):
+    def on_toggled (self, toggle, path):
         """When one of the dates is toggled"""
-        self.list_store[path] = self.date_row(self.list_store[path][COL_DATE_OR_DURATION],value == None and (not self.list_store[path][COL_ACTIVE]) or value )
+        value = not self.list_store[path][COL_ACTIVE]
+        self.list_store[path] = \
+            self.date_row(self.list_store[path][COL_DATE_OR_DURATION], value)
 
     def on_toggle_selection (self, toggle):
         """The toggle selection check box to do groups"""

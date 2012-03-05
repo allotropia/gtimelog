@@ -1262,7 +1262,7 @@ class MainWindow(object):
                 child = model.iter_children(iter)
 
                 while child is not None:
-                    if _task_filter_filter(model, child): return True
+                    if _task_filter_filter(model, child, None): return True
                     child = model.iter_next(child)
 
                 return False

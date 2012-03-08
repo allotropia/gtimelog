@@ -2414,14 +2414,16 @@ class MainWindow(object):
         """
         try:
             if self.time_before_idle - self.timelog.window.last_time() > self.settings.remind_idle:
-                self.n = Notify.Notification ("Welcome back",
-                    "Would you like to insert a log entry near the time you left your computer?")
-                self.n.add_action("clicked","Yes please", self.insert_old_log_entries, "")
+                self.n = Notify.Notification(
+                    summary="Welcome back",
+                    body="Would you like to insert a log entry near the time you left your computer?")
+                self.n.add_action("clicked","Yes please", self.insert_old_log_entries, "",
+                    # No user_data
+                    None)
                     #The please is just to make the tiny little button bigger
                 self.n.show ()
-
         except Exception, e:
-            print "pynotification failed"
+            print "pynotification failed: %s" % e
 
     def insert_old_log_entries (self, note=None, act=None, data=None):
         """

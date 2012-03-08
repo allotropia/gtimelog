@@ -2786,6 +2786,42 @@ class SubmitWindow(object):
     def hide (self):
         self.window.hide ()
 
+class Application(Gtk.Application):
+    def __init__(self, *args, **kwargs):
+        kwargs['application_id'] = 'uk.co.collabora.gtimelog'
+        Gtk.Application.__init__(self, *args, **kwargs)
+        self.main_window = None
+
+        self.connect('activate', Application._activate)
+
+    def _activate(self):
+        if self.main_window is not None:
+            self.main_window.main_window.present()
+            return
+
+        try:
+            os.makedirs(configdir) # create it if it doesn't exist
+        except OSError:
+            pass
+        settings = Settings()
+        settings_file = os.path.join(configdir, 'gtimelogrc')
+        if not os.path.exists(settings_file):
+            settings.save(settings_file)
+        else:
+            settings.load(settings_file)
+            if settings.server_cert and os.path.exists(settings.server_cert):
+                soup_session.set_property('ssl-ca-file', settings.server_cert)
+        timelog = TimeLog(os.path.join(configdir, 'timelog.txt'),
+                          settings.virtual_midnight)
+        if settings.task_list_url:
+            tasks = RemoteTaskList(settings,
+                                   os.path.join(configdir, 'remote-tasks.txt'))
+        else:
+            tasks = TaskList(os.path.join(configdir, 'tasks.txt'))
+        self.main_window = MainWindow(timelog, settings, tasks)
+        self.add_window(self.main_window.main_window)
+        tray_icon = TrayIcon(self.main_window)
+
 def main():
     """Run the program."""
     if len(sys.argv) > 1 and sys.argv[1] == '--sample-config':
@@ -2794,34 +2830,10 @@ def main():
         print "Sample configuration file written to gtimelogrc.sample"
         return
 
-    try:
-        os.makedirs(configdir) # create it if it doesn't exist
-    except OSError:
-        pass
-    settings = Settings()
-    settings_file = os.path.join(configdir, 'gtimelogrc')
-    if not os.path.exists(settings_file):
-        settings.save(settings_file)
-    else:
-        settings.load(settings_file)
-        if settings.server_cert and os.path.exists(settings.server_cert):
-            soup_session.set_property('ssl-ca-file', settings.server_cert)
-    timelog = TimeLog(os.path.join(configdir, 'timelog.txt'),
-                      settings.virtual_midnight)
-    if settings.task_list_url:
-        tasks = RemoteTaskList(settings,
-                               os.path.join(configdir, 'remote-tasks.txt'))
-    else:
-        tasks = TaskList(os.path.join(configdir, 'tasks.txt'))
-    main_window = MainWindow(timelog, settings, tasks)
-    tray_icon = TrayIcon(main_window)
-
-    try:
-        Gtk.main()
-
-        main_window.save_ui_state(os.path.join(configdir, 'uistaterc'))
-    except KeyboardInterrupt:
-        Gtk.main_quit()
+    app = Application()
+    app.run(sys.argv)
+    if app.main_window is not None:
+        app.main_window.save_ui_state(os.path.join(configdir, 'uistaterc'))
 
 if __name__ == '__main__':
     main()

@@ -1798,7 +1798,7 @@ class MainWindow(object):
         self.reminders.remove(reminder)
         self.update_reminder()
 
-    # fake responses so this works even with our "custom-made" infobar
+    # fake responses so this works even with our "artisanal" infobar
     def fake_ok_response(self, button, reminder):
         self.reminder_response_cb(None, Gtk.ResponseType.OK, reminder)
 

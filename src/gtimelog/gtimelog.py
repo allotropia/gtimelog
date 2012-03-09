@@ -1349,6 +1349,9 @@ class MainWindow(object):
             self.screensaving = False
             self.screensaver = None
 
+    def quit(self):
+        self.main_window.destroy()
+
     def restore_ui_state(self, filename):
         try:
             config = ConfigParser.RawConfigParser()
@@ -1958,7 +1961,7 @@ class MainWindow(object):
             self.main_window.hide()
             return True
         else:
-            Gtk.main_quit()
+            self.quit()
             return False
 
     def close_about_dialog(self, widget):
@@ -1975,7 +1978,7 @@ class MainWindow(object):
 
     def on_quit_activate(self, widget):
         """File -> Quit selected"""
-        Gtk.main_quit()
+        self.quit()
 
     def on_about_activate(self, widget):
         """Help -> About selected"""

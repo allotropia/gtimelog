@@ -857,14 +857,13 @@ class Authenticator(object):
                        Gtk.STOCK_OK, Gtk.ResponseType.OK)
 
         def on_response(dialog, r):
-            if self.gnomekeyring:
-                save_to_keyring = savepasstoggle.get_active()
+            save_to_keyring = self.gnomekeyring and savepasstoggle.get_active()
 
             if r == Gtk.ResponseType.OK:
                 username = userentry.get_text ()
                 password = passentry.get_text ()
 
-                if self.gnomekeyring and save_to_keyring:
+                if username and password and save_to_keyring:
                     self.save_to_keyring(uri, username, password)
 
             else:

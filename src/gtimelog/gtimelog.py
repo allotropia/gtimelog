@@ -765,42 +765,61 @@ class Authenticator(object):
     except ImportError:
         gnomekeyring = None
 
+    def find_in_keyring(self, uri):
+        """Attempts to load a username and password from the keyring, if the
+        keyring is available"""
+        if self.gnomekeyring is None:
+            return (None, None)
+
+        username = None
+        password = None
+
+        try:
+            l = self.gnomekeyring.find_network_password_sync (
+                    None,       # user
+                    uri.get_host(), # domain
+                    uri.get_host(), # server
+        # Soup.URI.to_string()'s argument is just_path_and_query: if True, only
+        # "/foo/bar?baz" is returned rather than the full URI including
+        # protocol and host and port
+                    uri.to_string(True), # object
+                    uri.get_scheme(),   # protocol
+                    None,       # authtype
+                    uri.get_port())       # port
+        except self.gnomekeyring.NoMatchError:
+            pass
+        except self.gnomekeyring.NoKeyringDaemonError:
+            pass
+        else:
+            l = l[-1] # take the last key (Why?)
+            username = l['user']
+            password = l['password']
+
+        return (username, password)
+
+    def save_to_keyring(self, uri, username, password):
+        try:
+            self.gnomekeyring.set_network_password_sync (
+                    None,		# keyring
+                    username,	# user
+                    uri.get_host(),	# domain
+                    uri.get_host(),	# server
+                    uri.to_string(True),# object
+                    uri.get_scheme(),	# protocol
+                    None,		# authtype
+                    uri.get_port(),		# port
+                    password)	# password
+        except self.gnomekeyring.NoKeyringDaemonError:
+            pass
+
     def http_auth_cb(self, session, message, auth, retrying, *args):
         session.pause_message(message)
 
         uri = message.get_uri()
 
-        username = None
-        password = None
-
         # FIXME - would be nice to make all keyring calls async, to dodge
         # the possibility of blocking the UI
-        if self.gnomekeyring:
-            # attempt to load a username and password
-            # from the keyring
-            port = uri.get_port()
-            # Soup.URI.to_string()'s argument is just_path_and_query: if True, only
-            # "/foo/bar?baz" is returned rather than the full URI including
-            # protocol and host and port
-            object = uri.to_string(True)
-
-            try:
-                l = self.gnomekeyring.find_network_password_sync (
-                        None,       # user
-                        uri.get_host(), # domain
-                        uri.get_host(), # server
-                        object,     # object
-                        uri.get_scheme(),   # protocol
-                        None,       # authtype
-                        uri.get_port())       # port
-            except self.gnomekeyring.NoMatchError:
-                pass
-            except self.gnomekeyring.NoKeyringDaemonError:
-                pass
-            else:
-                l = l[-1] # take the last key (Why?)
-                username = l['user']
-                password = l['password']
+        (username, password) = self.find_in_keyring(uri)
 
         # If not found, ask the user for it
         if username == None or retrying:
@@ -853,19 +872,7 @@ class Authenticator(object):
 
             if r == Gtk.ResponseType.OK:
                 if self.gnomekeyring and save_to_keyring:
-                    try:
-                        self.gnomekeyring.set_network_password_sync (
-                                None,		# keyring
-                                username,	# user
-                                uri.get_host(),	# domain
-                                uri.get_host(),	# server
-                                object,		# object
-                                uri.get_scheme(),	# protocol
-                                None,		# authtype
-                                uri.get_port(),		# port
-                                password)	# password
-                    except self.gnomekeyring.NoKeyringDaemonError:
-                        pass
+                    self.save_to_keyring(uri, username, password)
 
         if username and password:
             auth.authenticate(username, password)

@@ -17,6 +17,7 @@ import tempfile
 import ConfigParser
 import cPickle as pickle
 from cgi import escape
+import functools
 
 import gi
 gi.require_version('Gtk', '3.0')
@@ -765,16 +766,21 @@ class Authenticator(object):
     except ImportError:
         gnomekeyring = None
 
-    def find_in_keyring(self, uri):
+    def find_in_keyring(self, uri, callback):
         """Attempts to load a username and password from the keyring, if the
         keyring is available"""
         if self.gnomekeyring is None:
-            return (None, None)
+            callback(None, None)
+            return
 
         username = None
         password = None
 
         try:
+            # FIXME - would be nice to make all keyring calls async, to dodge
+            # the possibility of blocking the UI. The code is all set up for
+            # that, but there's no easy way to use the keyring asynchronously
+            # from Python (as of Gnome 3.2)...
             l = self.gnomekeyring.find_network_password_sync (
                     None,       # user
                     uri.get_host(), # domain
@@ -795,7 +801,7 @@ class Authenticator(object):
             username = l['user']
             password = l['password']
 
-        return (username, password)
+        callback(username, password)
 
     def save_to_keyring(self, uri, username, password):
         try:
@@ -867,22 +873,24 @@ class Authenticator(object):
         d.connect('response', on_response)
         d.show_all ()
 
+    def find_password(self, auth, uri, callback):
+        def keyring_callback(username, password):
+            # If not found, ask the user for it
+            if username is None or retrying:
+                self.ask_the_user(auth, uri, callback)
+            else:
+                callback(username, password)
+
+        self.find_in_keyring(uri, keyring_callback)
+
     def http_auth_cb(self, session, message, auth, retrying, *args):
         session.pause_message(message)
 
         uri = message.get_uri()
 
-        # FIXME - would be nice to make all keyring calls async, to dodge
-        # the possibility of blocking the UI
-        (username, password) = self.find_in_keyring(uri)
-
-        # If not found, ask the user for it
-        if username is None or retrying:
-            self.ask_the_user(auth, uri,
-                lambda username, password: self.http_auth_finish(session,
-                    message, auth, username, password))
-        else:
-            self.http_auth_finish(session, message, auth, username, password)
+        self.find_password(auth, uri,
+            callback=functools.partial(
+                self.http_auth_finish, session, message, auth))
 
     def http_auth_finish(self, session, message, auth, username, password):
         if username and password:

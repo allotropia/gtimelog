@@ -757,122 +757,125 @@ class TaskList(object):
         self.load()
 
 # Global HTTP stuff
-def http_auth_cb(session, message, auth, retrying, *args):
-    session.pause_message(message)
 
-    uri = message.get_uri()
-
-    username = None
-    password = None
-
+class Authenticator(object):
     # try to use GNOME Keyring if available
     try:
         import gnomekeyring
     except ImportError:
         gnomekeyring = None
 
-    # FIXME - would be nice to make all keyring calls async, to dodge
-    # the possibility of blocking the UI
-    if gnomekeyring:
-        # attempt to load a username and password
-        # from the keyring
-        port = uri.get_port()
-        # Soup.URI.to_string()'s argument is just_path_and_query: if True, only
-        # "/foo/bar?baz" is returned rather than the full URI including
-        # protocol and host and port
-        object = uri.to_string(True)
+    def http_auth_cb(self, session, message, auth, retrying, *args):
+        session.pause_message(message)
 
-        try:
-            l = gnomekeyring.find_network_password_sync (
-                    None,       # user
-                    uri.get_host(), # domain
-                    uri.get_host(), # server
-                    object,     # object
-                    uri.get_scheme(),   # protocol
-                    None,       # authtype
-                    uri.get_port())       # port
-        except gnomekeyring.NoMatchError:
-            pass
-        except gnomekeyring.NoKeyringDaemonError:
-            pass
-        else:
-            l = l[-1] # take the last key (Why?)
-            username = l['user']
-            password = l['password']
+        uri = message.get_uri()
 
-    # If not found, ask the user for it
-    if username == None or retrying:
-        # pop up a username/password dialog
-        d = Gtk.Dialog ()
-        d.set_title ('Authentication Required')
+        username = None
+        password = None
 
-        t = Gtk.Table (4, 2)
-        t.set_border_width (5)
-        t.set_row_spacings (5)
+        # FIXME - would be nice to make all keyring calls async, to dodge
+        # the possibility of blocking the UI
+        if self.gnomekeyring:
+            # attempt to load a username and password
+            # from the keyring
+            port = uri.get_port()
+            # Soup.URI.to_string()'s argument is just_path_and_query: if True, only
+            # "/foo/bar?baz" is returned rather than the full URI including
+            # protocol and host and port
+            object = uri.to_string(True)
 
-        l = Gtk.Label ('Authentication is required for the domain "%s".' % auth.get_realm())
-        l.set_line_wrap (True)
-        t.attach (l, 0, 2, 0, 1)
+            try:
+                l = self.gnomekeyring.find_network_password_sync (
+                        None,       # user
+                        uri.get_host(), # domain
+                        uri.get_host(), # server
+                        object,     # object
+                        uri.get_scheme(),   # protocol
+                        None,       # authtype
+                        uri.get_port())       # port
+            except self.gnomekeyring.NoMatchError:
+                pass
+            except self.gnomekeyring.NoKeyringDaemonError:
+                pass
+            else:
+                l = l[-1] # take the last key (Why?)
+                username = l['user']
+                password = l['password']
 
-        t.attach (Gtk.Label ("Username:"), 0, 1, 1, 2)
-        t.attach (Gtk.Label ("Password:"), 0, 1, 2, 3)
+        # If not found, ask the user for it
+        if username == None or retrying:
+            # pop up a username/password dialog
+            d = Gtk.Dialog ()
+            d.set_title ('Authentication Required')
 
-        userentry = Gtk.Entry ()
-        passentry = Gtk.Entry ()
-        passentry.set_visibility (False)
+            t = Gtk.Table (4, 2)
+            t.set_border_width (5)
+            t.set_row_spacings (5)
 
-        userentry.connect ('activate', lambda entry:
-                passentry.grab_focus ())
-        passentry.connect ('activate', lambda entry:
-                d.response (Gtk.ResponseType.OK))
+            l = Gtk.Label ('Authentication is required for the domain "%s".' % auth.get_realm())
+            l.set_line_wrap (True)
+            t.attach (l, 0, 2, 0, 1)
 
-        t.attach (userentry, 1, 2, 1, 2)
-        t.attach (passentry, 1, 2, 2, 3)
+            t.attach (Gtk.Label ("Username:"), 0, 1, 1, 2)
+            t.attach (Gtk.Label ("Password:"), 0, 1, 2, 3)
 
-        if gnomekeyring:
-            savepasstoggle = Gtk.CheckButton ("Save Password in Keyring")
-            savepasstoggle.set_active (True)
-            t.attach (savepasstoggle, 1, 2, 3, 4)
+            userentry = Gtk.Entry ()
+            passentry = Gtk.Entry ()
+            passentry.set_visibility (False)
 
-        d.vbox.pack_start (t, True, True, 0)
+            userentry.connect ('activate', lambda entry:
+                    passentry.grab_focus ())
+            passentry.connect ('activate', lambda entry:
+                    d.response (Gtk.ResponseType.OK))
 
-        d.add_buttons (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-                       Gtk.STOCK_OK, Gtk.ResponseType.OK)
+            t.attach (userentry, 1, 2, 1, 2)
+            t.attach (passentry, 1, 2, 2, 3)
 
-        d.show_all ()
-        r = d.run ()
+            if self.gnomekeyring:
+                savepasstoggle = Gtk.CheckButton ("Save Password in Keyring")
+                savepasstoggle.set_active (True)
+                t.attach (savepasstoggle, 1, 2, 3, 4)
 
-        username = userentry.get_text ()
-        password = passentry.get_text ()
-        if gnomekeyring:
-            save_to_keyring = savepasstoggle.get_active()
+            d.vbox.pack_start (t, True, True, 0)
 
-        d.destroy ()
+            d.add_buttons (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                           Gtk.STOCK_OK, Gtk.ResponseType.OK)
 
-        if r == Gtk.ResponseType.OK:
-            if gnomekeyring and save_to_keyring:
-                try:
-                    gnomekeyring.set_network_password_sync (
-                            None,		# keyring
-                            username,	# user
-                            uri.get_host(),	# domain
-                            uri.get_host(),	# server
-                            object,		# object
-                            uri.get_scheme(),	# protocol
-                            None,		# authtype
-                            uri.get_port(),		# port
-                            password)	# password
-                except gnomekeyring.NoKeyringDaemonError:
-                    pass
+            d.show_all ()
+            r = d.run ()
 
-    if username and password:
-        auth.authenticate(username, password)
+            username = userentry.get_text ()
+            password = passentry.get_text ()
+            if self.gnomekeyring:
+                save_to_keyring = savepasstoggle.get_active()
 
-    session.unpause_message(message)
-    return
+            d.destroy ()
 
-soup_session = Soup.SessionAsync();
-soup_session.connect('authenticate', http_auth_cb)
+            if r == Gtk.ResponseType.OK:
+                if self.gnomekeyring and save_to_keyring:
+                    try:
+                        self.gnomekeyring.set_network_password_sync (
+                                None,		# keyring
+                                username,	# user
+                                uri.get_host(),	# domain
+                                uri.get_host(),	# server
+                                object,		# object
+                                uri.get_scheme(),	# protocol
+                                None,		# authtype
+                                uri.get_port(),		# port
+                                password)	# password
+                    except self.gnomekeyring.NoKeyringDaemonError:
+                        pass
+
+        if username and password:
+            auth.authenticate(username, password)
+
+        session.unpause_message(message)
+        return
+
+soup_session = Soup.SessionAsync()
+authenticator = Authenticator()
+soup_session.connect('authenticate', authenticator.http_auth_cb)
 
 class RemoteTaskList(TaskList):
     """Task list stored on a remote server.

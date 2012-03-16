@@ -2598,6 +2598,13 @@ class SubmitWindow(object):
                                       'View problems', main_window.show_submit_window)
 
     def upload_finished(self, session, message, automatic):
+        # This is equivalent to the SOUP_STATUS_IS_TRANSPORT_ERROR() macro,
+        # which is not exposed via GI (being as it is a macro).
+        if message.status_code > Soup.KnownStatusCode.NONE and \
+           message.status_code < Soup.KnownStatusCode.CONTINUE:
+            self.error_dialog(message.reason_phrase, automatic=automatic)
+            return
+
         txt = message.response_body.data
 
         if message.status_code == 400 or txt.startswith('Failed'):

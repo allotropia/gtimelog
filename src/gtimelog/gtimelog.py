@@ -803,42 +803,41 @@ def http_auth_cb(session, message, auth, retrying, *args):
     # If not found, ask the user for it
     if username == None or retrying:
         # pop up a username/password dialog
-        d = gtk.Dialog ()
-        d.set_has_separator (False)
+        d = Gtk.Dialog ()
         d.set_title ('Authentication Required')
 
-        t = gtk.Table (4, 2)
+        t = Gtk.Table (4, 2)
         t.set_border_width (5)
         t.set_row_spacings (5)
 
-        l = gtk.Label ('Authentication is required for the domain "%s".' % auth.get_realm())
+        l = Gtk.Label ('Authentication is required for the domain "%s".' % auth.get_realm())
         l.set_line_wrap (True)
         t.attach (l, 0, 2, 0, 1)
 
-        t.attach (gtk.Label ("Username:"), 0, 1, 1, 2)
-        t.attach (gtk.Label ("Password:"), 0, 1, 2, 3)
+        t.attach (Gtk.Label ("Username:"), 0, 1, 1, 2)
+        t.attach (Gtk.Label ("Password:"), 0, 1, 2, 3)
 
-        userentry = gtk.Entry ()
-        passentry = gtk.Entry ()
+        userentry = Gtk.Entry ()
+        passentry = Gtk.Entry ()
         passentry.set_visibility (False)
 
         userentry.connect ('activate', lambda entry:
                 passentry.grab_focus ())
         passentry.connect ('activate', lambda entry:
-                d.response (gtk.RESPONSE_OK))
+                d.response (Gtk.ResponseType.OK))
 
         t.attach (userentry, 1, 2, 1, 2)
         t.attach (passentry, 1, 2, 2, 3)
 
         if gnomekeyring:
-            savepasstoggle = gtk.CheckButton ("Save Password in Keyring")
+            savepasstoggle = Gtk.CheckButton ("Save Password in Keyring")
             savepasstoggle.set_active (True)
             t.attach (savepasstoggle, 1, 2, 3, 4)
 
-        d.vbox.pack_start (t)
+        d.vbox.pack_start (t, True, True, 0)
 
-        d.add_buttons (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
-                       gtk.STOCK_OK, gtk.RESPONSE_OK)
+        d.add_buttons (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                       Gtk.STOCK_OK, Gtk.ResponseType.OK)
 
         d.show_all ()
         r = d.run ()
@@ -850,7 +849,7 @@ def http_auth_cb(session, message, auth, retrying, *args):
 
         d.destroy ()
 
-        if r == gtk.RESPONSE_OK:
+        if r == Gtk.ResponseType.OK:
             if gnomekeyring and save_to_keyring:
                 try:
                     gnomekeyring.set_network_password_sync (

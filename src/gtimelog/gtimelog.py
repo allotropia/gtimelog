@@ -11,7 +11,6 @@ import csv
 import sys
 import copy
 import urllib
-import urlparse
 import datetime
 import time
 import tempfile
@@ -762,7 +761,6 @@ def http_auth_cb(session, message, auth, retrying, *args):
     session.pause_message(message)
 
     uri = message.get_uri()
-    authuri = uri.to_string(False)
 
     username = None
     password = None
@@ -778,24 +776,21 @@ def http_auth_cb(session, message, auth, retrying, *args):
     if gnomekeyring:
         # attempt to load a username and password
         # from the keyring
-
-        # take apart the URL
-        o = urlparse.urlparse (authuri)
-        if o.port:
-            port = int (o.port)
-        else:
-            port = 0
-        object = '%s?%s' % (o.path, o.query)
+        port = uri.get_port()
+        # Soup.URI.to_string()'s argument is just_path_and_query: if True, only
+        # "/foo/bar?baz" is returned rather than the full URI including
+        # protocol and host and port
+        object = uri.to_string(True)
 
         try:
             l = gnomekeyring.find_network_password_sync (
                     None,       # user
-                    o.hostname, # domain
-                    o.hostname, # server
+                    uri.get_host(), # domain
+                    uri.get_host(), # server
                     object,     # object
-                    o.scheme,   # protocol
+                    uri.get_scheme(),   # protocol
                     None,       # authtype
-                    port)       # port
+                    uri.get_port())       # port
         except gnomekeyring.NoMatchError:
             pass
         except gnomekeyring.NoKeyringDaemonError:
@@ -861,12 +856,12 @@ def http_auth_cb(session, message, auth, retrying, *args):
                     gnomekeyring.set_network_password_sync (
                             None,		# keyring
                             username,	# user
-                            o.hostname,	# domain
-                            o.hostname,	# server
+                            uri.get_host(),	# domain
+                            uri.get_host(),	# server
                             object,		# object
-                            o.scheme,	# protocol
+                            uri.get_scheme(),	# protocol
                             None,		# authtype
-                            port,		# port
+                            uri.get_port(),		# port
                             password)	# password
                 except gnomekeyring.NoKeyringDaemonError:
                     pass

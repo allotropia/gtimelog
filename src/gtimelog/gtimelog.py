@@ -1204,6 +1204,8 @@ class MainWindow(object):
         self.submit_window = SubmitWindow(tree, self.settings, application = self)
         self.main_window = tree.get_object("main_window")
         self.main_window.connect("delete_event", self.delete_event)
+        self.about_dialog.set_transient_for(self.main_window)
+        self.about_dialog.set_modal(True)
         self.log_view = tree.get_object("log_view")
         self.infobars = tree.get_object("infobars")
         self.set_up_log_view_columns()

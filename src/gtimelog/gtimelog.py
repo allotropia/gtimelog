@@ -812,7 +812,7 @@ class Authenticator(object):
         except self.gnomekeyring.NoKeyringDaemonError:
             pass
 
-    def ask_the_user(self, auth, uri):
+    def ask_the_user(self, auth, uri, callback):
         """Pops up a username/password dialog for uri"""
         d = Gtk.Dialog ()
         d.set_title ('Authentication Required')
@@ -850,21 +850,22 @@ class Authenticator(object):
         d.add_buttons (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
                        Gtk.STOCK_OK, Gtk.ResponseType.OK)
 
+        def on_response(dialog, r):
+            username = userentry.get_text ()
+            password = passentry.get_text ()
+            if self.gnomekeyring:
+                save_to_keyring = savepasstoggle.get_active()
+
+            d.destroy ()
+
+            if r == Gtk.ResponseType.OK:
+                if self.gnomekeyring and save_to_keyring:
+                    self.save_to_keyring(uri, username, password)
+
+            callback(username, password)
+
+        d.connect('response', on_response)
         d.show_all ()
-        r = d.run ()
-
-        username = userentry.get_text ()
-        password = passentry.get_text ()
-        if self.gnomekeyring:
-            save_to_keyring = savepasstoggle.get_active()
-
-        d.destroy ()
-
-        if r == Gtk.ResponseType.OK:
-            if self.gnomekeyring and save_to_keyring:
-                self.save_to_keyring(uri, username, password)
-
-        return (username, password)
 
     def http_auth_cb(self, session, message, auth, retrying, *args):
         session.pause_message(message)
@@ -876,14 +877,18 @@ class Authenticator(object):
         (username, password) = self.find_in_keyring(uri)
 
         # If not found, ask the user for it
-        if username == None or retrying:
-            (username, password) = self.ask_the_user(auth, uri)
+        if username is None or retrying:
+            self.ask_the_user(auth, uri,
+                lambda username, password: self.http_auth_finish(session,
+                    message, auth, username, password))
+        else:
+            self.http_auth_finish(session, message, auth, username, password)
 
+    def http_auth_finish(self, session, message, auth, username, password):
         if username and password:
             auth.authenticate(username, password)
 
         session.unpause_message(message)
-        return
 
 soup_session = Soup.SessionAsync()
 authenticator = Authenticator()

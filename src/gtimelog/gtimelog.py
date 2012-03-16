@@ -812,6 +812,60 @@ class Authenticator(object):
         except self.gnomekeyring.NoKeyringDaemonError:
             pass
 
+    def ask_the_user(self, auth, uri):
+        """Pops up a username/password dialog for uri"""
+        d = Gtk.Dialog ()
+        d.set_title ('Authentication Required')
+
+        t = Gtk.Table (4, 2)
+        t.set_border_width (5)
+        t.set_row_spacings (5)
+
+        l = Gtk.Label ('Authentication is required for the domain "%s".' % auth.get_realm())
+        l.set_line_wrap (True)
+        t.attach (l, 0, 2, 0, 1)
+
+        t.attach (Gtk.Label ("Username:"), 0, 1, 1, 2)
+        t.attach (Gtk.Label ("Password:"), 0, 1, 2, 3)
+
+        userentry = Gtk.Entry ()
+        passentry = Gtk.Entry ()
+        passentry.set_visibility (False)
+
+        userentry.connect ('activate', lambda entry:
+                passentry.grab_focus ())
+        passentry.connect ('activate', lambda entry:
+                d.response (Gtk.ResponseType.OK))
+
+        t.attach (userentry, 1, 2, 1, 2)
+        t.attach (passentry, 1, 2, 2, 3)
+
+        if self.gnomekeyring:
+            savepasstoggle = Gtk.CheckButton ("Save Password in Keyring")
+            savepasstoggle.set_active (True)
+            t.attach (savepasstoggle, 1, 2, 3, 4)
+
+        d.vbox.pack_start (t, True, True, 0)
+
+        d.add_buttons (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                       Gtk.STOCK_OK, Gtk.ResponseType.OK)
+
+        d.show_all ()
+        r = d.run ()
+
+        username = userentry.get_text ()
+        password = passentry.get_text ()
+        if self.gnomekeyring:
+            save_to_keyring = savepasstoggle.get_active()
+
+        d.destroy ()
+
+        if r == Gtk.ResponseType.OK:
+            if self.gnomekeyring and save_to_keyring:
+                self.save_to_keyring(uri, username, password)
+
+        return (username, password)
+
     def http_auth_cb(self, session, message, auth, retrying, *args):
         session.pause_message(message)
 
@@ -823,56 +877,7 @@ class Authenticator(object):
 
         # If not found, ask the user for it
         if username == None or retrying:
-            # pop up a username/password dialog
-            d = Gtk.Dialog ()
-            d.set_title ('Authentication Required')
-
-            t = Gtk.Table (4, 2)
-            t.set_border_width (5)
-            t.set_row_spacings (5)
-
-            l = Gtk.Label ('Authentication is required for the domain "%s".' % auth.get_realm())
-            l.set_line_wrap (True)
-            t.attach (l, 0, 2, 0, 1)
-
-            t.attach (Gtk.Label ("Username:"), 0, 1, 1, 2)
-            t.attach (Gtk.Label ("Password:"), 0, 1, 2, 3)
-
-            userentry = Gtk.Entry ()
-            passentry = Gtk.Entry ()
-            passentry.set_visibility (False)
-
-            userentry.connect ('activate', lambda entry:
-                    passentry.grab_focus ())
-            passentry.connect ('activate', lambda entry:
-                    d.response (Gtk.ResponseType.OK))
-
-            t.attach (userentry, 1, 2, 1, 2)
-            t.attach (passentry, 1, 2, 2, 3)
-
-            if self.gnomekeyring:
-                savepasstoggle = Gtk.CheckButton ("Save Password in Keyring")
-                savepasstoggle.set_active (True)
-                t.attach (savepasstoggle, 1, 2, 3, 4)
-
-            d.vbox.pack_start (t, True, True, 0)
-
-            d.add_buttons (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-                           Gtk.STOCK_OK, Gtk.ResponseType.OK)
-
-            d.show_all ()
-            r = d.run ()
-
-            username = userentry.get_text ()
-            password = passentry.get_text ()
-            if self.gnomekeyring:
-                save_to_keyring = savepasstoggle.get_active()
-
-            d.destroy ()
-
-            if r == Gtk.ResponseType.OK:
-                if self.gnomekeyring and save_to_keyring:
-                    self.save_to_keyring(uri, username, password)
+            (username, password) = self.ask_the_user(auth, uri)
 
         if username and password:
             auth.authenticate(username, password)

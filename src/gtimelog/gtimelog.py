@@ -894,7 +894,7 @@ class Authenticator(object):
         def keyring_callback(username, password):
             # If not found, ask the user for it
             if username is None or retrying:
-                self.ask_the_user(auth, uri, callback)
+                GObject.idle_add(lambda: self.ask_the_user(auth, uri, callback))
             else:
                 callback(username, password)
 

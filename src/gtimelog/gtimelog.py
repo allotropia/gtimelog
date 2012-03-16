@@ -824,19 +824,26 @@ class Authenticator(object):
         """Pops up a username/password dialog for uri"""
         d = Gtk.Dialog ()
         d.set_title ('Authentication Required')
+        d.set_resizable(False)
 
-        t = Gtk.Table (4, 2)
-        t.set_border_width (5)
-        t.set_row_spacings (5)
+        grid = Gtk.Grid()
+        grid.set_border_width(5)
+        grid.set_row_spacing(5)
+        grid.set_column_spacing(5)
 
-        l = Gtk.Label ('Authentication is required for the domain "%s".' % auth.get_realm())
-        l.set_line_wrap (True)
-        t.attach (l, 0, 2, 0, 1)
+        l = Gtk.Label('Authentication is required for the domain "%s".' % auth.get_realm())
+        l.set_line_wrap(True)
+        grid.attach(l, 0, 0, 2, 1)
 
-        t.attach (Gtk.Label ("Username:"), 0, 1, 1, 2)
-        t.attach (Gtk.Label ("Password:"), 0, 1, 2, 3)
+        username_label = Gtk.Label("Username:")
+        grid.attach_next_to(username_label, l, Gtk.PositionType.BOTTOM, 1, 1)
+
+        password_label = Gtk.Label("Password:")
+        grid.attach_next_to(password_label, username_label, Gtk.PositionType.BOTTOM, 1, 1)
 
         userentry = Gtk.Entry ()
+        userentry.set_hexpand(True)
+        passentry = Gtk.Entry ()
         passentry = Gtk.Entry ()
         passentry.set_visibility (False)
 
@@ -845,15 +852,16 @@ class Authenticator(object):
         passentry.connect ('activate', lambda entry:
                 d.response (Gtk.ResponseType.OK))
 
-        t.attach (userentry, 1, 2, 1, 2)
-        t.attach (passentry, 1, 2, 2, 3)
+        grid.attach_next_to(userentry, username_label, Gtk.PositionType.RIGHT, 1, 1)
+        grid.attach_next_to(passentry, password_label, Gtk.PositionType.RIGHT, 1, 1)
 
         if self.gnomekeyring:
             savepasstoggle = Gtk.CheckButton ("Save Password in Keyring")
             savepasstoggle.set_active (True)
-            t.attach (savepasstoggle, 1, 2, 3, 4)
+            grid.attach_next_to(savepasstoggle, passentry,
+                Gtk.PositionType.BOTTOM, 1, 1)
 
-        d.vbox.pack_start (t, True, True, 0)
+        d.vbox.pack_start(grid, True, True, 0)
 
         d.add_buttons (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
                        Gtk.STOCK_OK, Gtk.ResponseType.OK)

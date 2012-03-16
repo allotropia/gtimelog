@@ -785,10 +785,7 @@ class Authenticator(object):
                     None,       # user
                     uri.get_host(), # domain
                     uri.get_host(), # server
-        # Soup.URI.to_string()'s argument is just_path_and_query: if True, only
-        # "/foo/bar?baz" is returned rather than the full URI including
-        # protocol and host and port
-                    uri.to_string(True), # object
+                    None,       # object
                     uri.get_scheme(),   # protocol
                     None,       # authtype
                     uri.get_port())       # port
@@ -810,7 +807,7 @@ class Authenticator(object):
                     username,	# user
                     uri.get_host(),	# domain
                     uri.get_host(),	# server
-                    uri.to_string(True),# object
+                    None,		# object
                     uri.get_scheme(),	# protocol
                     None,		# authtype
                     uri.get_port(),		# port

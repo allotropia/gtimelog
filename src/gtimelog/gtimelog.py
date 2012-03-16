@@ -847,10 +847,8 @@ class Authenticator(object):
         passentry = Gtk.Entry ()
         passentry.set_visibility (False)
 
-        userentry.connect ('activate', lambda entry:
-                passentry.grab_focus ())
-        passentry.connect ('activate', lambda entry:
-                d.response (Gtk.ResponseType.OK))
+        userentry.set_activates_default(True)
+        passentry.set_activates_default(True)
 
         grid.attach_next_to(userentry, username_label, Gtk.PositionType.RIGHT, 1, 1)
         grid.attach_next_to(passentry, password_label, Gtk.PositionType.RIGHT, 1, 1)
@@ -862,9 +860,15 @@ class Authenticator(object):
                 Gtk.PositionType.BOTTOM, 1, 1)
 
         d.vbox.pack_start(grid, True, True, 0)
+        d.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+        ok_button = d.add_button(Gtk.STOCK_OK, Gtk.ResponseType.OK)
+        d.set_default(ok_button)
 
-        d.add_buttons (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-                       Gtk.STOCK_OK, Gtk.ResponseType.OK)
+        def update_ok_sensitivity(*args):
+            ok_button.set_sensitive(userentry.get_text() and passentry.get_text())
+        userentry.connect('notify::text', update_ok_sensitivity)
+        passentry.connect('notify::text', update_ok_sensitivity)
+        update_ok_sensitivity()
 
         def on_response(dialog, r):
             save_to_keyring = self.gnomekeyring and savepasstoggle.get_active()

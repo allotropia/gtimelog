@@ -20,7 +20,7 @@ from cgi import escape
 
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import GObject, Gtk, Gdk, Pango
+from gi.repository import GLib, GObject, Gtk, Gdk, Pango
 
 try:
     import dbus
@@ -2591,7 +2591,11 @@ class SubmitWindow(object):
             if secondary is None:
                 secondary = 'Some entries in your timesheet are not known to the server. ' \
                     'Please correct them, and submit.'
-            main_window.push_reminder('<b><big>%s</big></b>\n\n%s' % (primary, secondary), None,
+            message = '<b><big>%s</big></b>\n\n%s' % (
+                GLib.markup_escape_text(primary),
+                GLib.markup_escape_text(secondary))
+
+            main_window.push_reminder(message, None,
                                       'View problems', main_window.show_submit_window)
 
     def upload_finished(self, session, message, automatic):

@@ -766,6 +766,11 @@ class Authenticator(object):
     except ImportError:
         gnomekeyring = None
 
+    def __init__(self):
+        object.__init__(self)
+        self.pending = []
+        self.lookup_in_progress = False
+
     def find_in_keyring(self, uri, callback):
         """Attempts to load a username and password from the keyring, if the
         keyring is available"""
@@ -873,7 +878,7 @@ class Authenticator(object):
         d.connect('response', on_response)
         d.show_all ()
 
-    def find_password(self, auth, uri, callback):
+    def find_password(self, auth, uri, retrying, callback):
         def keyring_callback(username, password):
             # If not found, ask the user for it
             if username is None or retrying:
@@ -885,18 +890,32 @@ class Authenticator(object):
 
     def http_auth_cb(self, session, message, auth, retrying, *args):
         session.pause_message(message)
+        self.pending.insert(0, (session, message, auth, retrying))
+        self.maybe_pop_queue()
 
-        uri = message.get_uri()
+    def maybe_pop_queue(self):
+        # I don't think we need any locking, because GIL.
+        if self.lookup_in_progress:
+            return
 
-        self.find_password(auth, uri,
-            callback=functools.partial(
-                self.http_auth_finish, session, message, auth))
+        try:
+            (session, message, auth, retrying) = self.pending.pop()
+        except IndexError:
+            pass
+        else:
+            self.lookup_in_progress = True
+            uri = message.get_uri()
+            self.find_password(auth, uri, retrying,
+                callback=functools.partial(
+                    self.http_auth_finish, session, message, auth))
 
     def http_auth_finish(self, session, message, auth, username, password):
         if username and password:
             auth.authenticate(username, password)
 
         session.unpause_message(message)
+        self.lookup_in_progress = False
+        self.maybe_pop_queue()
 
 soup_session = Soup.SessionAsync()
 authenticator = Authenticator()

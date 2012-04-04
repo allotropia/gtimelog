@@ -1213,7 +1213,10 @@ class MainWindow(object):
         self.tray_icon = None
         self.last_tick = None
         self.footer_mark = None
-        self.inserting_old_time = False #Allow insert of backdated log entries
+
+        # Allow insert of backdated log entries
+        self.welcome_back_notification = None
+        self.inserting_old_time = False
 
         # I do not understand this at all.
         self.time_before_idle = datetime.datetime.now(TZOffset ())
@@ -2481,16 +2484,22 @@ class MainWindow(object):
             It is only triggered if the computer was idle for > settings.remind_idle period of time
                 AND the previous event in the log occured more than settings.remind_idle before the start of the idling
         """
+        if self.welcome_back_notification is not None:
+            # There's already a bubble.
+            return
+
         try:
             if self.time_before_idle - self.timelog.window.last_time() > self.settings.remind_idle:
-                self.n = Notify.Notification(
+                self.welcome_back_notification = Notify.Notification(
                     summary="Welcome back",
                     body="Would you like to insert a log entry near the time you left your computer?")
-                self.n.add_action("clicked","Yes please", self.insert_old_log_entries, "",
+                self.welcome_back_notification.add_action("clicked",
+                    "Yes please", self.insert_old_log_entries, "",
                     # No user_data
                     None)
                     #The please is just to make the tiny little button bigger
-                self.n.show ()
+                self.welcome_back_notification.show()
+                self.welcome_back_notification.connect('closed', self.__notification_closed_cb)
         except Exception, e:
             print "pynotification failed: %s" % e
 
@@ -2501,6 +2510,10 @@ class MainWindow(object):
         print repr ((note, act, data))
         self.inserting_old_time = True
         self.time_label.set_text ("Backdated: " +self.time_before_idle.strftime("%H:%M"))
+
+    def __notification_closed_cb(self, notification):
+        if self.welcome_back_notification == notification:
+            self.welcome_back_notification = None
 
     def insert_new_log_entries (self):
         """

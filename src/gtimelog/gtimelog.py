@@ -9,33 +9,28 @@ import re
 import os
 import csv
 import sys
-import sets
 import copy
 import urllib
-import urllib2
-import urlparse
 import datetime
 import time
 import tempfile
 import ConfigParser
 import cPickle as pickle
-import threading, thread
 from cgi import escape
+import functools
 
-import pygtk
-pygtk.require('2.0')
-import gobject
-import gtk
-import pango
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import GLib, GObject, Gtk, Gdk, Pango
+
 try:
     import dbus
-    import pynotify
-    assert pynotify.init ("gtimelog")
+    from gi.repository import Notify
+    assert Notify.init ("gtimelog")
 except:
     print "dbus or pynotify not found, idle timeouts are not supported"
 
-from M2Crypto import SSL
-from M2Crypto import m2urllib2
+from gi.repository import Soup
 
 # This is to let people run GTimeLog without having to install it
 resource_dir = os.path.dirname(os.path.realpath(__file__))
@@ -44,8 +39,6 @@ icon_file = os.path.join(resource_dir, "gtimelog-small.png")
 
 # Where we store configuration and other interesting files.
 configdir = os.path.expanduser('~/.gtimelog')
-
-gtk.gdk.threads_init()
 
 # This is for distribution packages
 if not os.path.exists(ui_file):
@@ -770,135 +763,186 @@ class TaskList(object):
         """Reload the task list."""
         self.load()
 
-class GtkPasswordRequest (urllib2.HTTPPasswordMgr):
-    def __init__(self, *args, **kwargs):
-        urllib2.HTTPPasswordMgr.__init__(self, *args, **kwargs)
+# Global HTTP stuff
 
-        self._tries = 0
+class Authenticator(object):
+    # try to use GNOME Keyring if available
+    try:
+        import gnomekeyring
+    except ImportError:
+        gnomekeyring = None
 
-	# FIXME : work out how to find the parent window
-    def find_user_password (self, realm, authuri):
-            self._tries += 1
+    def __init__(self):
+        object.__init__(self)
+        self.pending = []
+        self.lookup_in_progress = False
 
-            username = None
-            password = None
-            save_to_keyring = False
+    def find_in_keyring(self, uri, callback):
+        """Attempts to load a username and password from the keyring, if the
+        keyring is available"""
+        if self.gnomekeyring is None:
+            callback(None, None)
+            return
 
-            # try to use GNOME Keyring if available
-            try:
-                import gnomekeyring
-            except ImportError:
-                gnomekeyring = None
+        username = None
+        password = None
 
-            if gnomekeyring:
-                # attempt to load a username and password
-                # from the keyring
+        try:
+            # FIXME - would be nice to make all keyring calls async, to dodge
+            # the possibility of blocking the UI. The code is all set up for
+            # that, but there's no easy way to use the keyring asynchronously
+            # from Python (as of Gnome 3.2)...
+            l = self.gnomekeyring.find_network_password_sync (
+                    None,       # user
+                    uri.get_host(), # domain
+                    uri.get_host(), # server
+                    None,       # object
+                    uri.get_scheme(),   # protocol
+                    None,       # authtype
+                    uri.get_port())       # port
+        except self.gnomekeyring.NoMatchError:
+            # We didn't find any passwords, just continue
+            pass
+        except self.gnomekeyring.NoKeyringDaemonError:
+            pass
+        except IOError:
+            gnomekeyring = None
+        except gnomekeyring.IOError: # thanks, gnomekeyring python binding maker
+            gnomekeyring = None
+        else:
+            l = l[-1] # take the last key (Why?)
+            username = l['user']
+            password = l['password']
 
-                # take apart the URL
-                o = urlparse.urlparse (authuri)
-                if o.port:
-                    port = int (o.port)
-                else:
-                    port = 0
-                object = '%s?%s' % (o.path, o.query)
+        callback(username, password)
 
-                try:
-                    gtk.gdk.threads_enter()
-                    l = gnomekeyring.find_network_password_sync (
-                            None,       # user
-                            o.hostname, # domain
-                            o.hostname, # server
-                            object,     # object
-                            o.scheme,   # protocol
-                            None,       # authtype
-                            port)       # port
-                except gnomekeyring.NoMatchError:
-                    # We didn't find any passwords, just continue
-                    pass
-                except gnomekeyring.NoKeyringDaemonError:
-                    gnomekeyring = None
-                except IOError:
-                    gnomekeyring = None
-                except gnomekeyring.IOError: # thanks, gnomekeyring python binding maker
-                    gnomekeyring = None
-                else:
-                    l = l[-1] # take the last key (Why?)
-                    username = l['user']
-                    password = l['password']
+    def save_to_keyring(self, uri, username, password):
+        try:
+            self.gnomekeyring.set_network_password_sync (
+                    None,		# keyring
+                    username,	# user
+                    uri.get_host(),	# domain
+                    uri.get_host(),	# server
+                    None,		# object
+                    uri.get_scheme(),	# protocol
+                    None,		# authtype
+                    uri.get_port(),		# port
+                    password)	# password
+        except self.gnomekeyring.NoKeyringDaemonError:
+            pass
 
-                gtk.gdk.threads_leave()
+    def ask_the_user(self, auth, uri, callback):
+        """Pops up a username/password dialog for uri"""
+        d = Gtk.Dialog ()
+        d.set_title ('Authentication Required')
+        d.set_resizable(False)
 
-            # If not found, ask the user for it
-            if username == None or self._tries > 1:
-                # pop up a username/password dialog
-                gtk.gdk.threads_enter()
-                d = gtk.Dialog ()
-                d.set_has_separator (False)
-                d.set_title ('Authentication Required')
+        grid = Gtk.Grid()
+        grid.set_border_width(5)
+        grid.set_row_spacing(5)
+        grid.set_column_spacing(5)
 
-                t = gtk.Table (4, 2)
-                t.set_border_width (5)
-                t.set_row_spacings (5)
+        l = Gtk.Label('Authentication is required for the domain "%s".' % auth.get_realm())
+        l.set_line_wrap(True)
+        grid.attach(l, 0, 0, 2, 1)
 
-                l = gtk.Label ('Authentication is required for the domain "%s".' % realm)
-                l.set_line_wrap (True)
-                t.attach (l, 0, 2, 0, 1)
+        username_label = Gtk.Label("Username:")
+        grid.attach_next_to(username_label, l, Gtk.PositionType.BOTTOM, 1, 1)
 
-                t.attach (gtk.Label ("Username:"), 0, 1, 1, 2)
-                t.attach (gtk.Label ("Password:"), 0, 1, 2, 3)
+        password_label = Gtk.Label("Password:")
+        grid.attach_next_to(password_label, username_label, Gtk.PositionType.BOTTOM, 1, 1)
 
-                userentry = gtk.Entry ()
-                passentry = gtk.Entry ()
-                passentry.set_visibility (False)
+        userentry = Gtk.Entry ()
+        userentry.set_hexpand(True)
+        passentry = Gtk.Entry ()
+        passentry = Gtk.Entry ()
+        passentry.set_visibility (False)
 
-                userentry.connect ('activate', lambda entry:
-                        passentry.grab_focus ())
-                passentry.connect ('activate', lambda entry:
-                        d.response (gtk.RESPONSE_OK))
+        userentry.set_activates_default(True)
+        passentry.set_activates_default(True)
 
-                t.attach (userentry, 1, 2, 1, 2)
-                t.attach (passentry, 1, 2, 2, 3)
+        grid.attach_next_to(userentry, username_label, Gtk.PositionType.RIGHT, 1, 1)
+        grid.attach_next_to(passentry, password_label, Gtk.PositionType.RIGHT, 1, 1)
 
-                if gnomekeyring:
-                    savepasstoggle = gtk.CheckButton ("Save Password in Keyring")
-                    savepasstoggle.set_active (True)
-                    t.attach (savepasstoggle, 1, 2, 3, 4)
+        if self.gnomekeyring:
+            savepasstoggle = Gtk.CheckButton ("Save Password in Keyring")
+            savepasstoggle.set_active (True)
+            grid.attach_next_to(savepasstoggle, passentry,
+                Gtk.PositionType.BOTTOM, 1, 1)
 
-                d.vbox.pack_start (t)
+        d.vbox.pack_start(grid, True, True, 0)
+        d.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+        ok_button = d.add_button(Gtk.STOCK_OK, Gtk.ResponseType.OK)
+        d.set_default(ok_button)
 
-                d.add_buttons (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
-                               gtk.STOCK_OK, gtk.RESPONSE_OK)
+        def update_ok_sensitivity(*args):
+            ok_button.set_sensitive(userentry.get_text() and passentry.get_text())
+        userentry.connect('notify::text', update_ok_sensitivity)
+        passentry.connect('notify::text', update_ok_sensitivity)
+        update_ok_sensitivity()
 
-                d.show_all ()
-                r = d.run ()
+        def on_response(dialog, r):
+            save_to_keyring = self.gnomekeyring and savepasstoggle.get_active()
 
+            if r == Gtk.ResponseType.OK:
                 username = userentry.get_text ()
                 password = passentry.get_text ()
-                if gnomekeyring:
-                    save_to_keyring = savepasstoggle.get_active()
 
-                d.destroy ()
+                if username and password and save_to_keyring:
+                    self.save_to_keyring(uri, username, password)
 
-                if r == gtk.RESPONSE_OK:
-                        if gnomekeyring and save_to_keyring:
-                            try:
-                                gnomekeyring.set_network_password_sync (
-                                        None,		# keyring
-                                        username,	# user
-                                        o.hostname,	# domain
-                                        o.hostname,	# server
-                                        object,		# object
-                                        o.scheme,	# protocol
-                                        None,		# authtype
-                                        port,		# port
-                                        password)	# password
-                            except gnomekeyring.NoKeyringDaemonError:
-                                pass
-                            except gnomekeyring.IOError:
-                                pass
-                gtk.gdk.threads_leave()
+            else:
+                username = None
+                password = None
 
-            return (username, password)
+            d.destroy()
+            callback(username, password)
+
+        d.connect('response', on_response)
+        d.show_all ()
+
+    def find_password(self, auth, uri, retrying, callback):
+        def keyring_callback(username, password):
+            # If not found, ask the user for it
+            if username is None or retrying:
+                GObject.idle_add(lambda: self.ask_the_user(auth, uri, callback))
+            else:
+                callback(username, password)
+
+        self.find_in_keyring(uri, keyring_callback)
+
+    def http_auth_cb(self, session, message, auth, retrying, *args):
+        session.pause_message(message)
+        self.pending.insert(0, (session, message, auth, retrying))
+        self.maybe_pop_queue()
+
+    def maybe_pop_queue(self):
+        # I don't think we need any locking, because GIL.
+        if self.lookup_in_progress:
+            return
+
+        try:
+            (session, message, auth, retrying) = self.pending.pop()
+        except IndexError:
+            pass
+        else:
+            self.lookup_in_progress = True
+            uri = message.get_uri()
+            self.find_password(auth, uri, retrying,
+                callback=functools.partial(
+                    self.http_auth_finish, session, message, auth))
+
+    def http_auth_finish(self, session, message, auth, username, password):
+        if username and password:
+            auth.authenticate(username, password)
+
+        session.unpause_message(message)
+        self.lookup_in_progress = False
+        self.maybe_pop_queue()
+
+soup_session = Soup.SessionAsync()
+authenticator = Authenticator()
+soup_session.connect('authenticate', authenticator.http_auth_cb)
 
 class RemoteTaskList(TaskList):
     """Task list stored on a remote server.
@@ -935,6 +979,19 @@ class RemoteTaskList(TaskList):
             return True
         return TaskList.check_reload(self)
 
+    def download_finished_cb(self, session, message, *args):
+        if message.status_code == 200:
+            try:
+                out = open (self.filename, 'w')
+                out.write (message.response_body.data)
+            except IOError, e:
+                print e
+                if self.error_callback:
+                    self.error_callback ()
+            finally:
+                out.close ()
+                self.load_file()
+
     def download(self):
         """Download the task list from the server."""
         if self.loading_callback:
@@ -944,53 +1001,11 @@ class RemoteTaskList(TaskList):
             self.error_callback("Certificate file not found")
             return
 
-        threading.Thread(target=self.download_thread).start()
-
-    def download_thread (self):
-        ctx = SSL.Context()
-        ctx.set_verify(SSL.verify_peer | SSL.verify_fail_if_no_peer_cert, 9)
-
-        ctx.load_verify_locations(self.settings.server_cert)
-
-        passmgr = GtkPasswordRequest ()
-        auth_handler = urllib2.HTTPBasicAuthHandler (passmgr)
-
-        opener = m2urllib2.build_opener(ctx, auth_handler)
-        m2urllib2.install_opener(opener)
-
-        try:
-            fp = urllib2.urlopen (self.url)
-        except urllib2.URLError, e:
-            print e
-            if self.error_callback:
-                gobject.idle_add(self.error_callback)
-        except SSL.SSLError, e:
-            print e
-            if self.error_callback:
-                gobject.idle_add(self.error_callback, str(e))
-        else:
-            # check if we were redirected, if so, drop the information
-            if fp.geturl() != self.url and self.error_callback:
-                gobject.idle_add(self.error_callback)
-                return
-
-            # FIXME - is there a better way to do this?
-            try:
-                out = open (self.filename, 'w')
-                out.write (fp.read ())
-            except IOError, e:
-                print e
-                if self.error_callback:
-                    self.error_callback ()
-            finally:
-                out.close ()
-
-            fp.close ()
-            gobject.idle_add(self.load_file)
-            thread.exit()
+        message = Soup.Message.new('GET', self.url)
+        soup_session.queue_message(message, self.download_finished_cb, None)
 
     def load_file (self):
-        """Callback used by the thread to load the file in the UI"""
+        """Load the file in the UI"""
         self.load()
         if self.loaded_callback:
             self.loaded_callback()
@@ -1091,39 +1106,24 @@ class Settings(object):
         finally:
             f.close()
 
-
 class TrayIcon(object):
     """Tray icon for gtimelog."""
 
     def __init__(self, gtimelog_window):
         self.gtimelog_window = gtimelog_window
         self.timelog = gtimelog_window.timelog
-        self.trayicon = None
-        try:
-            import egg.trayicon
-        except ImportError:
-            return # nothing to do here, move along
-                   # or install python-gnome2-extras
-        self.tooltips = gtk.Tooltips()
-        self.eventbox = gtk.EventBox()
-        hbox = gtk.HBox()
-        icon = gtk.Image()
-        icon.set_from_file(icon_file)
-        hbox.add(icon)
-        if self.gtimelog_window.settings.show_time_label:
-            self.time_label = gtk.Label()
-            hbox.add(self.time_label)
-        self.eventbox.add(hbox)
-        self.trayicon = egg.trayicon.TrayIcon("GTimeLog")
-        self.trayicon.add(self.eventbox)
+
+        self.trayicon = Gtk.StatusIcon.new_from_file(icon_file)
+
+        # self.trayicon.add(self.eventbox)
         self.last_tick = False
         self.tick(force_update=True)
-        self.trayicon.show_all()
+
         tray_icon_popup_menu = gtimelog_window.tray_icon_popup_menu
-        self.eventbox.connect_object("button-press-event", self.on_press,
+        self.trayicon.connect_object("button-press-event", self.on_press,
                                      tray_icon_popup_menu)
-        self.eventbox.connect("button-release-event", self.on_release)
-        gobject.timeout_add(1000, self.tick)
+        self.trayicon.connect("button-release-event", self.on_release)
+        GObject.timeout_add(1000, self.tick)
         self.gtimelog_window.entry_watchers.append(self.entry_added)
         self.gtimelog_window.tray_icon = self
 
@@ -1138,7 +1138,7 @@ class TrayIcon(object):
         else:
             self.gtimelog_window.tray_show.show()
             self.gtimelog_window.tray_hide.hide()
-        widget.popup(None, None, None, event.button, event.time)
+        widget.popup(None, None, None, None, event.button, event.time)
 
     def on_release(self, widget, event):
         """A mouse button was released on the tray icon label."""
@@ -1160,14 +1160,14 @@ class TrayIcon(object):
         if now != self.last_tick or force_update: # Do not eat CPU too much
             self.last_tick = now
             last_time = self.timelog.window.last_time()
-            if self.gtimelog_window.settings.show_time_label:
-                if last_time is None:
-                    self.time_label.set_text(now.strftime("%H:%M"))
-                else:
-                    self.time_label.set_text(format_duration_short(now - last_time))
+
         # FIXME - this should be wired up async
-        self.tooltips.set_tip(self.trayicon, self.tip())
+        self.trayicon.set_tooltip_text(self.tip())
         return True
+
+    def get_pixbuf(self):
+
+        return image
 
     def tip(self):
         """Compute tooltip text."""
@@ -1213,7 +1213,10 @@ class MainWindow(object):
         self.tray_icon = None
         self.last_tick = None
         self.footer_mark = None
-        self.inserting_old_time = False #Allow insert of backdated log entries
+
+        # Allow insert of backdated log entries
+        self.welcome_back_notification = None
+        self.inserting_old_time = False
 
         # I do not understand this at all.
         self.time_before_idle = datetime.datetime.now(TZOffset ())
@@ -1229,7 +1232,7 @@ class MainWindow(object):
         self._init_ui()
         self._init_dbus()
         self.tick(True)
-        gobject.timeout_add(1000, self.tick)
+        GObject.timeout_add(1000, self.tick)
 
     COL_TASK_NAME = 0
     COL_TASK_PATH = 1
@@ -1237,7 +1240,7 @@ class MainWindow(object):
 
     def _init_ui(self):
         """Initialize the user interface."""
-        tree = gtk.Builder()
+        tree = Gtk.Builder()
         tree.add_from_file(ui_file)
 
         # Set initial state of menu items *before* we hook up signals
@@ -1268,6 +1271,8 @@ class MainWindow(object):
         self.submit_window = SubmitWindow(tree, self.settings, application = self)
         self.main_window = tree.get_object("main_window")
         self.main_window.connect("delete_event", self.delete_event)
+        self.about_dialog.set_transient_for(self.main_window)
+        self.about_dialog.set_modal(True)
         self.log_view = tree.get_object("log_view")
         self.infobars = tree.get_object("infobars")
         self.set_up_log_view_columns()
@@ -1280,7 +1285,7 @@ class MainWindow(object):
         self.tasks.loaded_callback = self.task_list_loaded
         self.tasks.error_callback = self.task_list_error
         self.task_list = tree.get_object("task_list")
-        self.task_store = gtk.TreeStore(str, str, bool)
+        self.task_store = Gtk.TreeStore(str, str, bool)
         task_filter = tree.get_object("task_filter")
 
         filter = self.task_store.filter_new ()
@@ -1295,17 +1300,17 @@ class MainWindow(object):
         def _task_filter_changed(task_filter):
             txt = task_filter.get_text()
 
-            task_filter.set_icon_sensitive(gtk.ENTRY_ICON_SECONDARY,
+            task_filter.set_icon_sensitive(Gtk.EntryIconPosition.SECONDARY,
                     len(txt) > 0)
 
             if self.refilter_timeout != 0:
-                gobject.source_remove(self.refilter_timeout)
-            self.refilter_timeout = gobject.timeout_add(200, _refilter)
+                GObject.source_remove(self.refilter_timeout)
+            self.refilter_timeout = GObject.timeout_add(200, _refilter)
 
         def _task_filter_clear(task_filter, icon_pos, event):
             txt = task_filter.set_text("")
 
-        def _task_filter_filter(model, iter):
+        def _task_filter_filter(model, iter, user_data):
             # If the user hasn't ticked "Show unavailable tasks" and the task
             # is unavailable, never show it, even when searching.
             if not self.show_unavailable_tasks:
@@ -1326,7 +1331,7 @@ class MainWindow(object):
                 child = model.iter_children(iter)
 
                 while child is not None:
-                    if _task_filter_filter(model, child): return True
+                    if _task_filter_filter(model, child, None): return True
                     child = model.iter_next(child)
 
                 return False
@@ -1337,7 +1342,7 @@ class MainWindow(object):
         task_filter.connect("changed", _task_filter_changed)
         task_filter.connect("icon-release", _task_filter_clear)
 
-        filter.set_visible_func(_task_filter_filter)
+        filter.set_visible_func(_task_filter_filter, None)
         self.task_list.set_model(filter)
 
         self.task_list.connect ("row-expanded",
@@ -1345,11 +1350,11 @@ class MainWindow(object):
         self.task_list.connect ("row-collapsed",
                 self.on_row_expander_changed, False)
 
-        renderer = gtk.CellRendererText()
-        column = gtk.TreeViewColumn("Task", renderer)
+        renderer = Gtk.CellRendererText()
+        column = Gtk.TreeViewColumn("Task", renderer)
 
         # We grey out unavailable subtrees.
-        def task_column_data_func(column, cell, model, iter):
+        def task_column_data_func(column, cell, model, iter, user_data):
             text, grey = model.get(iter,
                 MainWindow.COL_TASK_NAME, MainWindow.COL_TASK_UNAVAILABLE)
 
@@ -1395,7 +1400,7 @@ class MainWindow(object):
         self.reminders = []
 
         self.set_up_completion()
-        # This causes the log to be populated
+        # This also triggers populating the main view
         self.set_up_task_list()
         self.set_up_history()
 
@@ -1409,9 +1414,12 @@ class MainWindow(object):
             dbus_proxy = dbus_bus.get_object('org.gnome.ScreenSaver','/org/gnome/ScreenSaver')
             self.screensaver = dbus.Interface(dbus_proxy, dbus_interface='org.gnome.ScreenSaver')
             self.screensaving =self.screensaver.GetActive () ==1
-        except:
+        except Exception, e:
             self.screensaving = False
             self.screensaver = None
+
+    def quit(self):
+        self.main_window.destroy()
 
     def restore_ui_state(self, filename):
         try:
@@ -1454,9 +1462,9 @@ class MainWindow(object):
         """Set up tab stops in the log view."""
         pango_context = self.log_view.get_pango_context()
         em = pango_context.get_font_description().get_size()
-        tabs = pango.TabArray(2, False)
-        tabs.set_tab(0, pango.TAB_LEFT, 9 * em)
-        tabs.set_tab(1, pango.TAB_LEFT, 12 * em)
+        tabs = Pango.TabArray.new(2, False)
+        tabs.set_tab(0, Pango.TabAlign.LEFT, 9 * em)
+        tabs.set_tab(1, Pango.TabAlign.LEFT, 12 * em)
         self.log_view.set_tabs(tabs)
 
     def w(self, text, tag=None):
@@ -1739,7 +1747,7 @@ class MainWindow(object):
     def scroll_to_end(self):
         buffer = self.log_view.get_buffer()
         end_mark = buffer.create_mark('end', buffer.get_end_iter())
-        self.log_view.scroll_to_mark(end_mark, 0)
+        self.log_view.scroll_to_mark(end_mark, 0, False, 0.5, 0.5)
         buffer.delete_mark(end_mark)
 
     def update_tasks_dict(self):
@@ -1796,6 +1804,8 @@ class MainWindow(object):
         self.update_toggle_state()
         self._block_row_toggles -= 1
 
+        # Tasks may have changed, so we may need to reconsider some of
+        # the entries as being valid, so populate the log
         self.populate_log()
 
     def update_toggle_state(self):
@@ -1850,7 +1860,7 @@ class MainWindow(object):
         self.update_reminder()
 
     def reminder_response_cb(self, infobar, response, reminder):
-        if response == gtk.RESPONSE_OK:
+        if response == Gtk.ResponseType.OK:
             if reminder['handler']:
                 reminder['handler']()
 
@@ -1860,12 +1870,12 @@ class MainWindow(object):
         self.reminders.remove(reminder)
         self.update_reminder()
 
-    # fake responses so this works even with our "custom-made" infobar
+    # fake responses so this works even with our "artisanal" infobar
     def fake_ok_response(self, button, reminder):
-        self.reminder_response_cb(None, gtk.RESPONSE_OK, reminder)
+        self.reminder_response_cb(None, Gtk.ResponseType.OK, reminder)
 
     def fake_close_response(self, button, reminder):
-        self.reminder_response_cb(None, gtk.RESPONSE_CLOSE, reminder)
+        self.reminder_response_cb(None, Gtk.ResponseType.CLOSE, reminder)
 
     def update_reminder(self):
         if self.reminder_infobar is not None:
@@ -1878,57 +1888,57 @@ class MainWindow(object):
         # We always present the latest reminder first
         reminder = self.reminders[-1]
 
-        label = gtk.Label()
+        label = Gtk.Label()
         label.set_line_wrap(True)
         label.set_markup(reminder['msg'])
 
         use_infobar = False
         try:
-            dummy = gtk.InfoBar
+            dummy = Gtk.InfoBar
             use_infobar = True
         except AttributeError:
             pass
 
         if use_infobar:
-            self.reminder_infobar = gtk.InfoBar()
-            self.reminder_infobar.set_message_type(gtk.MESSAGE_INFO)
+            self.reminder_infobar = Gtk.InfoBar()
+            self.reminder_infobar.set_message_type(Gtk.MessageType.INFO)
 
-            self.reminder_infobar.get_content_area().pack_start(label)
+            self.reminder_infobar.get_content_area().pack_start(label, True, True, 0)
 
             if reminder['action_label'] and reminder['handler']:
-                self.reminder_infobar.add_button(reminder['action_label'], gtk.RESPONSE_OK)
+                self.reminder_infobar.add_button(reminder['action_label'], Gtk.ResponseType.OK)
 
-            self.reminder_infobar.add_button('_Close', gtk.RESPONSE_CLOSE)
+            self.reminder_infobar.add_button('_Close', Gtk.ResponseType.CLOSE)
             self.reminder_infobar.connect('response', self.reminder_response_cb, reminder)
         else:
-            self.reminder_infobar = gtk.EventBox()
-            self.reminder_infobar.modify_bg(gtk.STATE_NORMAL, gtk.gdk.color_parse("#ffffbf"))
+            self.reminder_infobar = Gtk.EventBox()
+            self.reminder_infobar.modify_bg(Gtk.StateType.NORMAL, Gdk.color_parse("#ffffbf"))
 
-            content_area = gtk.HBox()
+            content_area = Gtk.HBox()
             content_area.set_border_width(6)
             self.reminder_infobar.add(content_area)
 
             # add the message label
-            content_area.pack_start(label)
+            content_area.pack_start(label, True, True, 0)
 
-            vbox = gtk.VButtonBox()
-            vbox.set_layout(gtk.BUTTONBOX_END)
+            vbox = Gtk.VButtonBox()
+            vbox.set_layout(Gtk.ButtonBoxStyle.END)
 
             if reminder['action_label'] and reminder['handler']:
-                button = gtk.Button(reminder['action_label'])
+                button = Gtk.Button(reminder['action_label'])
                 button.connect('clicked', self.fake_ok_response, reminder)
-                vbox.pack_start(button)
+                vbox.pack_start(button, True, True, 0)
 
-            button = gtk.Button('_Close')
+            button = Gtk.Button('_Close')
             button.connect('clicked', self.fake_close_response, reminder)
-            vbox.pack_start(button)
+            vbox.pack_start(button, True, True, 0)
 
             content_area.pack_start(vbox, expand = False)
 
-        self.infobars.pack_start(self.reminder_infobar)
+        self.infobars.pack_start(self.reminder_infobar, True, True, 0)
         self.reminder_infobar.show_all()
 
-    def completion_match_func(self, completion, key, iter):
+    def completion_match_func(self, completion, key, iter, user_data):
         # Text is autocompleted while typing and the automatically
         # completed text is selected. We don't want the autocompleted
         # text to interfere with the search.
@@ -1952,21 +1962,21 @@ class MainWindow(object):
         if not self.settings.enable_gtk_completion:
             self.have_completion = False
             return
-        self.have_completion = hasattr(gtk, 'EntryCompletion')
+        self.have_completion = hasattr(Gtk, 'EntryCompletion')
         if not self.have_completion:
             return
 
-        self.completion_choices = gtk.ListStore(str, float)
+        self.completion_choices = Gtk.ListStore(str, float)
         # sort based on weight
-        self.completion_choices.set_sort_column_id(1, gtk.SORT_DESCENDING)
+        self.completion_choices.set_sort_column_id(1, Gtk.SortType.DESCENDING)
 
-        completion = gtk.EntryCompletion()
+        completion = Gtk.EntryCompletion()
         completion.set_model(self.completion_choices)
         # FIXME: broken in GTK+ -- #575668
         # completion.set_inline_completion (True)
-        completion.set_match_func (self.completion_match_func)
+        completion.set_match_func (self.completion_match_func, None)
 
-        def text_func(completion, cell, model, iter):
+        def text_func(completion, cell, model, iter, user_data):
             entry = model.get_value(iter, 0)
             text = self.task_entry.get_text()
             selection = self.task_entry.get_selection_bounds()
@@ -1981,14 +1991,14 @@ class MainWindow(object):
         completion.set_text_column(0)
         completion.clear()
         # create our own renderer
-        renderer = gtk.CellRendererText()
-        completion.pack_start(renderer)
-        completion.set_cell_data_func(renderer, text_func)
+        renderer = Gtk.CellRendererText()
+        completion.pack_start(renderer, True)
+        completion.set_cell_data_func(renderer, text_func, None)
 
         self.task_entry.set_completion(completion)
 
         # -- DEBUG --
-        # renderer = gtk.CellRendererText()
+        # renderer = Gtk.CellRendererText()
         # completion.pack_start(renderer, False)
         # completion.set_attributes(renderer, text=1)
 
@@ -2020,7 +2030,7 @@ class MainWindow(object):
             self.main_window.hide()
             return True
         else:
-            gtk.main_quit()
+            self.quit()
             return False
 
     def close_about_dialog(self, widget):
@@ -2037,7 +2047,7 @@ class MainWindow(object):
 
     def on_quit_activate(self, widget):
         """File -> Quit selected"""
-        gtk.main_quit()
+        self.quit()
 
     def on_about_activate(self, widget):
         """Help -> About selected"""
@@ -2129,20 +2139,20 @@ class MainWindow(object):
         self.populate_log()
 
         if self.settings.report_to_url == "":
-            dialog = gtk.MessageDialog(self.main_window,
-                     gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
-                     gtk.MESSAGE_ERROR,
-                     gtk.BUTTONS_OK,
+            dialog = Gtk.MessageDialog(self.main_window,
+                     Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                     Gtk.MessageType.ERROR,
+                     Gtk.ButtonsType.OK,
                      'Incomplete configuration file.')
             dialog.set_title('Error')
             dialog.format_secondary_text('Your configuration file is missing the report_to_url field which is necessary for timesheet uploading.')
             dialog.connect('response', lambda d, i: dialog.destroy())
             dialog.run()
         elif not self.settings.report_to_url.strip().startswith("https") and not "localhost" in self.settings.report_to_url:
-            dialog = gtk.MessageDialog(self.main_window,
-                     gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
-                     gtk.MESSAGE_ERROR,
-                     gtk.BUTTONS_OK,
+            dialog = Gtk.MessageDialog(self.main_window,
+                     Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                     Gtk.MessageType.ERROR,
+                     Gtk.ButtonsType.OK,
                      'Incomplete configuration file.')
             dialog.set_title('Error')
             dialog.format_secondary_text('Your gtimelogrc is using http (as opposed to https) urls.  Please update your settings.')
@@ -2217,7 +2227,7 @@ class MainWindow(object):
 
         Returns either a datetime.date, or one.
         """
-        if self.calendar_dialog.run() == gtk.RESPONSE_OK:
+        if self.calendar_dialog.run() == Gtk.ResponseType.OK:
             y, m1, d = self.calendar.get_date()
             day = datetime.date(y, m1+1, d)
         else:
@@ -2227,7 +2237,7 @@ class MainWindow(object):
 
     def on_calendar_day_selected_double_click(self, widget):
         """Double-click on a calendar day: close the dialog."""
-        self.calendar_dialog.response(gtk.RESPONSE_OK)
+        self.calendar_dialog.response(Gtk.ResponseType.OK)
 
     def weekly_window(self, day=None):
         if not day:
@@ -2371,7 +2381,7 @@ class MainWindow(object):
 
     def task_list_button_press(self, menu, event):
         if event.button == 3:
-            menu.popup(None, None, None, event.button, event.time)
+            menu.popup(None, None, None, None, event.button, event.time)
             return True
         else:
             return False
@@ -2404,20 +2414,20 @@ class MainWindow(object):
 
     def task_entry_key_press(self, widget, event):
         """Handle key presses in task entry."""
-        if event.keyval == gtk.gdk.keyval_from_name('Prior'):
+        if event.keyval == Gdk.keyval_from_name('Prior'):
             self._do_history(1)
             return True
-        if event.keyval == gtk.gdk.keyval_from_name('Next'):
+        if event.keyval == Gdk.keyval_from_name('Next'):
             self._do_history(-1)
             return True
         # XXX This interferes with the completion box.  How do I determine
         # whether the completion box is visible or not?
         if self.have_completion:
             return False
-        if event.keyval == gtk.gdk.keyval_from_name('Up'):
+        if event.keyval == Gdk.keyval_from_name('Up'):
             self._do_history(1)
             return True
-        if event.keyval == gtk.gdk.keyval_from_name('Down'):
+        if event.keyval == Gdk.keyval_from_name('Down'):
             self._do_history(-1)
             return True
         return False
@@ -2474,16 +2484,24 @@ class MainWindow(object):
             It is only triggered if the computer was idle for > settings.remind_idle period of time
                 AND the previous event in the log occured more than settings.remind_idle before the start of the idling
         """
+        if self.welcome_back_notification is not None:
+            # There's already a bubble.
+            return
+
         try:
             if self.time_before_idle - self.timelog.window.last_time() > self.settings.remind_idle:
-                self.n = pynotify.Notification ("Welcome back",
-                    "Would you like to insert a log entry near the time you left your computer?")
-                self.n.add_action("clicked","Yes please", self.insert_old_log_entries, "")
+                self.welcome_back_notification = Notify.Notification(
+                    summary="Welcome back",
+                    body="Would you like to insert a log entry near the time you left your computer?")
+                self.welcome_back_notification.add_action("clicked",
+                    "Yes please", self.insert_old_log_entries, "",
+                    # No user_data
+                    None)
                     #The please is just to make the tiny little button bigger
-                self.n.show ()
-
-        except:
-            print "pynotification failed"
+                self.welcome_back_notification.show()
+                self.welcome_back_notification.connect('closed', self.__notification_closed_cb)
+        except Exception, e:
+            print "pynotification failed: %s" % e
 
     def insert_old_log_entries (self, note=None, act=None, data=None):
         """
@@ -2492,6 +2510,10 @@ class MainWindow(object):
         print repr ((note, act, data))
         self.inserting_old_time = True
         self.time_label.set_text ("Backdated: " +self.time_before_idle.strftime("%H:%M"))
+
+    def __notification_closed_cb(self, notification):
+        if self.welcome_back_notification == notification:
+            self.welcome_back_notification = None
 
     def insert_new_log_entries (self):
         """
@@ -2578,24 +2600,24 @@ class SubmitWindow(object):
         self.tree_view = tree.get_object("submit_tree")
         self.tree_view.set_model (self.list_store)
 
-        toggle = gtk.CellRendererToggle()
+        toggle = Gtk.CellRendererToggle()
         toggle.connect ("toggled", self.on_toggled)
         tree.get_object("toggle_selection").connect("clicked", self.on_toggle_selection)
-        self.tree_view.append_column(gtk.TreeViewColumn('Include?', toggle ,active=COL_ACTIVE, activatable=COL_ACTIVATABLE, visible=COL_HAS_CHECKBOX))
+        self.tree_view.append_column(Gtk.TreeViewColumn('Include?', toggle ,active=COL_ACTIVE, activatable=COL_ACTIVATABLE, visible=COL_HAS_CHECKBOX))
 
-        time_cell = gtk.CellRendererText()
+        time_cell = Gtk.CellRendererText()
         time_cell.set_property('xalign', 1.0)
         time_cell.connect ("edited", self.on_time_cell_edit)
-        self.tree_view.append_column(gtk.TreeViewColumn('Log Time', time_cell, text=COL_DATE_OR_DURATION, editable=COL_EDITABLE, foreground=COL_COLOR))
+        self.tree_view.append_column(Gtk.TreeViewColumn('Log Time', time_cell, text=COL_DATE_OR_DURATION, editable=COL_EDITABLE, foreground=COL_COLOR))
 
-        item_cell = gtk.CellRendererText()
+        item_cell = Gtk.CellRendererText()
         item_cell.connect ("edited", self.on_item_cell_edit)
-        self.tree_view.append_column(gtk.TreeViewColumn('Log Entry', item_cell, text=COL_DESCRIPTION, editable=COL_EDITABLE, foreground=COL_COLOR))
+        self.tree_view.append_column(Gtk.TreeViewColumn('Log Entry', item_cell, text=COL_DESCRIPTION, editable=COL_EDITABLE, foreground=COL_COLOR))
 
-        self.tree_view.append_column(gtk.TreeViewColumn('Error Message', gtk.CellRendererText (), text=COL_ERROR_MSG, foreground=COL_COLOR))
+        self.tree_view.append_column(Gtk.TreeViewColumn('Error Message', Gtk.CellRendererText (), text=COL_ERROR_MSG, foreground=COL_COLOR))
 
         selection = self.tree_view.get_selection()
-        selection.set_mode(gtk.SELECTION_MULTIPLE)
+        selection.set_mode(Gtk.SelectionMode.MULTIPLE)
 
         self.application = application
 
@@ -2621,7 +2643,7 @@ class SubmitWindow(object):
                     if item[COL_SUBMIT]:
                         data[row[COL_DATE_OR_DURATION]] += "%s %s\n" % (format_duration_short(parse_timedelta(item[COL_DATE_OR_DURATION])), item[COL_DESCRIPTION])
 
-        threading.Thread(target=self.upload_thread, kwargs={'data': data, 'automatic': automatic}).start()
+        self.upload(data, automatic)
 
     def on_submit_report (self, button):
         self.hide ()
@@ -2633,16 +2655,16 @@ class SubmitWindow(object):
         return True
 
     def show_progress_window (self):
-        self.timeout_id = gobject.timeout_add(200, self.progress_window_tick)
+        self.timeout_id = GObject.timeout_add(200, self.progress_window_tick)
         self.progress_window.show()
 
     def hide_progress_window (self, button = None):
         try:
-            gobject.source_remove (self.timeout_id)
+            GObject.source_remove (self.timeout_id)
         except AttributeError:
             pass # race condition?
 
-        gobject.idle_add(lambda: self.progress_window.hide())
+        GObject.idle_add(lambda: self.progress_window.hide())
 
     def push_error_infobar(self, primary = None, secondary = None):
             main_window = self.application
@@ -2651,33 +2673,25 @@ class SubmitWindow(object):
             if secondary is None:
                 secondary = 'Some entries in your timesheet are not known to the server. ' \
                     'Please correct them, and submit.'
-            main_window.push_reminder('<b><big>%s</big></b>\n\n%s' % (primary, secondary), None,
+            message = '<b><big>%s</big></b>\n\n%s' % (
+                GLib.markup_escape_text(primary),
+                GLib.markup_escape_text(secondary))
+
+            main_window.push_reminder(message, None,
                                       'View problems', main_window.show_submit_window)
 
-    def upload_thread(self, data, automatic):
-        if not os.path.exists(self.settings.server_cert):
-            self.error_dialog("Provided certificate %s not found" % self.settings.server_cert)
+    def upload_finished(self, session, message, automatic):
+        # This is equivalent to the SOUP_STATUS_IS_TRANSPORT_ERROR() macro,
+        # which is not exposed via GI (being as it is a macro).
+        if message.status_code > Soup.KnownStatusCode.NONE and \
+           message.status_code < Soup.KnownStatusCode.CONTINUE:
+            self.error_dialog(message.reason_phrase, automatic=automatic)
             return
 
-        ctx = SSL.Context()
-        ctx.set_verify(SSL.verify_peer | SSL.verify_fail_if_no_peer_cert, 9)
-        ctx.load_verify_locations(self.settings.server_cert)
+        txt = message.response_body.data
 
-        passmgr = GtkPasswordRequest ()
-        auth_handler = urllib2.HTTPBasicAuthHandler (passmgr)
-
-        opener = m2urllib2.build_opener(ctx, auth_handler)
-        m2urllib2.install_opener(opener)
-
-        try:
-            response = m2urllib2.urlopen(self.report_url, urllib.urlencode(data))
-
-        except m2urllib2.HTTPError, e:
-            txt = e.read()
-            if e.code == 400 and txt.startswith('Failed\n'):
+        if message.status_code == 400 or txt.startswith('Failed'):
                 # the server didn't like our submission
-                gtk.gdk.threads_enter()
-
                 self.hide_progress_window()
                 self.annotate_failure (txt)
 
@@ -2685,53 +2699,53 @@ class SubmitWindow(object):
                     self.submitting = False
                     self.push_error_infobar()
                 else:
-                    dialog = gtk.MessageDialog(self.window,
-                             gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
-                             gtk.MESSAGE_ERROR,
-                             gtk.BUTTONS_OK,
+                    dialog = Gtk.MessageDialog(self.window,
+                             Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                             Gtk.MessageType.ERROR,
+                             Gtk.ButtonsType.OK,
                              'Unable To Upload Timesheet')
                     dialog.set_title('Error')
                     dialog.format_secondary_text('Some of the entries in your timesheet refer to tasks that are not known to the server. These entries have been marked in red. Please review them and resubmit to the server when fixed.')
                     dialog.connect('response', lambda d, i: dialog.destroy())
                     self.window.show ()
                     dialog.show()
-                gtk.gdk.threads_leave()
-            else:
-                self.error_dialog(e, automatic = automatic)
-
-        except m2urllib2.URLError, e:
-            self.error_dialog(e, automatic = automatic)
-        except SSL.SSLError, e:
-            self.error_dialog(e, automatic = automatic)
-        else:
-            gtk.gdk.threads_enter()
+        elif message.status_code == 200:
             self.submitting = False
             self.hide ()
 
             if not automatic or self.progress_window.get_property('visible'):
-                dialog = gtk.MessageDialog(self.window,
-                                           gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
-                                           gtk.MESSAGE_INFO,
-                                           gtk.BUTTONS_OK,
+                dialog = Gtk.MessageDialog(self.window,
+                                           Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                                           Gtk.MessageType.INFO,
+                                           Gtk.ButtonsType.OK,
                                            'Submitting timesheet succeeded.')
                 dialog.set_title('Success')
                 dialog.format_secondary_text('The selected timesheets have been submitted.')
                 dialog.connect('response', lambda d, i: dialog.destroy())
                 dialog.show()
                 self.hide_progress_window()
+        else:
+            self.error_dialog(txt, automatic = automatic)
 
-            gtk.gdk.threads_leave()
+    def upload(self, data, automatic):
+        if not os.path.exists(self.settings.server_cert):
+            self.error_dialog("Provided certificate %s not found" % self.settings.server_cert)
+            return
+
+        message = Soup.Message.new('POST', self.report_url)
+        message.request_body.append(urllib.urlencode(data))
+        message.request_body.complete()
+        soup_session.queue_message(message, self.upload_finished, automatic)
 
     def error_dialog(self, e, title = 'Error Communicating With The Server', automatic = False):
         print (e)
-        gtk.gdk.threads_enter()
         if automatic:
             self.push_error_infobar(title, e)
         else:
-            dialog = gtk.MessageDialog(self.window,
-                     gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
-                     gtk.MESSAGE_ERROR,
-                     gtk.BUTTONS_OK,
+            dialog = Gtk.MessageDialog(self.window,
+                     Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                     Gtk.MessageType.ERROR,
+                     Gtk.ButtonsType.OK,
                      title)
             dialog.set_title('Error')
             dialog.format_secondary_text('%s' % e)
@@ -2739,11 +2753,12 @@ class SubmitWindow(object):
             dialog.destroy ()
         self.submitting = False
         self.hide ()
-        gtk.gdk.threads_leave()
 
-    def on_toggled (self, toggle, path, value=None):
+    def on_toggled (self, toggle, path):
         """When one of the dates is toggled"""
-        self.list_store[path] = self.date_row(self.list_store[path][COL_DATE_OR_DURATION],value == None and (not self.list_store[path][COL_ACTIVE]) or value )
+        value = not self.list_store[path][COL_ACTIVE]
+        self.list_store[path] = \
+            self.date_row(self.list_store[path][COL_DATE_OR_DURATION], value)
 
     def on_toggle_selection (self, toggle):
         """The toggle selection check box to do groups"""
@@ -2819,7 +2834,7 @@ class SubmitWindow(object):
     #All the row based stuff together
     def _list_store (self):
         #Duration, Description, active (date submission), activatable, editable, foreground, radio, visible (row submission), error
-        return gtk.TreeStore(str, str, bool, bool, bool, str, bool, bool, str)
+        return Gtk.TreeStore(str, str, bool, bool, bool, str, bool, bool, str)
 
     def date_row (self, date, submit=True):
         return [date, "", submit, True, False, submit and "black" or "grey", True, True, ""]
@@ -2864,6 +2879,42 @@ class SubmitWindow(object):
     def hide (self):
         self.window.hide ()
 
+class Application(Gtk.Application):
+    def __init__(self, *args, **kwargs):
+        kwargs['application_id'] = 'uk.co.collabora.gtimelog'
+        Gtk.Application.__init__(self, *args, **kwargs)
+        self.main_window = None
+
+        self.connect('activate', Application._activate)
+
+    def _activate(self):
+        if self.main_window is not None:
+            self.main_window.main_window.present()
+            return
+
+        try:
+            os.makedirs(configdir) # create it if it doesn't exist
+        except OSError:
+            pass
+        settings = Settings()
+        settings_file = os.path.join(configdir, 'gtimelogrc')
+        if not os.path.exists(settings_file):
+            settings.save(settings_file)
+        else:
+            settings.load(settings_file)
+            if settings.server_cert and os.path.exists(settings.server_cert):
+                soup_session.set_property('ssl-ca-file', settings.server_cert)
+        timelog = TimeLog(os.path.join(configdir, 'timelog.txt'),
+                          settings.virtual_midnight)
+        if settings.task_list_url:
+            tasks = RemoteTaskList(settings,
+                                   os.path.join(configdir, 'remote-tasks.txt'))
+        else:
+            tasks = TaskList(os.path.join(configdir, 'tasks.txt'))
+        self.main_window = MainWindow(timelog, settings, tasks)
+        self.add_window(self.main_window.main_window)
+        tray_icon = TrayIcon(self.main_window)
+
 def main():
     """Run the program."""
     if len(sys.argv) > 1 and sys.argv[1] == '--sample-config':
@@ -2872,33 +2923,10 @@ def main():
         print "Sample configuration file written to gtimelogrc.sample"
         return
 
-    try:
-        os.makedirs(configdir) # create it if it doesn't exist
-    except OSError:
-        pass
-    settings = Settings()
-    settings_file = os.path.join(configdir, 'gtimelogrc')
-    if not os.path.exists(settings_file):
-        settings.save(settings_file)
-    else:
-        settings.load(settings_file)
-    timelog = TimeLog(os.path.join(configdir, 'timelog.txt'),
-                      settings.virtual_midnight)
-    if settings.task_list_url:
-        tasks = RemoteTaskList(settings,
-                               os.path.join(configdir, 'remote-tasks.txt'))
-    else:
-        tasks = TaskList(os.path.join(configdir, 'tasks.txt'))
-    main_window = MainWindow(timelog, settings, tasks)
-    tray_icon = TrayIcon(main_window)
-    try:
-        gtk.gdk.threads_enter()
-        gtk.main()
-        gtk.gdk.threads_leave()
-
-        main_window.save_ui_state(os.path.join(configdir, 'uistaterc'))
-    except KeyboardInterrupt:
-        pass
+    app = Application()
+    app.run(sys.argv)
+    if app.main_window is not None:
+        app.main_window.save_ui_state(os.path.join(configdir, 'uistaterc'))
 
 if __name__ == '__main__':
     main()

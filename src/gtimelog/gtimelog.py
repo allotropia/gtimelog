@@ -12,6 +12,7 @@ import sys
 import copy
 import urllib
 import datetime
+import calendar
 import time
 import tempfile
 import ConfigParser
@@ -1627,6 +1628,22 @@ class MainWindow(object):
             self.w(time_to_leave.strftime('%H:%M'), 'time')
             self.w(')\n')
 
+        if True:
+            """If you work under 35 hours some weeks and catch up in future
+            weeks, you should be ashamed of yourself, but you might find this
+            useful."""
+            monthly_window = self.monthly_window()
+            month_total_work, _ = monthly_window.totals()
+
+            days_worked = as_hours(month_total_work) / self.settings.hours
+            self.w(u'Days worked this month: ')
+            self.w('%0.1f' % days_worked, 'duration')
+            # TODO: it'd be nice if this fetched holidays from Chronophage, but
+            # I have no idea if there's API for that.
+            self.w(' (out of ')
+            self.w('%d' % self.weekdays_in_month(), 'time')
+            self.w(')')
+
         if self.settings.show_office_hours:
             self.w('\nAt office today: ')
             hours = datetime.timedelta(hours=self.settings.hours)
@@ -2278,6 +2295,32 @@ class MainWindow(object):
                                         self.timelog.virtual_midnight)
         window = self.timelog.window_for(min, max)
         return window
+
+    def weekdays_in_month(self, day=None):
+        """Counts the weekdays in the month of 'day'. If 'day' is not
+        specified, defaults to today."""
+        if not day:
+            day = self.timelog.day
+
+        c = calendar.Calendar(firstweekday=0)
+        weeks = c.monthdayscalendar(day.year, day.month)
+        # calendar basically provides Python representations of `cal`.
+        # monthdayscalendar returns an array of 7-element arrays representing
+        # the weeks of the month. For instance, it looks like this for June
+        # 2012:
+        #    M   T   W  Th   F  Sa  Su
+        #
+        # [[ 0,  0,  0,  0,  1,  2,  3],
+        #  [ 4,  5,  6,  7,  8,  9, 10],
+        #  [11, 12, 13, 14, 15, 16, 17],
+        #  [18, 19, 20, 21, 22, 23, 24],
+        #  [25, 26, 27, 28, 29, 30, 0]]
+        #
+        # For each row we look at the first five entries and count how many are
+        # non-zero; and then we sum this.
+        return sum(
+            sum([1 for x in week[0:5] if x != 0])
+            for week in weeks)
 
     def on_previous_month_report_activate(self, widget):
         """File -> Monthly Report for a Previous Month"""

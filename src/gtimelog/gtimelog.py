@@ -1635,14 +1635,16 @@ class MainWindow(object):
             monthly_window = self.monthly_window()
             month_total_work, _ = monthly_window.totals()
 
-            days_worked = as_hours(month_total_work) / self.settings.hours
-            self.w(u'Days worked this month: ')
-            self.w('%0.1f' % days_worked, 'duration')
+            (d, h) = divmod(as_hours(month_total_work), self.settings.hours)
+            h_delta = datetime.timedelta(seconds=(h * 60 * 60))
+
+            self.w(u'Time worked this month: ')
+            self.w('%d days %s' % (d, format_duration(h_delta)), 'duration')
             # TODO: it'd be nice if this fetched holidays from Chronophage, but
             # I have no idea if there's API for that.
             self.w(' (out of ')
             self.w('%d' % self.weekdays_in_month(), 'time')
-            self.w(')')
+            self.w(' days)')
 
         if self.settings.show_office_hours:
             self.w('\nAt office today: ')

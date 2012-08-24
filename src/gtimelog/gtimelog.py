@@ -992,6 +992,9 @@ class RemoteTaskList(TaskList):
             finally:
                 out.close ()
                 self.load_file()
+        else:
+            if self.error_callback:
+                self.error_callback()
 
     def download(self):
         """Download the task list from the server."""

@@ -1282,6 +1282,7 @@ class MainWindow(object):
         if not self.show_tasks:
             self.task_pane.hide()
         self.task_pane_info_label = tree.get_object("task_pane_info_label")
+        self.task_pane_spinner = tree.get_object("task_pane_spinner")
         self.tasks.loading_callback = self.task_list_loading
         self.tasks.loaded_callback = self.task_list_loaded
         self.tasks.error_callback = self.task_list_error
@@ -2442,16 +2443,24 @@ class MainWindow(object):
         self.task_list_loading_failed = False
         self.task_pane_info_label.set_text("Loading...")
         self.task_pane_info_label.show()
+        self.task_pane_spinner.start()
+        self.task_pane_spinner.show()
 
     def task_list_error(self, text = "Could not get task list."):
         self.task_list_loading_failed = True
         self.task_pane_info_label.set_text(text)
         self.task_pane_info_label.show()
 
+        self.task_pane_spinner.stop()
+        self.task_pane_spinner.hide()
+
     def task_list_loaded(self):
         if not self.task_list_loading_failed:
             self.task_pane_info_label.hide()
             self.set_up_task_list()
+
+            self.task_pane_spinner.stop()
+            self.task_pane_spinner.hide()
 
     def task_entry_changed(self, widget):
         """Reset history position when the task entry is changed."""

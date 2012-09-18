@@ -1039,7 +1039,6 @@ class Settings(object):
 
     task_list_url = ''
     task_list_expiry = '24 hours'
-    edit_task_list_cmd = ''
 
     show_office_hours = True
 
@@ -1065,7 +1064,6 @@ class Settings(object):
                    self.virtual_midnight.strftime('%H:%M'))
         config.set('gtimelog', 'task_list_url', self.task_list_url)
         config.set('gtimelog', 'task_list_expiry', self.task_list_expiry)
-        config.set('gtimelog', 'edit_task_list_cmd', self.edit_task_list_cmd)
         config.set('gtimelog', 'show_office_hours',
                    str(self.show_office_hours))
         config.set('gtimelog', 'report_to_url', self.report_to_url)
@@ -1091,7 +1089,6 @@ class Settings(object):
                                                       'virtual_midnight'))
         self.task_list_url = config.get('gtimelog', 'task_list_url')
         self.task_list_expiry = parse_timedelta(config.get('gtimelog', 'task_list_expiry'))
-        self.edit_task_list_cmd = config.get('gtimelog', 'edit_task_list_cmd')
         self.show_office_hours = config.getboolean('gtimelog',
                                                    'show_office_hours')
         self.report_to_url = config.get('gtimelog','report_to_url')
@@ -1382,8 +1379,6 @@ class MainWindow(object):
                                       self.task_list_button_press,
                                       self.task_list_popup_menu)
         task_list_edit_menu_item = tree.get_object("task_list_edit")
-        if not self.settings.edit_task_list_cmd:
-            task_list_edit_menu_item.set_sensitive(False)
         self.time_label = tree.get_object("time_label")
         self.task_entry = tree.get_object("task_entry")
         self.task_entry.connect("changed", self.task_entry_changed)
@@ -2438,9 +2433,6 @@ class MainWindow(object):
     def on_task_list_reload(self, event):
         self.tasks.reload()
         self.set_up_task_list()
-
-    def on_task_list_edit(self, event):
-        self.spawn(self.settings.edit_task_list_cmd)
 
     def task_list_loading(self):
         self.task_list_loading_failed = False

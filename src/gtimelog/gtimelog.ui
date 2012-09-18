@@ -173,15 +173,6 @@
         <signal name="activate" handler="on_task_list_reload"/>
       </object>
     </child>
-    <child>
-      <object class="GtkImageMenuItem" id="task_list_edit">
-        <property name="label">gtk-edit</property>
-        <property name="visible">True</property>
-        <property name="use_underline">True</property>
-        <property name="use_stock">True</property>
-        <signal name="activate" handler="on_task_list_edit"/>
-      </object>
-    </child>
   </object>
   <object class="GtkDialog" id="calendar_dialog">
     <property name="title" translatable="yes">Choose a Date</property>

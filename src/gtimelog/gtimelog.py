@@ -442,12 +442,11 @@ class TimeWindow(object):
             print >> output, "END:VEVENT"
         print >> output, "END:VCALENDAR"
 
-    def to_csv_complete(self, output, title_row=True):
+    def to_csv_complete(self, writer, title_row=True):
         """Export work entries to a CSV file.
 
         The file has two columns: task title and time (in minutes).
         """
-        writer = csv.writer(output)
         if title_row:
             writer.writerow(["task", "time (minutes)"])
         work, slack = self.grouped_entries()
@@ -457,13 +456,12 @@ class TimeWindow(object):
         work.sort()
         writer.writerows(work)
 
-    def to_csv_daily(self, output, title_row=True):
+    def to_csv_daily(self, writer, title_row=True):
         """Export daily work, slacking, and arrival times to a CSV file.
 
         The file has four columns: date, time from midnight til arrival at
         work, slacking, and work (in decimal hours).
         """
-        writer = csv.writer(output)
         if title_row:
             writer.writerow(["date", "day-start (hours)",
                              "slacking (hours)", "work (hours)"])
@@ -2341,21 +2339,22 @@ class MainWindow(object):
         window = self.monthly_window()
         self.mail(window.monthly_report)
 
-    def on_open_complete_spreadsheet_activate(self, widget):
-        """Report -> Complete Report in Spreadsheet"""
+    def _open_spreadsheet(self, history_method):
         tempfn = tempfile.mktemp(suffix='gtimelog.csv') # XXX unsafe!
         f = open(tempfn, 'w')
-        self.timelog.whole_history().to_csv_complete(f)
+        writer = csv.writer(f)
+        history = self.timelog.whole_history()
+        history_method(history, writer)
         f.close()
         self.spawn(self.settings.spreadsheet, tempfn)
 
+    def on_open_complete_spreadsheet_activate(self, widget):
+        """Report -> Complete Report in Spreadsheet"""
+        self._open_spreadsheet(TimeWindow.to_csv_complete)
+
     def on_open_slack_spreadsheet_activate(self, widget):
         """Report -> Work/_Slacking stats in Spreadsheet"""
-        tempfn = tempfile.mktemp(suffix='gtimelog.csv') # XXX unsafe!
-        f = open(tempfn, 'w')
-        self.timelog.whole_history().to_csv_daily(f)
-        f.close()
-        self.spawn(self.settings.spreadsheet, tempfn)
+        self._open_spreadsheet(TimeWindow.to_csv_daily)
 
     def edit_timelog(self):
         self.spawn(self.settings.editor, self.timelog.filename)

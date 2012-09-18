@@ -1028,7 +1028,7 @@ class Settings(object):
 
     editor = 'gvim'
     mailer = 'x-terminal-emulator -e mutt -H %s'
-    spreadsheet = 'oocalc %s'
+    spreadsheet = 'localc %s'
 
     enable_gtk_completion = True  # False enables gvim-style completion
 

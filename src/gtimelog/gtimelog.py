@@ -14,7 +14,7 @@ import urllib
 import datetime
 import calendar
 import time
-import tempfile
+from tempfile import NamedTemporaryFile
 import ConfigParser
 import cPickle as pickle
 from cgi import escape
@@ -2340,12 +2340,13 @@ class MainWindow(object):
         self.mail(window.monthly_report)
 
     def _open_spreadsheet(self, history_method):
-        tempfn = tempfile.mktemp(suffix='gtimelog.csv') # XXX unsafe!
-        f = open(tempfn, 'w')
-        writer = csv.writer(f)
-        history = self.timelog.whole_history()
-        history_method(history, writer)
-        f.close()
+        with NamedTemporaryFile(prefix='gtimelog', suffix='.csv',
+                                delete=False) as f:
+            tempfn = f.name
+            writer = csv.writer(f)
+            history = self.timelog.whole_history()
+            history_method(history, writer)
+
         self.spawn(self.settings.spreadsheet, tempfn)
 
     def on_open_complete_spreadsheet_activate(self, widget):
@@ -2368,10 +2369,10 @@ class MainWindow(object):
 
     def mail(self, write_draft):
         """Send an email."""
-        draftfn = tempfile.mktemp(suffix='gtimelog') # XXX unsafe!
-        draft = open(draftfn, 'w')
-        write_draft(draft, self.settings.email, self.settings.name)
-        draft.close()
+        with NamedTemporaryFile(suffix='gtimelog', delete=False) as draft:
+            draftfn = draft.name
+            write_draft(draft, self.settings.email, self.settings.name)
+
         self.spawn(self.settings.mailer, draftfn)
         # XXX rm draftfn when done -- but how?
 

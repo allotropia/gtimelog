@@ -2365,7 +2365,7 @@ class MainWindow(object):
         self.edit_timelog()
 
     def on_edit_log_button_clicked(self, widget):
-        self.spawn(self.settings.editor, self.timelog.filename)
+        self.edit_timelog()
 
     def mail(self, write_draft):
         """Send an email."""

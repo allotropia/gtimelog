@@ -330,7 +330,8 @@ def doctest_TimeWindow_to_csv_daily():
         >>> window = TimeWindow(sampledata, min, max, vm)
 
         >>> import sys
-        >>> window.to_csv_daily(sys.stdout)
+        >>> import csv
+        >>> window.to_csv_daily(csv.writer(sys.stdout))
         date,day-start (hours),slacking (hours),work (hours)
         2008-06-03,12.75,0.0,3.0
         2008-06-04,0.0,0.0,0.0

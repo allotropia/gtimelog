@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <interface>
-  <requires lib="gtk+" version="2.16"/>
+  <requires lib="gtk+" version="3.2"/>
   <!-- interface-naming-policy toplevel-contextual -->
   <object class="GtkTextBuffer" id="textbuffer1">
     <property name="text">19:20 did thist
@@ -8,9 +8,6 @@
 20:20 did that
 </property>
   </object>
-  <object class="GtkUIManager" id="uimanager1"/>
-  <object class="GtkUIManager" id="uimanager2"/>
-  <object class="GtkUIManager" id="uimanager3"/>
   <object class="GtkWindow" id="submit_window">
     <property name="title" translatable="yes">Submit Time Log</property>
     <property name="window_position">center-on-parent</property>

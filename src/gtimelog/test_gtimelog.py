@@ -291,7 +291,7 @@ def doctest_TimeWindow_monthly_report():
         To: foo@bar.com
         Subject: Monthly report for Bob Jones (2007/09)
         <BLANKLINE>
-        <BLANKLINE>
+                                                                        time
         Bing: stuff                                                     23 min
         Bong: other stuff                                               3 hours 31 min
         Misc                                                            2 hours 14 min

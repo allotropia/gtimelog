@@ -1,9 +1,98 @@
-collabora-gtimelog (0.0+2010.06.09) unstable; urgency=low
+collabora-gtimelog (0.6.0~2012.10.03~1) unstable; urgency=low
 
+  [ Simon McVittie ]
   * Rename source and binary package to collabora-gtimelog
   * Remove patch system, which interferes with how it's maintained in practice
 
- -- Simon McVittie <simon.mcvittie@collabora.co.uk>  Wed, 09 Jun 2010 15:25:44 +0100
+  [ Gustavo Noronha Silva ]
+  * [de564a9] Print the error message if the file is not found, when downloading tasks
+  * [83291e8] Also leave critical region in case an exception is raised in keyring call
+  * [3d18ab6] Make sure the task list UI is updated after download
+  * [ed855bb] Replace M2Crypto usage with pygi and Soup
+  * [194821d] Fix validation of number of parts in a task description
+  * [992ecf6] Fix mislogging when work goes past the virtual midnight
+
+  [ Marco Barisione ]
+  * [85cf13e] Hide the progress window from an idle to avoid mixing threads and UI
+  * [9626343] Show how much time is left for the week if less than 7 hours
+  * [aa4b612] Ignore the very old entries for the suggestions
+
+  [ Danielle Madeley ]
+  * [9e866ba] Fix escaping for tasks containing an ampersand
+  * [34cea5f] Initial work on a gtk3 port
+  * [a093d1a] Remove threading locks
+  * [72bbaff] Fix function with wrong number of arguments
+  * [12ca77a] Reenable status icon
+  * [58e6ba3] Remove old properties from UI file
+  * [9b0d2ea] Fix another callback
+  * [4a59a09] Fix Submit Advanced Selection toggle renderers
+  * [8138e90] Remove unrequired modules
+  * [6270fd5] Pass right number of arguments to function
+
+  [ Jonny Lamb ]
+  * [e04b36e] gtimelog.ui: give the main entry focus
+  * [30110fb] make quitting the app work again with GtkApplication API
+
+  [ Lars Wirzenius ]
+  * [8abc01d] Fix build on Ubuntu 10.04.
+  * [c85aa01] Add control-q for file/quit.
+  * [0b43c1c] Revert "Add control-q for file/quit."
+
+  [ Will Thompson ]
+  * [4aff822] Add constants for task tree model
+  * [7da9d97] Add an “unavailable” column to the task model.
+  * [5ee7b82] Clarify iterating across task hierarchy
+  * [e730716] Grey out nodes in tree prefixed by '*'
+  * [f435615] Grey out all tasks below unavailable parents.
+  * [0f8d686] Grey out task nodes if all children are grey
+  * [1010da3] Hide '*'s marking unavailable tasks in task tree
+  * [05cbb5a] Add a tickybox to show/hide grey things.
+  * [94ebce1] Titlecase All Menu Items as Philip Himself Dictated
+  * [9793db1] Make double-clicking a category expand/contract it.
+  * [1d5dfec] Fix "welcome back" notifications
+  * [ba77c65] Fix a typo in a comment
+  * [f9f9020] Single-instance-ify using GtkApplication.
+  * [eee79cf] Handle Soup transport errors
+  * [7fb9fcc] Make About dialog attach to main window
+  * [e42c3fd] Remove unnecessary re-parsing of URIs
+  * [d97dbc1] Make sure error messages are valid Pango
+  * [91b0a45] “Port” password request dialog to Gtk3
+  * [3067805] Bundle up HTTP auth callback in a class
+  * [3aa4d01] Split keyring access into separate methods
+  * [72a8b1b] Split prompting for username/password to a separate method
+  * [8a6fdc0] Asyncify running password prompt dialog.
+  * [968433a] Restructure for async keyringing.
+  * [b2a8823] If the user hits cancel, don't try username/password anyway.
+  * [51cb90e] Reduce duplicate checking for gnomekeyring module
+  * [163da29] Don't associate passwords with a single path
+  * [117dd8a] Only show one password prompt at a time
+  * [31039e6] GtkGrid-ify password prompt dialog
+  * [1f75abd] Remove weird activate logic from password prompt.
+  * [5595d05] Make sure auth dialog is presented from UI thread
+  * [20929a0] Only show one Welcome Back bubble at a time
+  * [0616757] Show days worked this month (and number of weekdays)
+  * [befdfa7] Format days worked as d/h/m
+  * [ef66af6] Add a spinner to the task pane.
+  * [f009c4a] Handle unsuccessfully retrieving task list.
+  * [2e6786d] Remove edit item from task list's right-click menu
+  * [79719a0] de-duplicate code to spawn an editor
+  * [7468921] Default to LibreOffice, not OpenOffice
+  * [96e2242] Refactor spawning spreadsheet
+  * [15d212f] Create temporary files securely.
+  * [2decb99] Remove cruft from Glade file.
+  * [5c9665e] Fix test I broke when refactoring csv code
+  * [9d240e8] fix a test that's been broken for years
+
+  [ Senko Rasic ]
+  * [40eef75] don't crash if gnome keyring is not available
+
+  [ Arun Raghavan ]
+  * [d2e3d9c] Fix incorrect minute calculation in timezone
+
+  [ Nirbheek Chauhan ]
+  * [933ce33] Un-break gtimelog gnome-keyring integration for new users
+
+ -- Jo Shields <directhex@apebox.org>  Wed, 03 Oct 2012 13:09:22 +0100
 
 gtimelog (0.0+svn88-3+collabora0+jonny0+kov0) unstable; urgency=low
 

@@ -764,11 +764,27 @@ class TaskList(object):
 # Global HTTP stuff
 
 class Authenticator(object):
-    # try to use GNOME Keyring if available
+    # Try to use LibSecret if available
     try:
-        import gnomekeyring
+        import gi # for catching gi._glib.GError exceptions
+        from gi.repository import Secret, SecretUnstable
+        # This is defined by libsecret for migration from gnome-keyring, but it
+        # isn't exported by gobject-introspection, so we redefine it here.
+        SECRET_SCHEMA_COMPAT_NETWORK = Secret.Schema.new(
+            "org.gnome.keyring.NetworkPassword",
+            Secret.SchemaFlags.NONE,
+            {
+                "user": Secret.SchemaAttributeType.STRING,
+                "domain": Secret.SchemaAttributeType.STRING,
+                "object": Secret.SchemaAttributeType.STRING,
+                "protocol": Secret.SchemaAttributeType.STRING,
+                "port": Secret.SchemaAttributeType.INTEGER,
+                "server": Secret.SchemaAttributeType.STRING,
+                "authtype": Secret.SchemaAttributeType.STRING,
+            }
+        )
     except ImportError:
-        gnomekeyring = None
+        Secret = None
 
     def __init__(self):
         object.__init__(self)
@@ -778,7 +794,7 @@ class Authenticator(object):
     def find_in_keyring(self, uri, callback):
         """Attempts to load a username and password from the keyring, if the
         keyring is available"""
-        if self.gnomekeyring is None:
+        if self.Secret is None:
             callback(None, None)
             return
 
@@ -786,48 +802,48 @@ class Authenticator(object):
         password = None
 
         try:
-            # FIXME - would be nice to make all keyring calls async, to dodge
-            # the possibility of blocking the UI. The code is all set up for
-            # that, but there's no easy way to use the keyring asynchronously
-            # from Python (as of Gnome 3.2)...
-            l = self.gnomekeyring.find_network_password_sync (
-                    None,       # user
-                    uri.get_host(), # domain
-                    uri.get_host(), # server
-                    None,       # object
-                    uri.get_scheme(),   # protocol
-                    None,       # authtype
-                    uri.get_port())       # port
-        except self.gnomekeyring.NoMatchError:
-            # We didn't find any passwords, just continue
-            pass
-        except self.gnomekeyring.NoKeyringDaemonError:
-            pass
-        except IOError:
-            gnomekeyring = None
-        except gnomekeyring.IOError: # thanks, gnomekeyring python binding maker
-            gnomekeyring = None
-        else:
-            l = l[-1] # take the last key (Why?)
-            username = l['user']
-            password = l['password']
+            # FIXME: would be nice to make all keyring calls async, to dodge
+            # the possibility of blocking the UI. The code is all set up for it.
+            # It can be done with libsecret from Python; docs have examples.
+            attrs = {
+                "domain": uri.get_host(),
+                "server": uri.get_host(),
+                "protocol": uri.get_scheme(),
+            }
+            service = self.SecretUnstable.Service.get_sync(0, None)
+            # This doesn't give us the password; only details from the schema
+            results = service.search_sync(
+                    self.SECRET_SCHEMA_COMPAT_NETWORK,
+                    attrs, 0, None)
+            if results:
+                username = results[0].get_attributes()['user']
+                # This gives us only the password
+                password = self.Secret.password_lookup_sync(
+                        self.SECRET_SCHEMA_COMPAT_NETWORK, attrs, None)
+        except self.gi._glib.GError as e:
+            # Couldn't contact daemon, or other errors
+            print ("Unable to contact keyring: {0}".format(e.streerror))
 
         callback(username, password)
 
     def save_to_keyring(self, uri, username, password):
         try:
-            self.gnomekeyring.set_network_password_sync (
-                    None,		# keyring
-                    username,	# user
-                    uri.get_host(),	# domain
-                    uri.get_host(),	# server
-                    None,		# object
-                    uri.get_scheme(),	# protocol
-                    None,		# authtype
-                    uri.get_port(),		# port
-                    password)	# password
-        except self.gnomekeyring.NoKeyringDaemonError:
-            pass
+            attrs = {
+                "user": username,
+                "domain": uri.get_host(),
+                "server": uri.get_host(),
+                # BUG: Passing 'None' for a string causes a segfault
+                "object": "",
+                "protocol": uri.get_scheme(),
+            }
+            self.Secret.password_store_sync(
+                    self.SECRET_SCHEMA_COMPAT_NETWORK,
+                    attrs,
+                    self.Secret.COLLECTION_DEFAULT,
+                    "Chronophage password for GTimelog", password, None)
+        except self.gi._glib.GError as e:
+            # Couldn't contact daemon, or other errors
+            print ("Unable to contact keyring: {0}".format(e.streerror))
 
     def ask_the_user(self, auth, uri, callback):
         """Pops up a username/password dialog for uri"""
@@ -862,7 +878,7 @@ class Authenticator(object):
         grid.attach_next_to(userentry, username_label, Gtk.PositionType.RIGHT, 1, 1)
         grid.attach_next_to(passentry, password_label, Gtk.PositionType.RIGHT, 1, 1)
 
-        if self.gnomekeyring:
+        if self.Secret:
             savepasstoggle = Gtk.CheckButton ("Save Password in Keyring")
             savepasstoggle.set_active (True)
             grid.attach_next_to(savepasstoggle, passentry,
@@ -880,7 +896,7 @@ class Authenticator(object):
         update_ok_sensitivity()
 
         def on_response(dialog, r):
-            save_to_keyring = self.gnomekeyring and savepasstoggle.get_active()
+            save_to_keyring = self.Secret and savepasstoggle.get_active()
 
             if r == Gtk.ResponseType.OK:
                 username = userentry.get_text ()

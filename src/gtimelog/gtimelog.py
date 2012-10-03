@@ -833,6 +833,7 @@ class Authenticator(object):
                 "domain": uri.get_host(),
                 "server": uri.get_host(),
                 # BUG: Passing 'None' for a string causes a segfault
+                # https://bugzilla.gnome.org/show_bug.cgi?id=685394
                 "object": "",
                 "protocol": uri.get_scheme(),
             }

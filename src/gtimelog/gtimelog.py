@@ -22,14 +22,13 @@ import functools
 
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import GLib, GObject, Gtk, Gdk, Pango
+from gi.repository import Gio, GLib, GObject, Gtk, Gdk, Pango
 
 try:
-    import dbus
     from gi.repository import Notify
     assert Notify.init ("gtimelog")
 except:
-    print "dbus or pynotify not found, idle timeouts are not supported"
+    print "LibNotify (with introspection) not found. Idle timeouts are not supported."
 
 from gi.repository import Soup
 
@@ -1408,10 +1407,13 @@ class MainWindow(object):
 
     def _init_dbus(self):
         try:
-            dbus_bus = dbus.SessionBus()
-            dbus_proxy = dbus_bus.get_object('org.gnome.ScreenSaver','/org/gnome/ScreenSaver')
-            self.screensaver = dbus.Interface(dbus_proxy, dbus_interface='org.gnome.ScreenSaver')
-            self.screensaving =self.screensaver.GetActive () ==1
+            dbus_bus_type = Gio.BusType.SESSION
+            self.screensaver = Gio.DBusProxy.new_for_bus_sync(dbus_bus_type, 0, None,
+                                                              'org.gnome.ScreenSaver',
+                                                              '/org/gnome/ScreenSaver',
+                                                              'org.gnome.ScreenSaver',
+                                                              None)
+            self.screensaving = self.screensaver.GetActive()
         except Exception, e:
             self.screensaving = False
             self.screensaver = None
@@ -2596,7 +2598,7 @@ class MainWindow(object):
                 self.resume_from_idle ()
 
             #Computer has been left idle?
-            screensaving = self.screensaver and self.screensaver.GetActive () == 1
+            screensaving = self.screensaver and self.screensaver.GetActive()
             if not screensaving == self.screensaving:
                 self.screensaving = screensaving
                 if screensaving:

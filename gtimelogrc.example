@@ -16,7 +16,7 @@ mailer = x-terminal-emulator -e mutt -H %s
 
 # Command to launch an editor.  %s is replaced with the name of the time log
 # file; if there is no '%s', the name of the log file is appended.
-editor = gvim
+editor = xdg-open
 
 # User interface: True enables drop-down history completion (if you have PyGtk
 # 2.4), False disables and lets you access history by pressing Up/Down.

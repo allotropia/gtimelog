@@ -1023,7 +1023,7 @@ class Settings(object):
     email = 'activity-list@example.com'
     name = 'Anonymous'
 
-    editor = 'gvim'
+    editor = 'xdg-open'
     mailer = 'x-terminal-emulator -e mutt -H %s'
     spreadsheet = 'localc %s'
 

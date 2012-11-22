@@ -20,6 +20,7 @@ Depends: gir1.2-appindicator3-0.1,
          python-gi,
          ${misc:Depends},
          ${python:Depends}
+Recommends: xdg-utils
 Suggests: mutt, vim-gnome
 XB-Python-Version: ${python:Versions}
 Description: minimal timelogging system (Collabora's version)

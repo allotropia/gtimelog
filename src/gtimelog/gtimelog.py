@@ -35,7 +35,7 @@ from gi.repository import Soup
 # This is to let people run GTimeLog without having to install it
 resource_dir = os.path.dirname(os.path.realpath(__file__))
 ui_file = os.path.join(resource_dir, "gtimelog.ui")
-icon_file = os.path.join(resource_dir, "gtimelog-small.png")
+icon_file = os.path.join(resource_dir, "gtimelog.png")
 
 # Where we store configuration and other interesting files.
 configdir = os.path.expanduser('~/.gtimelog')
@@ -44,7 +44,7 @@ configdir = os.path.expanduser('~/.gtimelog')
 if not os.path.exists(ui_file):
     ui_file = "/usr/share/gtimelog/gtimelog.ui"
 if not os.path.exists(icon_file):
-    icon_file = "/usr/share/pixmaps/gtimelog-small.png"
+    icon_file = "/usr/share/pixmaps/gtimelog.png"
 
 def as_minutes(duration):
     """Convert a datetime.timedelta to an integer number of minutes."""
@@ -1269,6 +1269,7 @@ class MainWindow(object):
         self.submit_window = SubmitWindow(tree, self.settings, application = self)
         self.main_window = tree.get_object("main_window")
         self.main_window.connect("delete_event", self.delete_event)
+        self.main_window.set_icon_from_file(icon_file)
         self.about_dialog.set_transient_for(self.main_window)
         self.about_dialog.set_modal(True)
         self.log_view = tree.get_object("log_view")

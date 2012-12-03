@@ -9,7 +9,6 @@ import re
 import os
 import csv
 import sys
-import copy
 import urllib
 import datetime
 import calendar
@@ -1157,15 +1156,10 @@ class TrayIcon(object):
         now = datetime.datetime.now(TZOffset()).replace(second=0, microsecond=0)
         if now != self.last_tick or force_update: # Do not eat CPU too much
             self.last_tick = now
-            last_time = self.timelog.window.last_time()
 
         # FIXME - this should be wired up async
         self.trayicon.set_tooltip_text(self.tip())
         return True
-
-    def get_pixbuf(self):
-
-        return image
 
     def tip(self):
         """Compute tooltip text."""
@@ -1308,7 +1302,7 @@ class MainWindow(object):
             self.refilter_timeout = GObject.timeout_add(200, _refilter)
 
         def _task_filter_clear(task_filter, icon_pos, event):
-            txt = task_filter.set_text("")
+            task_filter.set_text("")
 
         def _task_filter_filter(model, iter, user_data):
             # If the user hasn't ticked "Show unavailable tasks" and the task
@@ -1376,7 +1370,6 @@ class MainWindow(object):
         self.task_list.connect_object("button_press_event",
                                       self.task_list_button_press,
                                       self.task_list_popup_menu)
-        task_list_edit_menu_item = tree.get_object("task_list_edit")
         self.time_label = tree.get_object("time_label")
         self.task_entry = tree.get_object("task_entry")
         self.task_entry.connect("changed", self.task_entry_changed)
@@ -1889,13 +1882,6 @@ class MainWindow(object):
         self.reminders.remove(reminder)
         self.update_reminder()
 
-    # fake responses so this works even with our "artisanal" infobar
-    def fake_ok_response(self, button, reminder):
-        self.reminder_response_cb(None, Gtk.ResponseType.OK, reminder)
-
-    def fake_close_response(self, button, reminder):
-        self.reminder_response_cb(None, Gtk.ResponseType.CLOSE, reminder)
-
     def update_reminder(self):
         if self.reminder_infobar is not None:
             self.reminder_infobar.destroy()
@@ -1911,48 +1897,16 @@ class MainWindow(object):
         label.set_line_wrap(True)
         label.set_markup(reminder['msg'])
 
-        use_infobar = False
-        try:
-            dummy = Gtk.InfoBar
-            use_infobar = True
-        except AttributeError:
-            pass
+        self.reminder_infobar = Gtk.InfoBar()
+        self.reminder_infobar.set_message_type(Gtk.MessageType.INFO)
 
-        if use_infobar:
-            self.reminder_infobar = Gtk.InfoBar()
-            self.reminder_infobar.set_message_type(Gtk.MessageType.INFO)
+        self.reminder_infobar.get_content_area().pack_start(label, True, True, 0)
 
-            self.reminder_infobar.get_content_area().pack_start(label, True, True, 0)
+        if reminder['action_label'] and reminder['handler']:
+            self.reminder_infobar.add_button(reminder['action_label'], Gtk.ResponseType.OK)
 
-            if reminder['action_label'] and reminder['handler']:
-                self.reminder_infobar.add_button(reminder['action_label'], Gtk.ResponseType.OK)
-
-            self.reminder_infobar.add_button('_Close', Gtk.ResponseType.CLOSE)
-            self.reminder_infobar.connect('response', self.reminder_response_cb, reminder)
-        else:
-            self.reminder_infobar = Gtk.EventBox()
-            self.reminder_infobar.modify_bg(Gtk.StateType.NORMAL, Gdk.color_parse("#ffffbf"))
-
-            content_area = Gtk.HBox()
-            content_area.set_border_width(6)
-            self.reminder_infobar.add(content_area)
-
-            # add the message label
-            content_area.pack_start(label, True, True, 0)
-
-            vbox = Gtk.VButtonBox()
-            vbox.set_layout(Gtk.ButtonBoxStyle.END)
-
-            if reminder['action_label'] and reminder['handler']:
-                button = Gtk.Button(reminder['action_label'])
-                button.connect('clicked', self.fake_ok_response, reminder)
-                vbox.pack_start(button, True, True, 0)
-
-            button = Gtk.Button('_Close')
-            button.connect('clicked', self.fake_close_response, reminder)
-            vbox.pack_start(button, True, True, 0)
-
-            content_area.pack_start(vbox, expand = False)
+        self.reminder_infobar.add_button('_Close', Gtk.ResponseType.CLOSE)
+        self.reminder_infobar.connect('response', self.reminder_response_cb, reminder)
 
         self.infobars.pack_start(self.reminder_infobar, True, True, 0)
         self.reminder_infobar.show_all()

@@ -42,14 +42,11 @@ cp gtimelog.desktop %{buildroot}/usr/share/applications
 /usr/lib/python2.7/site-packages/gtimelog/test_gtimelog.pyc
 /usr/lib/python2.7/site-packages/gtimelog/test_gtimelog.py
 /usr/lib/python2.7/site-packages/gtimelog/gtimelog.py
-/usr/lib/python2.7/site-packages/gtimelog/gtimelog.pyo
 /usr/lib/python2.7/site-packages/gtimelog/__init__.py
-/usr/lib/python2.7/site-packages/gtimelog/test_gtimelog.pyo
 /usr/lib/python2.7/site-packages/gtimelog/gtimelog.ui
 /usr/lib/python2.7/site-packages/gtimelog/gtimelog.pyc
 /usr/lib/python2.7/site-packages/gtimelog/__init__.pyc
 /usr/lib/python2.7/site-packages/gtimelog/gtimelog.png
-/usr/lib/python2.7/site-packages/gtimelog/__init__.pyo
 /usr/lib/python2.7/site-packages/gtimelog/gtimelog-small.png
 /usr/lib/python2.7/site-packages/gtimelog-0.2.3-py2.7.egg-info/SOURCES.txt
 /usr/lib/python2.7/site-packages/gtimelog-0.2.3-py2.7.egg-info/top_level.txt

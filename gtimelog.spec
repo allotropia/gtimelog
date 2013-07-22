@@ -1,6 +1,6 @@
 Name: 		gtimelog
 Version: 	0.2.3
-Release:	4%{?dist}
+Release:	5%{?dist}
 Summary: 	GTimeLog is a graphical (Gtk+) application for keeping track of time.
 
 Group:		Office
@@ -38,7 +38,6 @@ cp gtimelog.desktop %{buildroot}/usr/share/applications
 %doc
 /usr/share/applications/gtimelog.desktop
 /usr/share/pixmaps/gtimelog.png
-/usr/share/pixmaps/gtimelog-small.png
 /usr/lib/python2.7/site-packages/gtimelog/test_gtimelog.pyc
 /usr/lib/python2.7/site-packages/gtimelog/test_gtimelog.py
 /usr/lib/python2.7/site-packages/gtimelog/gtimelog.py
@@ -47,7 +46,6 @@ cp gtimelog.desktop %{buildroot}/usr/share/applications
 /usr/lib/python2.7/site-packages/gtimelog/gtimelog.pyc
 /usr/lib/python2.7/site-packages/gtimelog/__init__.pyc
 /usr/lib/python2.7/site-packages/gtimelog/gtimelog.png
-/usr/lib/python2.7/site-packages/gtimelog/gtimelog-small.png
 /usr/lib/python2.7/site-packages/gtimelog-0.2.3-py2.7.egg-info/SOURCES.txt
 /usr/lib/python2.7/site-packages/gtimelog-0.2.3-py2.7.egg-info/top_level.txt
 /usr/lib/python2.7/site-packages/gtimelog-0.2.3-py2.7.egg-info/dependency_links.txt

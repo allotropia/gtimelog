@@ -634,9 +634,10 @@ class TimeLog(object):
     the end.
     """
 
-    def __init__(self, filename, virtual_midnight):
+    def __init__(self, filename, virtual_midnight, autoarrival):
         self.filename = filename
         self.virtual_midnight = virtual_midnight
+        self.autoarrival = autoarrival
         self.reread()
 
     def reread(self):
@@ -690,9 +691,12 @@ class TimeLog(object):
                 minute = self.virtual_midnight.minute)
             one_minute_delta = datetime.timedelta(0, 60)
 
-            self.append_entry(entry, midnight - one_minute_delta)
-            self.reread()
-            self.append_entry('-automatic arrival-', midnight + one_minute_delta)
+            if self.autoarrival:
+                self.append_entry(entry, midnight - one_minute_delta)
+                self.reread()
+                self.append_entry('-automatic arrival-', midnight + one_minute_delta)
+            else:
+                self.reread()
 
         self.append_entry(entry, now)
 
@@ -1043,6 +1047,9 @@ class Settings(object):
     remind_idle = '10 minutes'
     server_cert = ''
 
+    # Should we create '-automatic arrival-' marks in the log?
+    autoarrival = True
+
     def _config(self):
         config = ConfigParser.RawConfigParser()
         config.add_section('gtimelog')
@@ -1065,6 +1072,7 @@ class Settings(object):
         config.set('gtimelog', 'report_to_url', self.report_to_url)
         config.set('gtimelog', 'remind_idle', self.remind_idle)
         config.set('gtimelog', 'server_cert', self.server_cert)
+        config.set('gtimelog', 'autoarrival', str(self.autoarrival))
 
         return config
 
@@ -1091,6 +1099,7 @@ class Settings(object):
         self.remind_idle = parse_timedelta (config.get('gtimelog', 'remind_idle'))
 
         self.server_cert = os.path.expanduser(config.get('gtimelog', 'server_cert'))
+        self.autoarrival = config.getboolean('gtimelog', 'autoarrival')
         #Anything shorter than 2 minutes will tick every minute
         #if self.remind_idle > datetime.timedelta (0, 120):
         #    self.remind_idle = datetime.timedelta (0, 120)
@@ -2911,7 +2920,7 @@ class Application(Gtk.Application):
             if settings.server_cert and os.path.exists(settings.server_cert):
                 soup_session.set_property('ssl-ca-file', settings.server_cert)
         timelog = TimeLog(os.path.join(configdir, 'timelog.txt'),
-                          settings.virtual_midnight)
+                          settings.virtual_midnight, settings.autoarrival)
         if settings.task_list_url:
             tasks = RemoteTaskList(settings,
                                    os.path.join(configdir, 'remote-tasks.txt'))

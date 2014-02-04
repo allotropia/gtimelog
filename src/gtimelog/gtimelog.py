@@ -2600,8 +2600,7 @@ COL_ACTIVATABLE = 3
 COL_EDITABLE = 4
 COL_COLOR = 5
 COL_HAS_CHECKBOX = 6
-COL_SUBMIT = 7
-COL_ERROR_MSG = 8
+COL_ERROR_MSG = 7
 class SubmitWindow(object):
     """The window for submitting reports over the http interface"""
     def __init__(self, tree, settings, application = None):
@@ -2657,8 +2656,7 @@ class SubmitWindow(object):
             if row[COL_ACTIVE]:
                 data[row[COL_DATE_OR_DURATION]] = ""
                 for item in row.iterchildren():
-                    if item[COL_SUBMIT]:
-                        data[row[COL_DATE_OR_DURATION]] += "%s %s\n" % (format_duration_short(parse_timedelta(item[COL_DATE_OR_DURATION])), item[COL_DESCRIPTION])
+                    data[row[COL_DATE_OR_DURATION]] += "%s %s\n" % (format_duration_short(parse_timedelta(item[COL_DATE_OR_DURATION])), item[COL_DESCRIPTION])
 
         self.upload(data, automatic)
 
@@ -2864,20 +2862,19 @@ class SubmitWindow(object):
         editable [bool],
         foreground [str],
         radio [bool],
-        visible (row submission) [bool],
         error_message [str]
         """
-        args = [str, str, bool, bool, bool, str, bool, bool, str]
+        args = [str, str, bool, bool, bool, str, bool, str]
         # Attempt to stay synced with above index enums
         assert len(args) == COL_ERROR_MSG + 1
         return Gtk.TreeStore(*args)
 
     def date_row (self, date, submit=True):
-        return [date, "", submit, True, False, submit and "black" or "grey", True, True, ""]
+        return [date, "", submit, True, False, submit and "black" or "grey", True, ""]
 
     def item_row (self, duration, item):
         submit = duration > datetime.timedelta(0) and not "**" in item
-        return [format_duration_long (duration), item, submit, False, True, submit and "black" or "grey", False, submit, ""]
+        return [format_duration_long (duration), item, submit, False, True, submit and "black" or "grey", False, ""]
 
     def annotate_failure (self, response):
         """
@@ -2905,7 +2902,6 @@ class SubmitWindow(object):
                     if itemrow[1].strip () == m.group (2):
                         itemrow[COL_COLOR] = "red"
                         daterow[COL_COLOR] = "red"
-                        itemrow[COL_SUBMIT] = False
                         itemrow[COL_ERROR_MSG] = m.group (1).strip ()
                 continue
 

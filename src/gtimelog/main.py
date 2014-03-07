@@ -79,40 +79,40 @@ def format_duration_long(duration):
         return '%d min' % m
 
 class TZOffset (datetime.tzinfo):
-	ZERO = datetime.timedelta (0)
+    ZERO = datetime.timedelta (0)
 
-	def __init__ (self, offset = None):
-		# offset is an integer in 'hhmm' form. That is, UTC +5.5 = 530
-		if offset is not None:
-			offset = int (offset)
-		else:
-			# time.timezone is in seconds back to UTC
-			if time.daylight and time.localtime ().tm_isdst:
-				offset = -time.altzone / 36
-			else:
-				offset = -time.timezone / 36
-			# (offset % 100) needs to be adjusted to be in minutes
-			# now (e.g. UTC +5.5 => offset = 550, when it should
-			# be 530) - yes, treating hhmm as an integer is a pain
-			m = ((offset % 100) * 60) / 100
-			offset -= (offset % 100) - m
+    def __init__ (self, offset = None):
+        # offset is an integer in 'hhmm' form. That is, UTC +5.5 = 530
+        if offset is not None:
+            offset = int (offset)
+        else:
+            # time.timezone is in seconds back to UTC
+            if time.daylight and time.localtime ().tm_isdst:
+                    offset = -time.altzone / 36
+            else:
+                    offset = -time.timezone / 36
+            # (offset % 100) needs to be adjusted to be in minutes
+            # now (e.g. UTC +5.5 => offset = 550, when it should
+            # be 530) - yes, treating hhmm as an integer is a pain
+            m = ((offset % 100) * 60) / 100
+            offset -= (offset % 100) - m
 
-		self._offset = offset
-		h = offset / 100
-		m = offset % 100
-		self._offsetdelta = datetime.timedelta (hours = h, minutes = m)
+        self._offset = offset
+        h = offset / 100
+        m = offset % 100
+        self._offsetdelta = datetime.timedelta (hours = h, minutes = m)
 
-	def utcoffset (self, dt):
-		return self._offsetdelta
+    def utcoffset (self, dt):
+        return self._offsetdelta
 
-	def dst (self, dt):
-		return self.ZERO
+    def dst (self, dt):
+        return self.ZERO
 
-	def tzname (self, dt):
-		return str (self._offset)
+    def tzname (self, dt):
+        return str (self._offset)
 
-	def __repr__ (self):
-		return self.tzname (False)
+    def __repr__ (self):
+        return self.tzname (False)
 
 def parse_datetime(dt):
     """Parse a datetime instance from 'YYYY-MM-DD HH:MM' formatted string."""
@@ -121,14 +121,14 @@ def parse_datetime(dt):
         raise ValueError('bad date time: ', dt)
 
     def myint (i):
-    	if i is not None: return int (i)
-	else: return i
+        if i is not None: return int (i)
+        else: return i
     d = dict ((k, myint (v))
-    	for (k, v) in m.groupdict ().iteritems ())
+        for (k, v) in m.groupdict ().iteritems ())
 
     return datetime.datetime (d['year'], d['month'], d['day'],
                               d['hour'], d['min'],
-			      tzinfo = TZOffset (d['tz']))
+                              tzinfo = TZOffset (d['tz']))
 
 
 def parse_time(t):
@@ -644,7 +644,7 @@ class TimeLog(object):
     def reread(self):
         """Reload today's log."""
         self.day = virtual_day(datetime.datetime.now(TZOffset ()),
-			self.virtual_midnight)
+                        self.virtual_midnight)
         min = datetime.datetime.combine(self.day, self.virtual_midnight)
         max = min + datetime.timedelta(1)
         self.history = []
@@ -682,7 +682,7 @@ class TimeLog(object):
         """Append a new entry to the time log."""
         if not now:
             now = datetime.datetime.now(TZOffset ()).replace(
-	    		second=0, microsecond=0)
+                        second=0, microsecond=0)
         last = self.window.last_time()
         if last and different_days(now, last, self.virtual_midnight):
             # We are working past the virtual midnight. We need to
@@ -821,15 +821,15 @@ class Authenticator(object):
     def save_to_keyring(self, uri, username, password):
         try:
             self.gnomekeyring.set_network_password_sync (
-                    None,		# keyring
-                    username,	# user
-                    uri.get_host(),	# domain
-                    uri.get_host(),	# server
-                    None,		# object
-                    uri.get_scheme(),	# protocol
-                    None,		# authtype
-                    uri.get_port(),		# port
-                    password)	# password
+                    None,               # keyring
+                    username,   # user
+                    uri.get_host(),     # domain
+                    uri.get_host(),     # server
+                    None,               # object
+                    uri.get_scheme(),   # protocol
+                    None,               # authtype
+                    uri.get_port(),             # port
+                    password)   # password
         except self.gnomekeyring.NoKeyringDaemonError:
             pass
 
@@ -2167,30 +2167,30 @@ class MainWindow(object):
 
     def load_task_store_toggle_state (self):
         configdir = os.path.expanduser('~/.gtimelog')
-	filename = os.path.join (configdir, 'togglesdict.pickle')
-	# read the dictionary from disk
-	try:
-		f = open (filename, 'r')
-		togglesdict = pickle.load (f)
-		f.close ()
-	except (IOError, pickle.PickleError), e:
-		print "ERROR READING TOGGLE STATE FROM DISK"
-		print e
-		togglesdict = {}
+        filename = os.path.join (configdir, 'togglesdict.pickle')
+        # read the dictionary from disk
+        try:
+            f = open (filename, 'r')
+            togglesdict = pickle.load (f)
+            f.close ()
+        except (IOError, pickle.PickleError), e:
+            print "ERROR READING TOGGLE STATE FROM DISK"
+            print e
+            togglesdict = {}
 
-	return togglesdict
+        return togglesdict
 
     def save_task_store_toggle_state (self, togglesdict):
         configdir = os.path.expanduser('~/.gtimelog')
-	filename = os.path.join (configdir, 'togglesdict.pickle')
-	# write the dictionary back to disk
-	try:
-		f = open (filename, 'w')
-		pickle.dump (togglesdict, f)
-		f.close ()
-	except (IOError, pickle.PickleError), e:
-		print "FAILED TO WRITE TOGGLE STATE TO DISK"
-		print e
+        filename = os.path.join (configdir, 'togglesdict.pickle')
+        # write the dictionary back to disk
+        try:
+            f = open (filename, 'w')
+            pickle.dump (togglesdict, f)
+            f.close ()
+        except (IOError, pickle.PickleError), e:
+            print "FAILED TO WRITE TOGGLE STATE TO DISK"
+            print e
 
     def on_row_expander_changed(self, treeview, iter, path, expanded):
         """Someone toggled a task list expander"""

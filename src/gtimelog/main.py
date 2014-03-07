@@ -1029,7 +1029,7 @@ class Settings(object):
 
     editor = 'xdg-open'
     mailer = 'x-terminal-emulator -e mutt -H %s'
-    spreadsheet = 'localc %s'
+    spreadsheet = 'xdg-open %s'
 
     enable_gtk_completion = True  # False enables gvim-style completion
 

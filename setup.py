@@ -32,8 +32,8 @@ setup(
     test_suite='gtimelog.test_gtimelog',
     zip_safe=False,
     entry_points="""
-    [console_scripts]
-    gtimelog = gtimelog.gtimelog:main
+    [gui_scripts]
+    gtimelog = gtimelog.main:main
     """,
 # This is true, but pointless, because easy_install PyGTK chokes and dies
 #   install_requires=['PyGTK'],

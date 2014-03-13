@@ -8,6 +8,7 @@ $Id: gtimelog.py 119 2008-07-03 22:25:56Z mg $
 import re
 import os
 import csv
+import signal
 import sys
 import urllib
 import datetime
@@ -2929,6 +2930,8 @@ class Application(Gtk.Application):
         self.main_window = MainWindow(timelog, settings, tasks)
         self.add_window(self.main_window.main_window)
         tray_icon = TrayIcon(self.main_window)
+        # Make ^C terminate gtimelog when hanging
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 def main():
     """Run the program."""

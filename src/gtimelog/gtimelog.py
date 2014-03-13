@@ -2145,6 +2145,7 @@ class MainWindow(object):
             self.submit_window.submit(window, auto_submit)
 
     def on_cancel_submit_button_pressed(self, widget):
+        self.submit_window.submitting = False
         self.submit_window.hide()
 
     def on_yesterdays_report_activate(self, widget):

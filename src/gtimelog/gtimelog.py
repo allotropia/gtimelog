@@ -2773,6 +2773,7 @@ class SubmitWindow(object):
             dialog.run ()
             dialog.destroy ()
         self.submitting = False
+        self.hide_progress_window()
         self.hide ()
 
     def on_toggled (self, toggle, path):

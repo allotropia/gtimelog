@@ -2740,6 +2740,11 @@ class SubmitWindow(object):
                 dialog.connect('response', lambda d, i: dialog.destroy())
                 dialog.show()
                 self.hide_progress_window()
+        elif message.status_code == 500:
+            # This means an exception on the server.
+            # Don't try to stuff a whole django html exception page in the error dialog.
+            # It crashes gtk-window-decorator...
+            self.error_dialog('Internal server error occurred. Contact the Chronophage maintainer.', automatic=automatic)
         else:
             self.error_dialog(txt, automatic = automatic)
 

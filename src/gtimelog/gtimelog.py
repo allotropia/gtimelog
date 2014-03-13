@@ -2856,8 +2856,21 @@ class SubmitWindow(object):
 
     #All the row based stuff together
     def _list_store (self):
-        #Duration, Description, active (date submission), activatable, editable, foreground, radio, visible (row submission), error
-        return Gtk.TreeStore(str, str, bool, bool, bool, str, bool, bool, str)
+        """
+        date/duration [str],
+        description [str],
+        active (date submission) [bool],
+        activatable [bool],
+        editable [bool],
+        foreground [str],
+        radio [bool],
+        visible (row submission) [bool],
+        error_message [str]
+        """
+        args = [str, str, bool, bool, bool, str, bool, bool, str]
+        # Attempt to stay synced with above index enums
+        assert len(args) == COL_ERROR_MSG + 1
+        return Gtk.TreeStore(*args)
 
     def date_row (self, date, submit=True):
         return [date, "", submit, True, False, submit and "black" or "grey", True, True, ""]

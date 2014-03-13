@@ -2708,11 +2708,11 @@ class SubmitWindow(object):
 
         if message.status_code == 400 or txt.startswith('Failed'):
                 # the server didn't like our submission
+                self.submitting = False
                 self.hide_progress_window()
                 self.annotate_failure (txt)
 
                 if automatic:
-                    self.submitting = False
                     self.push_error_infobar()
                 else:
                     dialog = Gtk.MessageDialog(self.window,

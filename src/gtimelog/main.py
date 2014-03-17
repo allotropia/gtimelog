@@ -182,55 +182,55 @@ class MainWindow(object):
 
     def _init_ui(self):
         """Initialize the user interface."""
-        tree = Gtk.Builder()
-        tree.add_from_file(ui_file)
+        builder = Gtk.Builder()
+        builder.add_from_file(ui_file)
 
         # Set initial state of menu items *before* we hook up signals
-        chronological_menu_item = tree.get_object("chronological")
+        chronological_menu_item = builder.get_object("chronological")
         chronological_menu_item.set_active(self.chronological)
-        show_task_pane_item = tree.get_object("show_task_pane")
+        show_task_pane_item = builder.get_object("show_task_pane")
         show_task_pane_item.set_active(self.show_tasks)
 
-        self.show_unavailable_tasks_item = tree.get_object(
+        self.show_unavailable_tasks_item = builder.get_object(
             "show_unavailable_tasks")
         self.show_unavailable_tasks_item.set_active(self.show_unavailable_tasks)
         self.show_unavailable_tasks_item.set_sensitive(self.show_tasks)
 
         # Now hook up signals
-        tree.connect_signals(self)
+        builder.connect_signals(self)
 
         # Store references to UI elements we're going to need later
-        self.tray_icon_popup_menu = tree.get_object("tray_icon_popup_menu")
-        self.tray_show = tree.get_object("tray_show")
-        self.tray_hide = tree.get_object("tray_hide")
-        self.about_dialog = tree.get_object("about_dialog")
-        self.about_dialog_ok_btn = tree.get_object("ok_button")
+        self.tray_icon_popup_menu = builder.get_object("tray_icon_popup_menu")
+        self.tray_show = builder.get_object("tray_show")
+        self.tray_hide = builder.get_object("tray_hide")
+        self.about_dialog = builder.get_object("about_dialog")
+        self.about_dialog_ok_btn = builder.get_object("ok_button")
         self.about_dialog_ok_btn.connect("clicked", self.close_about_dialog)
-        self.calendar_dialog = tree.get_object("calendar_dialog")
-        self.calendar = tree.get_object("calendar")
+        self.calendar_dialog = builder.get_object("calendar_dialog")
+        self.calendar = builder.get_object("calendar")
         self.calendar.connect("day_selected_double_click",
                               self.on_calendar_day_selected_double_click)
-        self.submit_window = SubmitWindow(tree, self.settings, application=self)
-        self.main_window = tree.get_object("main_window")
+        self.submit_window = SubmitWindow(builder, self.settings, application=self)
+        self.main_window = builder.get_object("main_window")
         self.main_window.connect("delete_event", self.delete_event)
         self.main_window.set_icon_from_file(icon_file)
         self.about_dialog.set_transient_for(self.main_window)
         self.about_dialog.set_modal(True)
-        self.log_view = tree.get_object("log_view")
-        self.infobars = tree.get_object("infobars")
+        self.log_view = builder.get_object("log_view")
+        self.infobars = builder.get_object("infobars")
         self.set_up_log_view_columns()
 
-        self.task_pane = tree.get_object("task_list_pane")
+        self.task_pane = builder.get_object("task_list_pane")
         if not self.show_tasks:
             self.task_pane.hide()
-        self.task_pane_info_label = tree.get_object("task_pane_info_label")
-        self.task_pane_spinner = tree.get_object("task_pane_spinner")
+        self.task_pane_info_label = builder.get_object("task_pane_info_label")
+        self.task_pane_spinner = builder.get_object("task_pane_spinner")
         self.tasks.loading_callback = self.task_list_loading
         self.tasks.loaded_callback = self.task_list_loaded
         self.tasks.error_callback = self.task_list_error
-        self.task_list = tree.get_object("task_list")
+        self.task_list = builder.get_object("task_list")
         self.task_store = Gtk.TreeStore(str, str, bool)
-        task_filter = tree.get_object("task_filter")
+        task_filter = builder.get_object("task_filter")
 
         filter = self.task_store.filter_new()
         self.refilter_timeout = 0
@@ -319,15 +319,15 @@ class MainWindow(object):
         self.task_list.append_column(column)
 
         self.task_list.connect("row_activated", self.task_list_row_activated)
-        self.task_list_popup_menu = tree.get_object("task_list_popup_menu")
+        self.task_list_popup_menu = builder.get_object("task_list_popup_menu")
         self.task_list.connect_object("button_press_event",
                                       self.task_list_button_press,
                                       self.task_list_popup_menu)
-        self.time_label = tree.get_object("time_label")
-        self.task_entry = tree.get_object("task_entry")
+        self.time_label = builder.get_object("time_label")
+        self.task_entry = builder.get_object("task_entry")
         self.task_entry.connect("changed", self.task_entry_changed)
         self.task_entry.connect("key_press_event", self.task_entry_key_press)
-        self.add_button = tree.get_object("add_button")
+        self.add_button = builder.get_object("add_button")
         self.add_button.connect("clicked", self.add_entry)
         buffer = self.log_view.get_buffer()
         self.log_buffer = buffer

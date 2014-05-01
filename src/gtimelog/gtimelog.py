@@ -2753,6 +2753,7 @@ class SubmitWindow(object):
             return
 
         message = Soup.Message.new('POST', self.report_url)
+        message.request_headers.set_content_type('application/x-www-form-urlencoded', None)
         message.request_body.append(urllib.urlencode(data))
         message.request_body.complete()
         soup_session.queue_message(message, self.upload_finished, automatic)

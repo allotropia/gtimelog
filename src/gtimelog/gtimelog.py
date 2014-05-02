@@ -2812,8 +2812,10 @@ class SubmitWindow(object):
         self.list_store.clear()
         date_dict = {}
 
+        regex = re.compile(r': +')
         for (start, finish, duration, entry) in self.timewindow.all_entries ():
-            entry = entry.strip()
+            # Trim multiple spaces after separators
+            entry = regex.sub(': ', entry).strip()
             #Neatly store the things under the day on which they started
             (date, time) = str(start).split(" ")
             if not date in date_dict:

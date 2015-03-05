@@ -15,12 +15,13 @@ Architecture: all
 Conflicts: gtimelog
 Replaces: gtimelog
 Depends: gir1.2-appindicator3-0.1,
+         gir1.2-gnomekeyring-1.0,
          gir1.2-gtk-3.0,
          gir1.2-pango-1.0 (>= 1.29.3+git20110916),
          python-gi,
          ${misc:Depends},
          ${python:Depends}
-Recommends: python-gnomekeyring, xdg-utils
+Recommends: xdg-utils
 Suggests: mutt, vim-gnome
 XB-Python-Version: ${python:Versions}
 Description: minimal timelogging system (Collabora's version)

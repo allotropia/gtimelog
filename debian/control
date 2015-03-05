@@ -4,6 +4,7 @@ Priority: optional
 Maintainer: Simon McVittie <smcv@debian.org>
 Uploaders: Gustavo Franco <stratus@debian.org>, Dafydd Harries <daf@debian.org>
 Build-Depends: debhelper (>= 7.0.50~),
+               dh-python,
                python (>= 2.6.6-3~),
                python-setuptools (>= 0.6b3)
 Homepage: http://git.collabora.co.uk/?p=gtimelog.git;a=summary

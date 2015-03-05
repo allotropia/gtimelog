@@ -1,3 +1,17 @@
+collabora-gtimelog (0.6.0~2015.03.05~1) unstable; urgency=medium
+
+  [ Jack Leigh ]
+  * [c7dfece] Set a Content-Type on the timelog submission
+  * [5eb28ce] redmine#2857: Strip multiple spaces after separators
+
+  [ Olivier Crête ]
+  * [3b2b7cf] Add MANIFEST.in to include NEWS.txt in tarball
+
+  [ Jonny Lamb ]
+  * [176be9e] port to new GNOME-Keyring API from gobject-introspection
+
+ -- Jonny Lamb <jonny.lamb@collabora.co.uk>  Thu, 05 Mar 2015 10:32:04 +0100
+
 collabora-gtimelog (0.6.0~2012.10.03~1) unstable; urgency=low
 
   [ Simon McVittie ]

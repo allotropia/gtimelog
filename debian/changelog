@@ -1,3 +1,12 @@
+collabora-gtimelog (0.6.0~2015.03.05~2) unstable; urgency=medium
+
+  * [7b4b586] Replace python-gnomekeyring with gir1.2-gnomekeyring-1.0.
+  * [7e29a66] Add dh-python to Build-Depends.
+  * [fb6c72c] Update Uploaders list.
+  * [cb3b9ad] Fix symlink to gtimelog.png.
+
+ -- Jordi Mallach <jordi.mallach@collabora.co.uk>  Thu, 05 Mar 2015 13:24:00 +0100
+
 collabora-gtimelog (0.6.0~2015.03.05~1) unstable; urgency=medium
 
   [ Jack Leigh ]

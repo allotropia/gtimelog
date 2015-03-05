@@ -770,7 +770,7 @@ class TaskList(object):
 class Authenticator(object):
     # try to use GNOME Keyring if available
     try:
-        import gnomekeyring
+        from gi.repository import GnomeKeyring as gnomekeyring
     except ImportError:
         gnomekeyring = None
 
@@ -789,49 +789,43 @@ class Authenticator(object):
         username = None
         password = None
 
-        try:
-            # FIXME - would be nice to make all keyring calls async, to dodge
-            # the possibility of blocking the UI. The code is all set up for
-            # that, but there's no easy way to use the keyring asynchronously
-            # from Python (as of Gnome 3.2)...
-            l = self.gnomekeyring.find_network_password_sync (
-                    None,       # user
-                    uri.get_host(), # domain
-                    uri.get_host(), # server
-                    None,       # object
-                    uri.get_scheme(),   # protocol
-                    None,       # authtype
-                    uri.get_port())       # port
-        except self.gnomekeyring.NoMatchError:
+        # FIXME - would be nice to make all keyring calls async, to dodge
+        # the possibility of blocking the UI. The code is all set up for
+        # that, but there's no easy way to use the keyring asynchronously
+        # from Python (as of Gnome 3.2)...
+        l = self.gnomekeyring.find_network_password_sync (
+                None,           # user
+                uri.get_host(), # domain
+                uri.get_host(), # server
+                None,           # object
+                uri.get_scheme(),# protocol
+                None,           # authtype
+                uri.get_port()) # port
+
+        result, keys = l
+        if result == self.gnomekeyring.Result.NO_MATCH:
             # We didn't find any passwords, just continue
             pass
-        except self.gnomekeyring.NoKeyringDaemonError:
+        elif result == self.gnomekeyring.Result.NO_KEYRING_DAEMON:
             pass
-        except IOError:
-            gnomekeyring = None
-        except gnomekeyring.IOError: # thanks, gnomekeyring python binding maker
-            gnomekeyring = None
         else:
-            l = l[-1] # take the last key (Why?)
-            username = l['user']
-            password = l['password']
+            entry = keys[-1] # take the last key (Why?)
+            username = entry.user
+            password = entry.password
 
         callback(username, password)
 
     def save_to_keyring(self, uri, username, password):
-        try:
-            self.gnomekeyring.set_network_password_sync (
-                    None,		# keyring
-                    username,	# user
-                    uri.get_host(),	# domain
-                    uri.get_host(),	# server
-                    None,		# object
-                    uri.get_scheme(),	# protocol
-                    None,		# authtype
-                    uri.get_port(),		# port
-                    password)	# password
-        except self.gnomekeyring.NoKeyringDaemonError:
-            pass
+        self.gnomekeyring.set_network_password_sync (
+                None,           # keyring
+                username,       # user
+                uri.get_host(), # domain
+                uri.get_host(), # server
+                None,           # object
+                uri.get_scheme(),# protocol
+                None,           # authtype
+                uri.get_port(), # port
+                password)       # password
 
     def ask_the_user(self, auth, uri, callback):
         """Pops up a username/password dialog for uri"""

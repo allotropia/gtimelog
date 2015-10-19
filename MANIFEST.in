@@ -1,1 +1,3 @@
 include NEWS.txt
+include gtimelog.spec
+include gtimelog.desktop

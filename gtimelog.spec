@@ -1,4 +1,5 @@
 Name: 		gtimelog
+Epoch:          1
 Version: 	0.2.3
 Release:	5%{?dist}
 Summary: 	GTimeLog is a graphical (Gtk+) application for keeping track of time.
@@ -11,6 +12,8 @@ BuildRoot:	%(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 BuildRequires:	python python-setuptools
 Requires:	python m2crypto
+
+%define debug_package %{nil}
 
 %description
 GTimeLog is a graphical (Gtk+) application for keeping track of time.

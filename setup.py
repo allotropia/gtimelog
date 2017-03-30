@@ -34,6 +34,7 @@ setup(
     entry_points="""
     [console_scripts]
     gtimelog = gtimelog.gtimelog:main
+    rltimelog = gtimelog.rltimelog:main
     """,
 # This is true, but pointless, because easy_install PyGTK chokes and dies
 #   install_requires=['PyGTK'],

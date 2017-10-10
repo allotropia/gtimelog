@@ -4,20 +4,24 @@
 
 from __future__ import print_function
 
+import sys
 import os
 import signal
+import urllib
 from datetime import datetime, timedelta
 
 from gtimelog import (Settings, configdir, soup_session, TimeLog,
-                      RemoteTaskList, TaskList, TZOffset)
+                      RemoteTaskList, TaskList, TZOffset, Soup, GLib,
+                      format_duration_short)
 
 
 class MainWindow(object):
     '''Simple readline interface for gtimelog.'''
 
-    def __init__(self, timelog, tasks):
+    def __init__(self, timelog, tasks, settings):
         self.timelog = timelog
         self.tasks = tasks
+        self.settings = settings
 
         self.display_time_window(timelog.window)
         print()
@@ -50,6 +54,7 @@ class MainWindow(object):
             self.timelog.append(line)
             self.display_last_minute()
             print()
+        self.do_submit_report(self.timelog.window)
 
     def display_last_minute(self):
         '''Display the timelog messages of the past minute.'''
@@ -71,6 +76,53 @@ class MainWindow(object):
         else:
             print('[%s] [31;1m%s[0m' % (end, message))
 
+    def do_submit_report(self, time_window, automatic=False):
+        """The actual submit action"""
+        data = {}
+        for start, end, duration, message in time_window.all_entries():
+            day = start.strftime('%Y-%m-%d')
+            data[day] = '%s %s\n' % (format_duration_short(duration), message)
+        self.upload(data, automatic)
+
+    def upload_finished(self, session, message, automatic):
+        # This is equivalent to the SOUP_STATUS_IS_TRANSPORT_ERROR() macro,
+        # which is not exposed via GI (being as it is a macro).
+        if message.status_code > Soup.KnownStatusCode.NONE and \
+           message.status_code < Soup.KnownStatusCode.CONTINUE:
+            self.error_dialog(message.reason_phrase, automatic=automatic)
+            return
+
+        txt = message.response_body.data
+
+        if message.status_code == 400 or txt.startswith('Failed'):
+            # the server didn't like our submission
+            print('Failure submitting the report:', txt)
+        elif message.status_code == 200:
+            print('Success submitting the report.')
+        elif message.status_code == 500:
+            # This means an exception on the server.
+            # Don't try to stuff a whole django html exception page in the error dialog.
+            # It crashes gtk-window-decorator...
+            print('Internal server error occurred. Contact the Chronophage maintainer.')
+        else:
+            print(txt)
+        sys.exit(0)
+
+    def upload(self, data, automatic):
+        if not os.path.exists(self.settings.server_cert):
+            self.error_dialog("Provided certificate %s not found" % self.settings.server_cert)
+            return
+
+        print(data)
+        print(urllib.urlencode(data))
+        message = Soup.Message.new('POST', self.settings.report_to_url)
+        message.request_headers.set_content_type('application/x-www-form-urlencoded', None)
+        message.request_body.append(urllib.urlencode(data))
+        message.request_body.complete()
+        stream = soup_session.queue_message(message, self.upload_finished, automatic)
+        loop = GLib.MainLoop()
+        loop.run()
+
 
 def main():
     '''Entry point, copy/pasted from gtimelog.Application but without GTK+.'''
@@ -89,7 +141,7 @@ def main():
                                os.path.join(configdir, 'remote-tasks.txt'))
     else:
         tasks = TaskList(os.path.join(configdir, 'tasks.txt'))
-    main_window = MainWindow(timelog, tasks)
+    main_window = MainWindow(timelog, tasks, settings)
     # Make ^C terminate gtimelog when hanging
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     main_window.run()

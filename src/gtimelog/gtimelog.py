@@ -772,6 +772,7 @@ class Authenticator(object):
     try:
         from gi.repository import GnomeKeyring as gnomekeyring
     except ImportError:
+        print("GnomeKeyring not found. You will not be able to use the password keyring.")
         gnomekeyring = None
 
     def __init__(self):
@@ -816,7 +817,7 @@ class Authenticator(object):
         callback(username, password)
 
     def save_to_keyring(self, uri, username, password):
-        self.gnomekeyring.set_network_password_sync (
+        result, keys = self.gnomekeyring.set_network_password_sync (
                 None,           # keyring
                 username,       # user
                 uri.get_host(), # domain
@@ -826,6 +827,10 @@ class Authenticator(object):
                 None,           # authtype
                 uri.get_port(), # port
                 password)       # password
+        if result == self.gnomekeyring.Result.OK:
+            print("Password saved successfully")
+        else:
+            print("Failed to save password, error={}", result)
 
     def ask_the_user(self, auth, uri, callback):
         """Pops up a username/password dialog for uri"""

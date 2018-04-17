@@ -9,7 +9,7 @@ import getopt
 import datetime
 
 def read_timelog(filename):
-    return file(filename)
+    return open(filename)
 
 def todays_entries(today, lines):
     # assume "day turnover" at 2 am

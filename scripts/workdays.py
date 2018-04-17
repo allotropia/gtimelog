@@ -4,6 +4,8 @@ Given a constraint to do at least 7 hours of work per day, how many actual
 days of work you did in a given week?
 """
 
+from __future__ import print_function
+
 import fileinput
 import re
 
@@ -34,7 +36,7 @@ def main():
         if line.startswith('Total work done this week:'):
             work_in_minutes = parse_time(line.split(':', 1)[1].strip())
             assert work_in_minutes is not None
-            print line,
+            print(line, end='')
             break
     else:
         return
@@ -49,9 +51,9 @@ def main():
         work_days -= 0.5
     def fmt(f):
         return ("%.1f" % f).replace(".0", "")
-    print "  Days off: %s" % fmt(days_off)
-    print "  Work days: %s" % fmt(work_days)
-    print "  Average day length: %s" % format_time(avg_day_len)
+    print("  Days off: %s" % fmt(days_off))
+    print("  Work days: %s" % fmt(work_days))
+    print("  Average day length: %s" % format_time(avg_day_len))
 
 
 if __name__ == '__main__':

@@ -1,4 +1,7 @@
 #!/usr/bin/python
+
+from __future__ import print_function
+
 import sys
 import re
 
@@ -27,7 +30,7 @@ for line in sys.stdin:
     if '  ' not in line: continue
     time = parse_time(line.split('  ')[-1].strip())
     if time is None: continue
-    print line.rstrip()
+    print(line.rstrip())
     total += time
 
-print "** Total: %s" % format_time(total)
+print("** Total: %s" % format_time(total))

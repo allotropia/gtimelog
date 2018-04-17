@@ -3,6 +3,8 @@
 Tests for gtimelog.py
 """
 
+from __future__ import print_function
+
 import doctest
 import unittest
 

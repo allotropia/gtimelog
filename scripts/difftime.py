@@ -1,4 +1,7 @@
 #!/usr/bin/python
+
+from __future__ import print_function
+
 import readline
 
 def parse_time(s):
@@ -19,14 +22,14 @@ while True:
     try:
         what = raw_input("start, end> ")
     except EOFError:
-        print
+        print()
         break
     try:
         if ',' in what:
             t1, t2 = map(parse_time, what.split(','))
         else:
             t1, t2 = map(parse_time, what.split())
-        print fmt_delta(t2 - t1)
+        print(fmt_delta(t2 - t1))
     except ValueError:
-        print eval(what)
+        print(eval(what))
 

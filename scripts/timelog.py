@@ -1,21 +1,24 @@
 #!/usr/bin/python
+
+from __future__ import print_function
+
 import datetime
 import readline
 
 f = open("timelog.txt", "a")
-print >> f
+print(file=f)
 f.close()
 
 while True:
     try:
         what = raw_input("> ")
     except EOFError:
-        print
+        print()
         break
     ts = datetime.datetime.now()
     line = "%s: %s" % (ts.strftime("%Y-%m-%d %H:%M"), what)
-    print line
+    print(line)
     f = open("timelog.txt", "a")
-    print >> f, line
+    print(line, file=f)
     f.close()
 

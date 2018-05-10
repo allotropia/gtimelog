@@ -25,11 +25,13 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gio, GLib, GObject, Gtk, Gdk, Pango
 
 try:
+    gi.require_version('Notify', '0.7')
     from gi.repository import Notify
     assert Notify.init ("gtimelog")
 except:
     print "LibNotify (with introspection) not found. Idle timeouts are not supported."
 
+gi.require_version('Soup', '2.4')
 from gi.repository import Soup
 
 # This is to let people run GTimeLog without having to install it
@@ -770,6 +772,7 @@ class TaskList(object):
 class Authenticator(object):
     # try to use GNOME Keyring if available
     try:
+        gi.require_version('GnomeKeyring', '1.0')
         from gi.repository import GnomeKeyring as gnomekeyring
     except ImportError:
         gnomekeyring = None
@@ -2505,7 +2508,7 @@ class MainWindow(object):
                     summary="Welcome back",
                     body="Would you like to insert a log entry near the time you left your computer?")
                 self.welcome_back_notification.add_action("clicked",
-                    "Yes please", self.insert_old_log_entries, "",
+                    "Yes please", self.insert_old_log_entries,
                     # No user_data
                     None)
                     #The please is just to make the tiny little button bigger
@@ -2518,7 +2521,6 @@ class MainWindow(object):
         """
             Callback from the resume_from_idle notification
         """
-        print repr ((note, act, data))
         self.inserting_old_time = True
         self.time_label.set_text ("Backdated: " +self.time_before_idle.strftime("%H:%M"))
 

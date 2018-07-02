@@ -530,7 +530,7 @@ class TimeWindow(object):
         if work:
             for start, entry, duration in work:
                 entry = entry[:1].upper() + entry[1:]
-                print >> output, u"%-62s  %s" % (entry,
+                print >> output, "%-62s  %s" % (entry,
                                                 format_duration_long(duration))
             print >> output
         print >> output, ("Total work done: %s" %
@@ -539,7 +539,7 @@ class TimeWindow(object):
         if slack:
             for start, entry, duration in slack:
                 entry = entry[:1].upper() + entry[1:]
-                print >> output, u"%-62s  %s" % (entry,
+                print >> output, "%-62s  %s" % (entry,
                                                 format_duration_long(duration))
             print >> output
         print >> output, ("Time spent slacking: %s" %
@@ -605,7 +605,7 @@ class TimeWindow(object):
                     categories[None] = categories.get(
                         None, datetime.timedelta(0)) + duration
 
-                print >> output, (u"%-62s  %s" %
+                print >> output, ("%-62s  %s" %
                     (entry, format_duration_long(duration)))
             print >> output
 
@@ -623,11 +623,11 @@ class TimeWindow(object):
                 if not cat:
                     continue
 
-                print >> output, u"%-62s  %s" % (
+                print >> output, "%-62s  %s" % (
                     cat, format_duration_long(duration))
 
             if None in categories:
-                print >> output, u"%-62s  %s" % (
+                print >> output, "%-62s  %s" % (
                     '(none)', format_duration_long(categories[None]))
 
 class TimeLog(object):

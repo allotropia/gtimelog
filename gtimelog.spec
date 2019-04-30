@@ -24,12 +24,12 @@ GTimeLog is a graphical (Gtk+) application for keeping track of time.
 
 
 %build
-python setup.py build
+python2 setup.py build
 
 
 %install
 rm -rf %{buildroot}
-python setup.py install --single-version-externally-managed --root=%{buildroot}
+python2 setup.py install --single-version-externally-managed --root=%{buildroot}
 mkdir -p %{buildroot}/usr/share/pixmaps
 cp src/gtimelog/gtimelog*.png %{buildroot}/usr/share/pixmaps
 mkdir -p %{buildroot}/usr/share/applications
@@ -39,6 +39,7 @@ cp gtimelog.desktop %{buildroot}/usr/share/applications
 %files
 %defattr(-,root,root,-)
 %doc
+/usr/bin/rltimelog
 /usr/bin/gtimelog
 /usr/lib/python2.7/site-packages/gtimelog-0.2.3-py2.7.egg-info/PKG-INFO
 /usr/lib/python2.7/site-packages/gtimelog-0.2.3-py2.7.egg-info/SOURCES.txt
@@ -53,6 +54,9 @@ cp gtimelog.desktop %{buildroot}/usr/share/applications
 /usr/lib/python2.7/site-packages/gtimelog/gtimelog.py
 /usr/lib/python2.7/site-packages/gtimelog/gtimelog.pyc
 /usr/lib/python2.7/site-packages/gtimelog/gtimelog.pyo
+/usr/lib/python2.7/site-packages/gtimelog/rltimelog.py
+/usr/lib/python2.7/site-packages/gtimelog/rltimelog.pyc
+/usr/lib/python2.7/site-packages/gtimelog/rltimelog.pyo
 /usr/lib/python2.7/site-packages/gtimelog/gtimelog.ui
 /usr/lib/python2.7/site-packages/gtimelog/test_gtimelog.py
 /usr/lib/python2.7/site-packages/gtimelog/test_gtimelog.pyc

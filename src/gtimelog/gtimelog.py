@@ -1005,8 +1005,7 @@ class RemoteTaskList(TaskList):
             self.loading_callback()
 
         if not os.path.exists(self.settings.server_cert):
-            self.error_callback("Certificate file not found")
-            return
+            print("Server certificate file not found")
 
         message = Soup.Message.new('GET', self.url)
         soup_session.queue_message(message, self.download_finished_cb, None)
@@ -2750,8 +2749,7 @@ class SubmitWindow(object):
 
     def upload(self, data, automatic):
         if not os.path.exists(self.settings.server_cert):
-            self.error_dialog("Provided certificate %s not found" % self.settings.server_cert)
-            return
+            print("Server certificate %s not found" % self.settings.server_cert)
 
         message = Soup.Message.new('POST', self.report_url)
         message.request_headers.set_content_type('application/x-www-form-urlencoded', None)

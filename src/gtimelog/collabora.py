@@ -256,7 +256,7 @@ class RemoteTaskList(TaskList):
             try:
                 out = open(self.filename, 'w')
                 out.write(message.response_body.data)
-            except IOError, e:
+            except IOError as e:
                 print e
                 if self.error_callback:
                     self.error_callback()

@@ -4,7 +4,7 @@ A Gtk+ application for keeping track of time.
 
 $Id: gtimelog.py 119 2008-07-03 22:25:56Z mg $
 """
-from __future__ import absolute_import
+from __future__ import print_function, absolute_import
 
 import re
 import os
@@ -30,7 +30,7 @@ try:
     from gi.repository import Notify
     assert Notify.init("gtimelog")
 except:
-    print "LibNotify (with introspection) not found. Idle timeouts are not supported."
+    print("LibNotify (with introspection) not found. Idle timeouts are not supported.")
 
 gi.require_version('Soup', '2.4')
 from gi.repository import Soup
@@ -387,8 +387,8 @@ class MainWindow(object):
             y = int(config.get('MainWindow', 'y'))
 
             self.main_window.move(x, y)
-        except Exception, e:
-            print e.message
+        except Exception as e:
+            print(e.message)
 
     def save_ui_state(self, filename):
         try:
@@ -407,8 +407,8 @@ class MainWindow(object):
 
             config.write(uistaterc)
             uistaterc.close()
-        except Exception, e:
-            print e.message
+        except Exception as e:
+            print(e.message)
 
     def set_up_log_view_columns(self):
         """Set up tab stops in the log view."""
@@ -511,8 +511,8 @@ class MainWindow(object):
     def ack_reminder(self, filename, number):
         try:
             open(os.path.join(configdir, filename), 'w').write('%d' % number)
-        except IOError, e:
-            print 'Unable to record ack...: ' + e.message
+        except IOError as e:
+            print('Unable to record ack...: ' + e.message)
             pass
 
     def ack_weekly_reminder(self, *args):
@@ -1123,9 +1123,9 @@ class MainWindow(object):
             f = open(filename, 'r')
             togglesdict = pickle.load(f)
             f.close()
-        except (IOError, pickle.PickleError), e:
-            print "ERROR READING TOGGLE STATE FROM DISK"
-            print e
+        except (IOError, pickle.PickleError) as e:
+            print("ERROR READING TOGGLE STATE FROM DISK")
+            print(e)
             togglesdict = {}
 
         return togglesdict
@@ -1138,9 +1138,9 @@ class MainWindow(object):
             f = open(filename, 'w')
             pickle.dump(togglesdict, f)
             f.close()
-        except (IOError, pickle.PickleError), e:
-            print "FAILED TO WRITE TOGGLE STATE TO DISK"
-            print e
+        except (IOError, pickle.PickleError) as e:
+            print("FAILED TO WRITE TOGGLE STATE TO DISK")
+            print(e)
 
     def on_row_expander_changed(self, treeview, iter, path, expanded):
         """Someone toggled a task list expander"""
@@ -1469,8 +1469,8 @@ class MainWindow(object):
                     #The please is just to make the tiny little button bigger
                 self.welcome_back_notification.show()
                 self.welcome_back_notification.connect('closed', self.__notification_closed_cb)
-        except Exception, e:
-            print "pynotification failed: %s" % e
+        except Exception as e:
+            print("pynotification failed: %s" % e)
 
     def insert_old_log_entries(self, note=None, act=None, data=None):
         """
@@ -1709,7 +1709,7 @@ class SubmitWindow(object):
         soup_session.queue_message(message, self.upload_finished, automatic)
 
     def error_dialog(self, e, title='Error Communicating With The Server', automatic=False):
-        print (e)
+        print(e)
         if automatic:
             self.push_error_infobar(title, e)
         else:
@@ -1859,7 +1859,7 @@ class SubmitWindow(object):
                 continue
 
             if line and line != "Failed":
-                print "Couldn't understand server: %s" % line
+                print("Couldn't understand server: %s" % line)
 
     def hide(self):
         self.window.hide()
@@ -1907,7 +1907,7 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == '--sample-config':
         settings = Settings()
         settings.save("gtimelogrc.sample")
-        print "Sample configuration file written to gtimelogrc.sample"
+        print("Sample configuration file written to gtimelogrc.sample")
         return
 
     app = Application()

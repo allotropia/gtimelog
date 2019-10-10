@@ -29,12 +29,13 @@ setup(
     packages=['gtimelog'],
     package_dir={'gtimelog': 'src/gtimelog'},
     package_data={'gtimelog': ['*.ui', '*.png']},
-    test_suite='gtimelog.test_gtimelog',
+    test_suite='gtimelog.tests',
     zip_safe=False,
     entry_points="""
     [console_scripts]
-    gtimelog = gtimelog.gtimelog:main
     rltimelog = gtimelog.rltimelog:main
+    [gui_scripts]
+    gtimelog = gtimelog.main:main
     """,
 # This is true, but pointless, because easy_install PyGTK chokes and dies
 #   install_requires=['PyGTK'],

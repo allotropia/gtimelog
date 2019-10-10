@@ -4,6 +4,7 @@ A Gtk+ application for keeping track of time.
 
 $Id: gtimelog.py 119 2008-07-03 22:25:56Z mg $
 """
+from __future__ import absolute_import
 
 import re
 import os
@@ -27,12 +28,20 @@ from gi.repository import Gio, GLib, GObject, Gtk, Gdk, Pango
 try:
     gi.require_version('Notify', '0.7')
     from gi.repository import Notify
-    assert Notify.init ("gtimelog")
+    assert Notify.init("gtimelog")
 except:
     print "LibNotify (with introspection) not found. Idle timeouts are not supported."
 
 gi.require_version('Soup', '2.4')
 from gi.repository import Soup
+
+from .collabora import RemoteTaskList, soup_session
+from .settings import Settings
+from .timelog import (as_hours, first_of_month, format_duration,
+                      format_duration_long, format_duration_short,
+                      next_month, parse_timedelta, TaskList,
+                      TimeLog, TimeWindow, uniq, virtual_day)
+from .tzoffset import TZOffset
 
 # This is to let people run GTimeLog without having to install it
 resource_dir = os.path.dirname(os.path.realpath(__file__))
@@ -48,1089 +57,6 @@ if not os.path.exists(ui_file):
 if not os.path.exists(icon_file):
     icon_file = "/usr/share/pixmaps/gtimelog.png"
 
-def as_minutes(duration):
-    """Convert a datetime.timedelta to an integer number of minutes."""
-    return duration.days * 24 * 60 + duration.seconds // 60
-
-
-def as_hours(duration):
-    """Convert a datetime.timedelta to a float number of hours."""
-    return duration.days * 24.0 + duration.seconds / (60.0 * 60.0)
-
-
-def format_duration(duration):
-    """Format a datetime.timedelta with minute precision."""
-    h, m = divmod(as_minutes(duration), 60)
-    return '%d h %d min' % (h, m)
-
-
-def format_duration_short(duration):
-    """Format a datetime.timedelta with minute precision."""
-    h, m = divmod((duration.days * 24 * 60 + duration.seconds // 60), 60)
-    return '%d:%02d' % (h, m)
-
-
-def format_duration_long(duration):
-    """Format a datetime.timedelta with minute precision, long format."""
-    h, m = divmod((duration.days * 24 * 60 + duration.seconds // 60), 60)
-    if h and m:
-        return '%d hour%s %d min' % (h, h != 1 and "s" or "", m)
-    elif h:
-        return '%d hour%s' % (h, h != 1 and "s" or "")
-    else:
-        return '%d min' % m
-
-class TZOffset (datetime.tzinfo):
-	ZERO = datetime.timedelta (0)
-
-	def __init__ (self, offset = None):
-		# offset is an integer in 'hhmm' form. That is, UTC +5.5 = 530
-		if offset is not None:
-			offset = int (offset)
-		else:
-			# time.timezone is in seconds back to UTC
-			if time.daylight and time.localtime ().tm_isdst:
-				offset = -time.altzone / 36
-			else:
-				offset = -time.timezone / 36
-			# (offset % 100) needs to be adjusted to be in minutes
-			# now (e.g. UTC +5.5 => offset = 550, when it should
-			# be 530) - yes, treating hhmm as an integer is a pain
-			m = ((offset % 100) * 60) / 100
-			offset -= (offset % 100) - m
-
-		self._offset = offset
-		h = offset / 100
-		m = offset % 100
-		self._offsetdelta = datetime.timedelta (hours = h, minutes = m)
-
-	def utcoffset (self, dt):
-		return self._offsetdelta
-
-	def dst (self, dt):
-		return self.ZERO
-
-	def tzname (self, dt):
-		return str (self._offset)
-
-	def __repr__ (self):
-		return self.tzname (False)
-
-def parse_datetime(dt):
-    """Parse a datetime instance from 'YYYY-MM-DD HH:MM' formatted string."""
-    m = re.match(r'^(?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+) (?P<hour>\d+):(?P<min>\d+)(?: (?P<tz>[+-]\d+))?$', dt)
-    if not m:
-        raise ValueError('bad date time: ', dt)
-
-    def myint (i):
-    	if i is not None: return int (i)
-	else: return i
-    d = dict ((k, myint (v))
-    	for (k, v) in m.groupdict ().iteritems ())
-
-    return datetime.datetime (d['year'], d['month'], d['day'],
-                              d['hour'], d['min'],
-			      tzinfo = TZOffset (d['tz']))
-
-
-def parse_time(t):
-    """Parse a time instance from 'HH:MM' formatted string."""
-    # FIXME - parse_time should probably support timezones
-    m = re.match(r'^(\d+):(\d+)$', t)
-    if not m:
-        raise ValueError('bad time: ', t)
-    hour, min = map(int, m.groups())
-    return datetime.time(hour, min, tzinfo=TZOffset())
-
-def parse_timedelta(td):
-    """
-       Parse a timedelta of seconds, minutes, hours and days into a timedelta
-       10s 14h 3d
-       14 days 240 MINUTES
-       12 hours and 52 d
-       1 second 3 min
-       1 day and 12 secs
-    """
-
-    td = td.strip()
-    if td == "" or td == "0":
-        return datetime.timedelta(0)
-
-    done = False
-    ms = re.search (r'\s*(\d+)\s*s(ec(ond)?(s)?)?', td, re.I)
-    if ms:
-        seconds = int (ms.group (1))
-        done = True
-    else:
-        seconds = 0
-
-    mm = re.search (r'\s*(\d+)\s*m(in(ute)?(s)?)?(\s*(\d+)\s*$)?', td, re.I)
-    if mm:
-        seconds += int (mm.group (1)) * 60 + (mm.group (5) and int (mm.group (6)) or 0)
-        done = True
-
-    mh = re.search (r'\s*(\d+)\s*h(our(s)?)?(\s*(\d+)\s*$)?', td, re.I)
-    if mh:
-        seconds += int (mh.group (1)) * 60 * 60 + (mh.group (4) and int (mh.group (5)) * 60 or 0)
-        done = True
-
-    if not done:
-        m = re.search (r'\s*(\d+)\s*:\s*(\d+)(\s*:\s*(\d+))?', td)
-        if m:
-            done = True
-            seconds = (int (m.group (1)) * 60 + int (m.group (2))) * 60
-            if m.group (3):
-                seconds += int (m.group (4))
-        else:
-            seconds = 0
-
-    md = re.search (r'\s*(\d+)\s*d(ay(s)?)?', td, re.I)
-    if md:
-        days = int (md.group (1))
-        done = True
-    else:
-        days = 0
-
-    if not done:
-        raise ValueError ('bad timedelta: ', td)
-    return datetime.timedelta (days, seconds)
-
-def virtual_day(dt, virtual_midnight):
-    """Return the "virtual day" of a timestamp.
-
-    Timestamps between midnight and "virtual midnight" (e.g. 2 am) are
-    assigned to the previous "virtual day".
-    """
-    if dt.timetz() < virtual_midnight:     # assign to previous day
-        return dt.date() - datetime.timedelta(1)
-    return dt.date()
-
-
-def different_days(dt1, dt2, virtual_midnight):
-    """Check whether dt1 and dt2 are on different "virtual days".
-
-    See virtual_day().
-    """
-    return virtual_day(dt1, virtual_midnight) != virtual_day(dt2,
-                                                             virtual_midnight)
-
-
-def first_of_month(date):
-    """Return the first day of the month for a given date."""
-    return date.replace(day=1)
-
-
-def next_month(date):
-    """Return the first day of the next month."""
-    if date.month == 12:
-        return datetime.date(date.year + 1, 1, 1)
-    else:
-        return datetime.date(date.year, date.month + 1, 1)
-
-
-def uniq(l):
-    """Return list with consecutive duplicates removed."""
-    result = l[:1]
-    for item in l[1:]:
-        if item != result[-1]:
-            result.append(item)
-    return result
-
-
-class TimeWindow(object):
-    """A window into a time log.
-
-    Reads a time log file and remembers all events that took place between
-    min_timestamp and max_timestamp.  Includes events that took place at
-    min_timestamp, but excludes events that took place at max_timestamp.
-
-    self.items is a list of (timestamp, event_title) tuples.
-
-    Time intervals between events within the time window form entries that have
-    a start time, a stop time, and a duration.  Entry title is the title of the
-    event that occurred at the stop time.
-
-    The first event also creates a special "arrival" entry of zero duration.
-
-    Entries that span virtual midnight boundaries are also converted to
-    "arrival" entries at their end point.
-
-    The earliest_timestamp attribute contains the first (which should be the
-    oldest) timestamp in the file.
-    """
-
-    def __init__(self, filename, min_timestamp, max_timestamp,
-                 virtual_midnight, callback=None):
-        self.filename = filename
-        self.min_timestamp = min_timestamp
-        self.max_timestamp = max_timestamp
-        self.virtual_midnight = virtual_midnight
-        self.reread(callback)
-
-    def reread(self, callback=None):
-        """Parse the time log file and update self.items.
-
-        Also updates self.earliest_timestamp.
-        """
-        self.items = []
-        self.earliest_timestamp = None
-        try:
-            # accept any file-like object
-            # this is a hook for unit tests, really
-            if hasattr(self.filename, 'read'):
-                f = self.filename
-                f.seek(0)
-            else:
-                f = open(self.filename)
-        except IOError:
-            return
-        line = ''
-        for line in f:
-            if ': ' not in line:
-                continue
-            time, entry = line.split(': ', 1)
-            try:
-                time = parse_datetime(time)
-            except ValueError:
-                continue
-            else:
-                entry = entry.strip()
-                if callback:
-                    callback(entry)
-                if self.earliest_timestamp is None:
-                    self.earliest_timestamp = time
-                if self.min_timestamp <= time < self.max_timestamp:
-                    self.items.append((time, entry))
-        # The entries really should be already sorted in the file
-        # XXX: instead of quietly resorting them we should inform the user
-        self.items.sort() # there's code that relies on them being sorted
-        f.close()
-
-    def last_time(self):
-        """Return the time of the last event (or None if there are no events).
-        """
-        if not self.items:
-            return None
-        return self.items[-1][0]
-
-    def all_entries(self):
-        """Iterate over all entries.
-
-        Yields (start, stop, duration, entry) tuples.  The first entry
-        has a duration of 0.
-        """
-        stop = None
-        for item in self.items:
-            start = stop
-            stop = item[0]
-            entry = item[1]
-            if start is None or different_days(start, stop,
-                                               self.virtual_midnight):
-                start = stop
-            duration = stop - start
-            yield start, stop, duration, entry
-
-    def count_days(self):
-        """Count days that have entries."""
-        count = 0
-        last = None
-        for start, stop, duration, entry in self.all_entries():
-            if last is None or different_days(last, start,
-                                              self.virtual_midnight):
-                last = start
-                count += 1
-        return count
-
-    def last_entry(self):
-        """Return the last entry (or None if there are no events).
-
-        It is always true that
-
-            self.last_entry() == list(self.all_entries())[-1]
-
-        """
-        if not self.items:
-            return None
-        stop = self.items[-1][0]
-        entry = self.items[-1][1]
-        if len(self.items) == 1:
-            start = stop
-        else:
-            start = self.items[-2][0]
-        if different_days(start, stop, self.virtual_midnight):
-            start = stop
-        duration = stop - start
-        return start, stop, duration, entry
-
-    def grouped_entries(self, skip_first=True):
-        """Return consolidated entries (grouped by entry title).
-
-        Returns two list: work entries and slacking entries.  Slacking
-        entries are identified by finding two asterisks in the title.
-        Entry lists are sorted, and contain (start, entry, duration) tuples.
-        """
-        work = {}
-        slack = {}
-        for start, stop, duration, entry in self.all_entries():
-            if skip_first:
-                skip_first = False
-                continue
-            if '***' in entry:
-                continue
-            if '**' in entry:
-                entries = slack
-            else:
-                entries = work
-            if entry in entries:
-                old_start, old_entry, old_duration = entries[entry]
-                start = min(start, old_start)
-                duration += old_duration
-            entries[entry] = (start, entry, duration)
-        work = work.values()
-        work.sort()
-        slack = slack.values()
-        slack.sort()
-        return work, slack
-
-    def totals(self):
-        """Calculate total time of work and slacking entries.
-
-        Returns (total_work, total_slacking) tuple.
-
-        Slacking entries are identified by finding two asterisks in the title.
-
-        Assuming that
-
-            total_work, total_slacking = self.totals()
-            work, slacking = self.grouped_entries()
-
-        It is always true that
-
-            total_work = sum([duration for start, entry, duration in work])
-            total_slacking = sum([duration
-                                  for start, entry, duration in slacking])
-
-        (that is, it would be true if sum could operate on timedeltas).
-        """
-        total_work = total_slacking = datetime.timedelta(0)
-        for start, stop, duration, entry in self.all_entries():
-            if '**' in entry:
-                total_slacking += duration
-            else:
-                total_work += duration
-        return total_work, total_slacking
-
-    def icalendar(self, output):
-        """Create an iCalendar file with activities."""
-        print >> output, "BEGIN:VCALENDAR"
-        print >> output, "PRODID:-//mg.pov.lt/NONSGML GTimeLog//EN"
-        print >> output, "VERSION:2.0"
-        try:
-            import socket
-            idhost = socket.getfqdn()
-        except: # can it actually ever fail?
-            idhost = 'localhost'
-        dtstamp = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
-        for start, stop, duration, entry in self.all_entries():
-            print >> output, "BEGIN:VEVENT"
-            print >> output, "UID:%s@%s" % (hash((start, stop, entry)), idhost)
-            print >> output, "SUMMARY:%s" % (entry.replace('\\', '\\\\')
-                                                  .replace(';', '\\;')
-                                                  .replace(',', '\\,'))
-            print >> output, "DTSTART:%s" % start.strftime('%Y%m%dT%H%M%S')
-            print >> output, "DTEND:%s" % stop.strftime('%Y%m%dT%H%M%S')
-            print >> output, "DTSTAMP:%s" % dtstamp
-            print >> output, "END:VEVENT"
-        print >> output, "END:VCALENDAR"
-
-    def to_csv_complete(self, writer, title_row=True):
-        """Export work entries to a CSV file.
-
-        The file has two columns: task title and time (in minutes).
-        """
-        if title_row:
-            writer.writerow(["task", "time (minutes)"])
-        work, slack = self.grouped_entries()
-        work = [(entry, as_minutes(duration))
-                for start, entry, duration in work
-                if duration] # skip empty "arrival" entries
-        work.sort()
-        writer.writerows(work)
-
-    def to_csv_daily(self, writer, title_row=True):
-        """Export daily work, slacking, and arrival times to a CSV file.
-
-        The file has four columns: date, time from midnight til arrival at
-        work, slacking, and work (in decimal hours).
-        """
-        if title_row:
-            writer.writerow(["date", "day-start (hours)",
-                             "slacking (hours)", "work (hours)"])
-
-        # sum timedeltas per date
-        # timelog must be cronological for this to be dependable
-
-        d0 = datetime.timedelta(0)
-        days = {} # date -> [time_started, slacking, work]
-        dmin = None
-        for start, stop, duration, entry in self.all_entries():
-            if dmin is None:
-                dmin = start.date()
-            day = days.setdefault(start.date(),
-                                  [datetime.timedelta(minutes=start.minute,
-                                                      hours=start.hour),
-                                   d0, d0])
-            if '**' in entry:
-                day[1] += duration
-            else:
-                day[2] += duration
-
-        if dmin:
-            # fill in missing dates - aka. weekends
-            dmax = start.date()
-            while dmin <= dmax:
-                days.setdefault(dmin, [d0, d0, d0])
-                dmin += datetime.timedelta(days=1)
-
-        # convert to hours, and a sortable list
-        items = [(day, as_hours(start), as_hours(slacking), as_hours(work))
-                  for day, (start, slacking, work) in days.items()]
-        items.sort()
-        writer.writerows(items)
-
-    def daily_report(self, output, email, who):
-        """Format a daily report.
-
-        Writes a daily report template in RFC-822 format to output.
-        """
-        # TODO: refactor this and share code with _report? the logic here is
-        # slightly different.
-
-        # Locale is set as a side effect of 'import gtk', so strftime('%a')
-        # would give us translated names
-        weekday_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-        weekday = weekday_names[self.min_timestamp.weekday()]
-        week = self.min_timestamp.strftime('%V')
-        print >> output, "To: %(email)s" % {'email': email}
-        print >> output, ("Subject: %(date)s report for %(who)s"
-                          " (%(weekday)s, week %(week)s)"
-                          % {'date': self.min_timestamp.strftime('%Y-%m-%d'),
-                             'weekday': weekday, 'week': week, 'who': who})
-        print >> output
-        items = list(self.all_entries())
-        if not items:
-            print >> output, "No work done today."
-            return
-        start, stop, duration, entry = items[0]
-        entry = entry[:1].upper() + entry[1:]
-        print >> output, "%s at %s" % (entry, start.strftime('%H:%M'))
-        print >> output
-        work, slack = self.grouped_entries()
-        total_work, total_slacking = self.totals()
-        if work:
-            for start, entry, duration in work:
-                entry = entry[:1].upper() + entry[1:]
-                print >> output, "%-62s  %s" % (entry,
-                                                format_duration_long(duration))
-            print >> output
-        print >> output, ("Total work done: %s" %
-                          format_duration_long(total_work))
-        print >> output
-        if slack:
-            for start, entry, duration in slack:
-                entry = entry[:1].upper() + entry[1:]
-                print >> output, "%-62s  %s" % (entry,
-                                                format_duration_long(duration))
-            print >> output
-        print >> output, ("Time spent slacking: %s" %
-                          format_duration_long(total_slacking))
-
-    def weekly_report(self, output, email, who):
-        """Format a weekly report.
-
-        Writes a weekly report template in RFC-822 format to output.
-        """
-        week = self.min_timestamp.strftime('%V')
-        print >> output, "To: %(email)s" % {'email': email}
-        print >> output, "Subject: Weekly report for %s (week %s)" % (who,
-                                                                      week)
-        print >> output
-
-        self._report(output, "week")
-
-    def monthly_report(self, output, email, who):
-        """Format a monthly report.
-
-        Writes a monthly report template in RFC-822 format to output.
-        """
-
-        month = self.min_timestamp.strftime('%Y/%m')
-        print >> output, "To: %(email)s" % {'email': email}
-        print >> output, "Subject: Monthly report for %s (%s)" % (who, month)
-        print >> output
-
-        self._report (output, "month")
-
-    def _report(self, output, period):
-        """Format a generic report.
-
-        Writes a report template to output.
-        """
-
-        items = list(self.all_entries())
-        if not items:
-            print >> output, "No work done this %s." % period
-            return
-
-        print >> output, " " * 62, "time"
-
-        work, slack = self.grouped_entries()
-        total_work, total_slacking = self.totals()
-        categories = {}
-
-        if work:
-            work = [(entry, duration) for start, entry, duration in work]
-            work.sort()
-            for entry, duration in work:
-                if not duration:
-                    continue # skip empty "arrival" entries
-
-                entry = entry[:1].upper() + entry[1:]
-
-                if ': ' in entry:
-                    cat, task = entry.split(': ', 1)
-                    categories[cat] = categories.get(
-                        cat, datetime.timedelta(0)) + duration
-                else:
-                    categories[None] = categories.get(
-                        None, datetime.timedelta(0)) + duration
-
-                print >> output, ("%-62s  %s" %
-                    (entry, format_duration_long(duration)))
-            print >> output
-
-        print >> output, ("Total work done this %s: %s" %
-                          (period, format_duration_long(total_work)))
-
-        if categories:
-            print >> output
-            print >> output, "By category:"
-            print >> output
-
-            items = categories.items()
-            items.sort()
-            for cat, duration in items:
-                if not cat:
-                    continue
-
-                print >> output, "%-62s  %s" % (
-                    cat, format_duration_long(duration))
-
-            if None in categories:
-                print >> output, "%-62s  %s" % (
-                    '(none)', format_duration_long(categories[None]))
-
-class TimeLog(object):
-    """Time log.
-
-    A time log contains a time window for today, and can add new entries at
-    the end.
-    """
-
-    def __init__(self, filename, virtual_midnight, autoarrival):
-        self.filename = filename
-        self.virtual_midnight = virtual_midnight
-        self.autoarrival = autoarrival
-        self.reread()
-
-    def reread(self):
-        """Reload today's log."""
-        self.day = virtual_day(datetime.datetime.now(TZOffset ()),
-			self.virtual_midnight)
-        min = datetime.datetime.combine(self.day, self.virtual_midnight)
-        max = min + datetime.timedelta(1)
-        self.history = []
-        self.window = TimeWindow(self.filename, min, max,
-                                 self.virtual_midnight,
-                                 callback=self.history.append)
-        self.need_space = not self.window.items
-
-    def window_for(self, min, max):
-        """Return a TimeWindow for a specified time interval."""
-        return TimeWindow(self.filename, min, max, self.virtual_midnight)
-
-    def whole_history(self):
-        """Return a TimeWindow for the whole history."""
-        # XXX I don't like this solution.  Better make the min/max filtering
-        # arguments optional in TimeWindow.reread
-        return self.window_for(self.window.earliest_timestamp,
-                               datetime.datetime.now(TZOffset ()))
-
-    def raw_append(self, line):
-        """Append a line to the time log file."""
-        f = open(self.filename, "a")
-        if self.need_space:
-            self.need_space = False
-            print >> f
-        print >> f, line
-        f.close()
-
-    def append_entry(self, entry, now):
-        self.window.items.append((now, entry))
-        line = '%s: %s' % (now.strftime("%Y-%m-%d %H:%M %z"), entry)
-        self.raw_append(line)
-
-    def append(self, entry, now=None):
-        """Append a new entry to the time log."""
-        if not now:
-            now = datetime.datetime.now(TZOffset ()).replace(
-	    		second=0, microsecond=0)
-        last = self.window.last_time()
-        if last and different_days(now, last, self.virtual_midnight):
-            # We are working past the virtual midnight. We need to
-            # finish the first day, and add an arrival notice at the
-            # beginning of the next day, and also reload the log!
-            midnight = now.replace(hour = self.virtual_midnight.hour,
-                minute = self.virtual_midnight.minute)
-            one_minute_delta = datetime.timedelta(0, 60)
-
-            if self.autoarrival:
-                self.append_entry(entry, midnight - one_minute_delta)
-                self.reread()
-                self.append_entry('-automatic arrival-', midnight + one_minute_delta)
-            else:
-                self.reread()
-
-        self.append_entry(entry, now)
-
-class TaskList(object):
-    """Task list.
-
-    You can have a list of common tasks in a text file that looks like this
-
-        Arrived **
-        Reading mail
-        Project1: do some task
-        Project2: do some other task
-        Project1: do yet another task
-
-    These tasks are grouped by their common prefix (separated with ':').
-    Tasks without a ':' are grouped under "Other".
-
-    A TaskList has an attribute 'groups' which is a list of tuples
-    (group_name, list_of_group_items).
-    """
-
-    other_title = 'Other'
-
-    loading_callback = None
-    loaded_callback = None
-    error_callback = None
-
-    def __init__(self, filename):
-        self.filename = filename
-        self.load()
-
-    def check_reload(self):
-        """Look at the mtime of tasks.txt, and reload it if necessary.
-
-        Returns True if the file was reloaded.
-        """
-        mtime = self.get_mtime()
-        if mtime != self.last_mtime:
-            self.load()
-            return True
-        else:
-            return False
-
-    def get_mtime(self):
-        """Return the mtime of self.filename, or None if the file doesn't exist."""
-        try:
-            return os.stat(self.filename).st_mtime
-        except OSError:
-            return None
-
-    def load(self):
-        """Load task list from a file named self.filename."""
-        self.items = set()
-        self.last_mtime = self.get_mtime()
-        try:
-            for line in file(self.filename):
-                line = line.strip()
-                if line and not line.startswith("#"):
-                    self.items.add (line)
-        except IOError, e:
-            print e.message
-            pass # the file's not there, so what?
-
-    def reload(self):
-        """Reload the task list."""
-        self.load()
-
-# Global HTTP stuff
-
-class Authenticator(object):
-    # Try to use LibSecret if available
-    try:
-        gi.require_version('Secret', '1')
-        from gi.repository import Secret
-        # This is defined by libsecret for migration from gnome-keyring, but it
-        # isn't exported by gobject-introspection, so we redefine it here.
-        SECRET_SCHEMA_COMPAT_NETWORK = Secret.Schema.new(
-            "org.gnome.keyring.NetworkPassword",
-            Secret.SchemaFlags.NONE,
-            {
-                "user": Secret.SchemaAttributeType.STRING,
-                "domain": Secret.SchemaAttributeType.STRING,
-                "object": Secret.SchemaAttributeType.STRING,
-                "protocol": Secret.SchemaAttributeType.STRING,
-                "port": Secret.SchemaAttributeType.INTEGER,
-                "server": Secret.SchemaAttributeType.STRING,
-                "authtype": Secret.SchemaAttributeType.STRING,
-            }
-        )
-    except ImportError:
-        print("LibSecret not found. You will not be able to use the password keyring.")
-        Secret = None
-
-    def __init__(self):
-        object.__init__(self)
-        self.pending = []
-        self.lookup_in_progress = False
-
-    def find_in_keyring(self, uri, callback):
-        """Attempts to load a username and password from the keyring, if the
-        keyring is available"""
-        if self.Secret is None:
-            callback(None, None)
-            return
-
-        username = None
-        password = None
-
-        try:
-            # FIXME: would be nice to make all keyring calls async, to dodge
-            # the possibility of blocking the UI. The code is all set up for it.
-            # It can be done with libsecret from Python; docs have examples.
-            attrs = {
-                "domain": uri.get_host(),
-                "server": uri.get_host(),
-                "protocol": uri.get_scheme(),
-            }
-            service = self.Secret.Service.get_sync(0, None)
-            # This doesn't give us the password; only details from the schema
-            results = service.search_sync(
-                    self.SECRET_SCHEMA_COMPAT_NETWORK,
-                    attrs, 0, None)
-            if results:
-                username = results[0].get_attributes()['user']
-                # This gives us only the password
-                password = self.Secret.password_lookup_sync(
-                        self.SECRET_SCHEMA_COMPAT_NETWORK, attrs, None)
-        except self.gi._glib.GError as e:
-            # Couldn't contact daemon, or other errors
-            print ("Unable to contact keyring: {0}".format(e.streerror))
-
-        callback(username, password)
-
-    def save_to_keyring(self, uri, username, password):
-        try:
-            attrs = {
-                "user": username,
-                "domain": uri.get_host(),
-                "server": uri.get_host(),
-                # BUG: Passing 'None' for a string causes a segfault
-                # https://bugzilla.gnome.org/show_bug.cgi?id=685394
-                "object": "",
-                "protocol": uri.get_scheme(),
-            }
-            self.Secret.password_store_sync(
-                    self.SECRET_SCHEMA_COMPAT_NETWORK,
-                    attrs,
-                    self.Secret.COLLECTION_DEFAULT,
-                    "Chronophage password for GTimelog", password, None)
-        except self.gi._glib.GError as e:
-            # Couldn't contact daemon, or other errors
-            print ("Unable to contact keyring: {0}".format(e.streerror))
-
-    def ask_the_user(self, auth, uri, callback):
-        """Pops up a username/password dialog for uri"""
-        d = Gtk.Dialog ()
-        d.set_title ('Authentication Required')
-        d.set_resizable(False)
-
-        grid = Gtk.Grid()
-        grid.set_border_width(5)
-        grid.set_row_spacing(5)
-        grid.set_column_spacing(5)
-
-        l = Gtk.Label('Authentication is required for the domain "%s".' % auth.get_realm())
-        l.set_line_wrap(True)
-        grid.attach(l, 0, 0, 2, 1)
-
-        username_label = Gtk.Label("Username:")
-        grid.attach_next_to(username_label, l, Gtk.PositionType.BOTTOM, 1, 1)
-
-        password_label = Gtk.Label("Password:")
-        grid.attach_next_to(password_label, username_label, Gtk.PositionType.BOTTOM, 1, 1)
-
-        userentry = Gtk.Entry ()
-        userentry.set_hexpand(True)
-        passentry = Gtk.Entry ()
-        passentry = Gtk.Entry ()
-        passentry.set_visibility (False)
-
-        userentry.set_activates_default(True)
-        passentry.set_activates_default(True)
-
-        grid.attach_next_to(userentry, username_label, Gtk.PositionType.RIGHT, 1, 1)
-        grid.attach_next_to(passentry, password_label, Gtk.PositionType.RIGHT, 1, 1)
-
-        if self.Secret:
-            savepasstoggle = Gtk.CheckButton ("Save Password in Keyring")
-            savepasstoggle.set_active (True)
-            grid.attach_next_to(savepasstoggle, passentry,
-                Gtk.PositionType.BOTTOM, 1, 1)
-
-        d.vbox.pack_start(grid, True, True, 0)
-        d.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
-        ok_button = d.add_button(Gtk.STOCK_OK, Gtk.ResponseType.OK)
-        d.set_default(ok_button)
-
-        def update_ok_sensitivity(*args):
-            ok_button.set_sensitive(userentry.get_text() and passentry.get_text())
-        userentry.connect('notify::text', update_ok_sensitivity)
-        passentry.connect('notify::text', update_ok_sensitivity)
-        update_ok_sensitivity()
-
-        def on_response(dialog, r):
-            save_to_keyring = self.Secret and savepasstoggle.get_active()
-
-            if r == Gtk.ResponseType.OK:
-                username = userentry.get_text ()
-                password = passentry.get_text ()
-
-                if username and password and save_to_keyring:
-                    self.save_to_keyring(uri, username, password)
-
-            else:
-                username = None
-                password = None
-
-            d.destroy()
-            callback(username, password)
-
-        d.connect('response', on_response)
-        d.show_all ()
-
-    def find_password(self, auth, uri, retrying, callback):
-        def keyring_callback(username, password):
-            # If not found, ask the user for it
-            if username is None or retrying:
-                GObject.idle_add(lambda: self.ask_the_user(auth, uri, callback))
-            else:
-                callback(username, password)
-
-        self.find_in_keyring(uri, keyring_callback)
-
-    def http_auth_cb(self, session, message, auth, retrying, *args):
-        session.pause_message(message)
-        self.pending.insert(0, (session, message, auth, retrying))
-        self.maybe_pop_queue()
-
-    def maybe_pop_queue(self):
-        # I don't think we need any locking, because GIL.
-        if self.lookup_in_progress:
-            return
-
-        try:
-            (session, message, auth, retrying) = self.pending.pop()
-        except IndexError:
-            pass
-        else:
-            self.lookup_in_progress = True
-            uri = message.get_uri()
-            self.find_password(auth, uri, retrying,
-                callback=functools.partial(
-                    self.http_auth_finish, session, message, auth))
-
-    def http_auth_finish(self, session, message, auth, username, password):
-        if username and password:
-            auth.authenticate(username, password)
-
-        session.unpause_message(message)
-        self.lookup_in_progress = False
-        self.maybe_pop_queue()
-
-soup_session = Soup.SessionAsync()
-authenticator = Authenticator()
-soup_session.connect('authenticate', authenticator.http_auth_cb)
-
-class RemoteTaskList(TaskList):
-    """Task list stored on a remote server.
-
-    Keeps a cached copy of the list in a local file, so you can use it offline.
-    """
-
-    def __init__(self, settings, cache_filename):
-        self.url = settings.task_list_url
-        TaskList.__init__(self, cache_filename)
-        self.settings = settings
-
-        #Even better would be to use the Expires: header on the list itself I suppose...
-        self.max_age = settings.task_list_expiry
-
-        mtime = self.get_mtime()
-        if mtime:
-            self.last_time = datetime.datetime.fromtimestamp(mtime, TZOffset())
-        else:
-            self.last_time = datetime.datetime.now(TZOffset()) - self.max_age * 2
-
-    def check_reload(self):
-        """Check whether the task list needs to be reloaded.
-
-        Download the task list if this is the first time, and a cached copy is
-        not found.
-
-        Returns True if the file was reloaded.
-        """
-        if datetime.datetime.now(TZOffset()) - self.last_time > self.max_age:
-            self.last_time = datetime.datetime.now (TZOffset())
-            #Always redownload if past the expiry date.
-            self.download()
-            return True
-        return TaskList.check_reload(self)
-
-    def download_finished_cb(self, session, message, *args):
-        if message.status_code == 200:
-            try:
-                out = open (self.filename, 'w')
-                out.write (message.response_body.data)
-            except IOError, e:
-                print e
-                if self.error_callback:
-                    self.error_callback ()
-            finally:
-                out.close ()
-                self.load_file()
-        else:
-            if self.error_callback:
-                self.error_callback()
-
-    def download(self):
-        """Download the task list from the server."""
-        if self.loading_callback:
-            self.loading_callback()
-
-        if not os.path.exists(self.settings.server_cert):
-            print("Server certificate file not found")
-
-        message = Soup.Message.new('GET', self.url)
-        soup_session.queue_message(message, self.download_finished_cb, None)
-
-    def load_file (self):
-        """Load the file in the UI"""
-        self.load()
-        if self.loaded_callback:
-            self.loaded_callback()
-
-    def reload(self):
-        """Reload the task list."""
-        self.download()
-
-
-class Settings(object):
-    """Configurable settings for GTimeLog."""
-
-    # Insane defaults
-    email = 'activity-list@example.com'
-    name = 'Anonymous'
-
-    editor = 'xdg-open'
-    mailer = 'x-terminal-emulator -e mutt -H %s'
-    spreadsheet = 'localc %s'
-
-    enable_gtk_completion = True  # False enables gvim-style completion
-
-    show_time_label = True
-
-    hours = 8
-    virtual_midnight = datetime.time(2, 0, tzinfo=TZOffset ())
-
-    task_list_url = ''
-    task_list_expiry = '24 hours'
-
-    show_office_hours = True
-
-    report_to_url = ""
-
-    remind_idle = '10 minutes'
-    server_cert = ''
-
-    # Should we create '-automatic arrival-' marks in the log?
-    autoarrival = True
-
-    def _config(self):
-        config = ConfigParser.RawConfigParser()
-        config.add_section('gtimelog')
-        config.set('gtimelog', 'list-email', self.email)
-        config.set('gtimelog', 'name', self.name)
-        config.set('gtimelog', 'editor', self.editor)
-        config.set('gtimelog', 'mailer', self.mailer)
-        config.set('gtimelog', 'spreadsheet', self.spreadsheet)
-        config.set('gtimelog', 'gtk-completion',
-                   str(self.enable_gtk_completion))
-        config.set('gtimelog', 'show-time-label',
-                   str(self.show_time_label))
-        config.set('gtimelog', 'hours', str(self.hours))
-        config.set('gtimelog', 'virtual_midnight',
-                   self.virtual_midnight.strftime('%H:%M'))
-        config.set('gtimelog', 'task_list_url', self.task_list_url)
-        config.set('gtimelog', 'task_list_expiry', self.task_list_expiry)
-        config.set('gtimelog', 'show_office_hours',
-                   str(self.show_office_hours))
-        config.set('gtimelog', 'report_to_url', self.report_to_url)
-        config.set('gtimelog', 'remind_idle', self.remind_idle)
-        config.set('gtimelog', 'server_cert', self.server_cert)
-        config.set('gtimelog', 'autoarrival', str(self.autoarrival))
-
-        return config
-
-    def load(self, filename):
-        config = self._config()
-        config.read([filename])
-        self.email = config.get('gtimelog', 'list-email')
-        self.name = config.get('gtimelog', 'name')
-        self.editor = config.get('gtimelog', 'editor')
-        self.mailer = config.get('gtimelog', 'mailer')
-        self.spreadsheet = config.get('gtimelog', 'spreadsheet')
-        self.enable_gtk_completion = config.getboolean('gtimelog',
-                                                       'gtk-completion')
-        self.show_time_label = config.getboolean('gtimelog',
-                                                  'show-time-label')
-        self.hours = config.getfloat('gtimelog', 'hours')
-        self.virtual_midnight = parse_time(config.get('gtimelog',
-                                                      'virtual_midnight'))
-        self.task_list_url = config.get('gtimelog', 'task_list_url')
-        self.task_list_expiry = parse_timedelta(config.get('gtimelog', 'task_list_expiry'))
-        self.show_office_hours = config.getboolean('gtimelog',
-                                                   'show_office_hours')
-        self.report_to_url = config.get('gtimelog','report_to_url')
-        self.remind_idle = parse_timedelta (config.get('gtimelog', 'remind_idle'))
-
-        self.server_cert = os.path.expanduser(config.get('gtimelog', 'server_cert'))
-        self.autoarrival = config.getboolean('gtimelog', 'autoarrival')
-        #Anything shorter than 2 minutes will tick every minute
-        #if self.remind_idle > datetime.timedelta (0, 120):
-        #    self.remind_idle = datetime.timedelta (0, 120)
-
-    def save(self, filename):
-        config = self._config()
-        f = file(filename, 'w')
-        try:
-            config.write(f)
-        finally:
-            f.close()
 
 class TrayIcon(object):
     """Tray icon for gtimelog."""
@@ -1172,9 +98,9 @@ class TrayIcon(object):
             return
         main_window = self.gtimelog_window.main_window
         if main_window.get_property("visible"):
-           main_window.hide()
+            main_window.hide()
         else:
-           main_window.present()
+            main_window.present()
 
     def entry_added(self, entry):
         """An entry has been added."""
@@ -1240,7 +166,7 @@ class MainWindow(object):
         self.inserting_old_time = False
 
         # I do not understand this at all.
-        self.time_before_idle = datetime.datetime.now(TZOffset ())
+        self.time_before_idle = datetime.datetime.now(TZOffset())
 
         # whether or not row toggle callbacks are heeded
         self._block_row_toggles = 0
@@ -1261,57 +187,57 @@ class MainWindow(object):
 
     def _init_ui(self):
         """Initialize the user interface."""
-        tree = Gtk.Builder()
-        tree.add_from_file(ui_file)
+        builder = Gtk.Builder()
+        builder.add_from_file(ui_file)
 
         # Set initial state of menu items *before* we hook up signals
-        chronological_menu_item = tree.get_object("chronological")
+        chronological_menu_item = builder.get_object("chronological")
         chronological_menu_item.set_active(self.chronological)
-        show_task_pane_item = tree.get_object("show_task_pane")
+        show_task_pane_item = builder.get_object("show_task_pane")
         show_task_pane_item.set_active(self.show_tasks)
 
-        self.show_unavailable_tasks_item = tree.get_object(
+        self.show_unavailable_tasks_item = builder.get_object(
             "show_unavailable_tasks")
         self.show_unavailable_tasks_item.set_active(self.show_unavailable_tasks)
         self.show_unavailable_tasks_item.set_sensitive(self.show_tasks)
 
         # Now hook up signals
-        tree.connect_signals(self)
+        builder.connect_signals(self)
 
         # Store references to UI elements we're going to need later
-        self.tray_icon_popup_menu = tree.get_object("tray_icon_popup_menu")
-        self.tray_show = tree.get_object("tray_show")
-        self.tray_hide = tree.get_object("tray_hide")
-        self.about_dialog = tree.get_object("about_dialog")
-        self.about_dialog_ok_btn = tree.get_object("ok_button")
+        self.tray_icon_popup_menu = builder.get_object("tray_icon_popup_menu")
+        self.tray_show = builder.get_object("tray_show")
+        self.tray_hide = builder.get_object("tray_hide")
+        self.about_dialog = builder.get_object("about_dialog")
+        self.about_dialog_ok_btn = builder.get_object("ok_button")
         self.about_dialog_ok_btn.connect("clicked", self.close_about_dialog)
-        self.calendar_dialog = tree.get_object("calendar_dialog")
-        self.calendar = tree.get_object("calendar")
+        self.calendar_dialog = builder.get_object("calendar_dialog")
+        self.calendar = builder.get_object("calendar")
         self.calendar.connect("day_selected_double_click",
                               self.on_calendar_day_selected_double_click)
-        self.submit_window = SubmitWindow(tree, self.settings, application = self)
-        self.main_window = tree.get_object("main_window")
+        self.submit_window = SubmitWindow(builder, self.settings, application=self)
+        self.main_window = builder.get_object("main_window")
         self.main_window.connect("delete_event", self.delete_event)
         self.main_window.set_icon_from_file(icon_file)
         self.about_dialog.set_transient_for(self.main_window)
         self.about_dialog.set_modal(True)
-        self.log_view = tree.get_object("log_view")
-        self.infobars = tree.get_object("infobars")
+        self.log_view = builder.get_object("log_view")
+        self.infobars = builder.get_object("infobars")
         self.set_up_log_view_columns()
 
-        self.task_pane = tree.get_object("task_list_pane")
+        self.task_pane = builder.get_object("task_list_pane")
         if not self.show_tasks:
             self.task_pane.hide()
-        self.task_pane_info_label = tree.get_object("task_pane_info_label")
-        self.task_pane_spinner = tree.get_object("task_pane_spinner")
+        self.task_pane_info_label = builder.get_object("task_pane_info_label")
+        self.task_pane_spinner = builder.get_object("task_pane_spinner")
         self.tasks.loading_callback = self.task_list_loading
         self.tasks.loaded_callback = self.task_list_loaded
         self.tasks.error_callback = self.task_list_error
-        self.task_list = tree.get_object("task_list")
+        self.task_list = builder.get_object("task_list")
         self.task_store = Gtk.TreeStore(str, str, bool)
-        task_filter = tree.get_object("task_filter")
+        task_filter = builder.get_object("task_filter")
 
-        filter = self.task_store.filter_new ()
+        filter = self.task_store.filter_new()
         self.refilter_timeout = 0
 
         def _refilter():
@@ -1324,7 +250,7 @@ class MainWindow(object):
             txt = task_filter.get_text()
 
             task_filter.set_icon_sensitive(Gtk.EntryIconPosition.SECONDARY,
-                    len(txt) > 0)
+                                           len(txt) > 0)
 
             if self.refilter_timeout != 0:
                 GObject.source_remove(self.refilter_timeout)
@@ -1343,7 +269,8 @@ class MainWindow(object):
 
             txt = task_filter.get_text()
 
-            if len(txt) == 0: return True
+            if len(txt) == 0:
+                return True
 
             depth = model.iter_depth(iter)
 
@@ -1354,7 +281,8 @@ class MainWindow(object):
                 child = model.iter_children(iter)
 
                 while child is not None:
-                    if _task_filter_filter(model, child, None): return True
+                    if _task_filter_filter(model, child, None):
+                        return True
                     child = model.iter_next(child)
 
                 return False
@@ -1368,10 +296,10 @@ class MainWindow(object):
         filter.set_visible_func(_task_filter_filter, None)
         self.task_list.set_model(filter)
 
-        self.task_list.connect ("row-expanded",
-                self.on_row_expander_changed, True)
-        self.task_list.connect ("row-collapsed",
-                self.on_row_expander_changed, False)
+        self.task_list.connect("row-expanded",
+                               self.on_row_expander_changed, True)
+        self.task_list.connect("row-collapsed",
+                               self.on_row_expander_changed, False)
 
         renderer = Gtk.CellRendererText()
         column = Gtk.TreeViewColumn("Task", renderer)
@@ -1379,7 +307,8 @@ class MainWindow(object):
         # We grey out unavailable subtrees.
         def task_column_data_func(column, cell, model, iter, user_data):
             text, grey = model.get(iter,
-                MainWindow.COL_TASK_NAME, MainWindow.COL_TASK_UNAVAILABLE)
+                                   MainWindow.COL_TASK_NAME,
+                                   MainWindow.COL_TASK_UNAVAILABLE)
 
             renderer.set_property('text', text)
 
@@ -1395,15 +324,15 @@ class MainWindow(object):
         self.task_list.append_column(column)
 
         self.task_list.connect("row_activated", self.task_list_row_activated)
-        self.task_list_popup_menu = tree.get_object("task_list_popup_menu")
+        self.task_list_popup_menu = builder.get_object("task_list_popup_menu")
         self.task_list.connect_object("button_press_event",
                                       self.task_list_button_press,
                                       self.task_list_popup_menu)
-        self.time_label = tree.get_object("time_label")
-        self.task_entry = tree.get_object("task_entry")
+        self.time_label = builder.get_object("time_label")
+        self.task_entry = builder.get_object("task_entry")
         self.task_entry.connect("changed", self.task_entry_changed)
         self.task_entry.connect("key_press_event", self.task_entry_key_press)
-        self.add_button = tree.get_object("add_button")
+        self.add_button = builder.get_object("add_button")
         self.add_button.connect("clicked", self.add_entry)
         buffer = self.log_view.get_buffer()
         self.log_buffer = buffer
@@ -1437,7 +366,7 @@ class MainWindow(object):
                                                               'org.gnome.ScreenSaver',
                                                               None)
             self.screensaving = self.screensaver.GetActive()
-        except Exception, e:
+        except Exception:
             self.screensaving = False
             self.screensaver = None
 
@@ -1506,7 +435,7 @@ class MainWindow(object):
         if self.footer_mark is not None:
             buffer.delete_mark(self.footer_mark)
             self.footer_mark = None
-        today = virtual_day(datetime.datetime.now(TZOffset ()),
+        today = virtual_day(datetime.datetime.now(TZOffset()),
                             self.timelog.virtual_midnight)
         today = today.strftime('%A, %Y-%m-%d (week %V)')
         self.w(today + '\n\n', 'today')
@@ -1672,7 +601,7 @@ class MainWindow(object):
             self.w('\nAt office today: ')
             hours = datetime.timedelta(hours=self.settings.hours)
             total = total_slacking + total_work
-            self.w("%s " % format_duration(total), 'duration' )
+            self.w("%s " % format_duration(total), 'duration')
             self.w('(')
             if total > hours:
                 self.w(format_duration(total - hours), 'duration')
@@ -1705,7 +634,7 @@ class MainWindow(object):
         last_time = self.timelog.window.last_time()
         if last_time is None:
             return None
-        now = datetime.datetime.now(TZOffset ())
+        now = datetime.datetime.now(TZOffset())
         current_task = self.task_entry.get_text()
         current_task_time = now - last_time
         if '**' in current_task:
@@ -1748,7 +677,7 @@ class MainWindow(object):
         last_time = self.timelog.window.last_time()
         if last_time is None:
             return None
-        now = datetime.datetime.now(TZOffset ())
+        now = datetime.datetime.now(TZOffset())
         current_task = self.task_entry.get_text()
         current_task_time = now - last_time
         if '**' in current_task:
@@ -1761,7 +690,7 @@ class MainWindow(object):
         buffer = self.log_buffer
         start, stop, duration, entry = item
         self.w(format_duration(duration), 'duration')
-        period = '\t(%s-%s)\t' % (start.astimezone (TZOffset()).strftime('%H:%M'),
+        period = '\t(%s-%s)\t' % (start.astimezone(TZOffset()).strftime('%H:%M'),
                                   stop.astimezone(TZOffset()).strftime('%H:%M'))
         self.w(period, 'time')
 
@@ -1797,7 +726,7 @@ class MainWindow(object):
         for item in self.tasks.items:
             parent = task_list
             for pos in [s.strip() for s in item.split(":")]:
-                if pos: #Prevent blank labels caused by :: in config
+                if pos: # Prevent blank labels caused by :: in config
                     if not pos in parent:
                         parent[pos] = {}
                     parent = parent[pos]
@@ -1823,16 +752,16 @@ class MainWindow(object):
 
                 if subtasks == {}:
                     child = self.task_store.append(parent,
-                        (key, prefix + key, is_unavailable))
+                                                   (key, prefix + key, is_unavailable))
                 else:
                     child = self.task_store.append(parent,
-                        (key, prefix + key + ": ", is_unavailable))
+                                                   (key, prefix + key + ": ", is_unavailable))
                     all_subtasks_unavailable = recursive_append(subtasks,
-                        prefix + key + ": ", child, is_unavailable)
+                                                                prefix + key + ": ", child, is_unavailable)
 
                     if all_subtasks_unavailable:
                         self.task_store.set_value(child,
-                            MainWindow.COL_TASK_UNAVAILABLE, True)
+                                                  MainWindow.COL_TASK_UNAVAILABLE, True)
                         is_unavailable = True
 
                 if not is_unavailable:
@@ -1852,16 +781,16 @@ class MainWindow(object):
     def update_toggle_state(self):
         # Use the on-disk toggle state to work out whether a row is expanded
         # or not
-        def update_toggle (model, path, iter, togglesdict):
-            item = model.get_value (iter, 1)
+        def update_toggle(model, path, iter, togglesdict):
+            item = model.get_value(iter, 1)
             # expand the row if we know nothing about it, or its marked
             # for expansion
             if item not in togglesdict or togglesdict[item]:
-                self.task_list.expand_row (path, False)
+                self.task_list.expand_row(path, False)
 
         self._block_row_toggles += 1
-        togglesdict = self.load_task_store_toggle_state ()
-        self.task_store.foreach (update_toggle, togglesdict)
+        togglesdict = self.load_task_store_toggle_state()
+        self.task_store.foreach(update_toggle, togglesdict)
         self._block_row_toggles -= 1
 
     def set_up_history(self):
@@ -1877,7 +806,7 @@ class MainWindow(object):
         history = self.timelog.whole_history()
         count = {}
 
-        for start, stop, duration, entry in history.all_entries ():
+        for start, stop, duration, entry in history.all_entries():
             delta = now - stop
             if delta.days > 90:
                 continue
@@ -1887,13 +816,13 @@ class MainWindow(object):
             else:
                 count[entry] += weight
 
-        self.completion_choices.clear ()
+        self.completion_choices.clear()
         for entry, weight in count.items():
             self.completion_choices.append([entry, weight])
 
-    def push_reminder(self, msg, close_handler = None, action_label = None, handler = None):
-        self.reminders.append(dict(msg = msg, close_handler = close_handler,
-                                   action_label = action_label, handler = handler))
+    def push_reminder(self, msg, close_handler=None, action_label=None, handler=None):
+        self.reminders.append(dict(msg=msg, close_handler=close_handler,
+                                   action_label=action_label, handler=handler))
         self.update_reminder()
 
     def clear_reminders(self):
@@ -1976,7 +905,7 @@ class MainWindow(object):
         completion.set_model(self.completion_choices)
         # FIXME: broken in GTK+ -- #575668
         # completion.set_inline_completion (True)
-        completion.set_match_func (self.completion_match_func, None)
+        completion.set_match_func(self.completion_match_func, None)
 
         def text_func(completion, cell, model, iter, user_data):
             entry = model.get_value(iter, 0)
@@ -1987,7 +916,7 @@ class MainWindow(object):
                 text = text[:start] + text[end:]
 
             entry = re.sub('(%s)' % re.escape(text), r'<b>\1</b>',
-                escape (entry), re.IGNORECASE)
+                           escape(entry), re.IGNORECASE)
             cell.set_property('markup', entry)
 
         completion.set_text_column(0)
@@ -2120,9 +1049,9 @@ class MainWindow(object):
 
         min = day - datetime.timedelta(30)
         min = datetime.datetime.combine(min,
-                        self.timelog.virtual_midnight)
+                                        self.timelog.virtual_midnight)
         max = datetime.datetime.combine(day,
-                        self.timelog.virtual_midnight)
+                                        self.timelog.virtual_midnight)
 
         timewindow = self.timelog.window_for(min, max)
 
@@ -2131,7 +1060,7 @@ class MainWindow(object):
     def show_submit_window(self):
         self.submit_window.show()
 
-    def submit(self, window = None, auto_submit = False):
+    def submit(self, window=None, auto_submit=False):
         """Report -> Submit report to server"""
 
         if window is None:
@@ -2141,21 +1070,23 @@ class MainWindow(object):
         self.populate_log()
 
         if self.settings.report_to_url == "":
-            dialog = Gtk.MessageDialog(self.main_window,
-                     Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                     Gtk.MessageType.ERROR,
-                     Gtk.ButtonsType.OK,
-                     'Incomplete configuration file.')
+            dialog = Gtk.MessageDialog(
+                self.main_window,
+                Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                Gtk.MessageType.ERROR,
+                Gtk.ButtonsType.OK,
+                'Incomplete configuration file.')
             dialog.set_title('Error')
             dialog.format_secondary_text('Your configuration file is missing the report_to_url field which is necessary for timesheet uploading.')
             dialog.connect('response', lambda d, i: dialog.destroy())
             dialog.run()
         elif not self.settings.report_to_url.strip().startswith("https") and not "localhost" in self.settings.report_to_url:
-            dialog = Gtk.MessageDialog(self.main_window,
-                     Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                     Gtk.MessageType.ERROR,
-                     Gtk.ButtonsType.OK,
-                     'Incomplete configuration file.')
+            dialog = Gtk.MessageDialog(
+                self.main_window,
+                Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                Gtk.MessageType.ERROR,
+                Gtk.ButtonsType.OK,
+                'Incomplete configuration file.')
             dialog.set_title('Error')
             dialog.format_secondary_text('Your gtimelogrc is using http (as opposed to https) urls.  Please update your settings.')
             dialog.connect('response', lambda d, i: dialog.destroy())
@@ -2179,51 +1110,52 @@ class MainWindow(object):
         day = self.choose_date()
         if day:
             min = datetime.datetime.combine(day,
-                            self.timelog.virtual_midnight)
+                                            self.timelog.virtual_midnight)
             max = min + datetime.timedelta(1)
             window = self.timelog.window_for(min, max)
             self.mail(window.daily_report)
 
-    def load_task_store_toggle_state (self):
+    def load_task_store_toggle_state(self):
         configdir = os.path.expanduser('~/.gtimelog')
-	filename = os.path.join (configdir, 'togglesdict.pickle')
-	# read the dictionary from disk
-	try:
-		f = open (filename, 'r')
-		togglesdict = pickle.load (f)
-		f.close ()
-	except (IOError, pickle.PickleError), e:
-		print "ERROR READING TOGGLE STATE FROM DISK"
-		print e
-		togglesdict = {}
+        filename = os.path.join(configdir, 'togglesdict.pickle')
+        # read the dictionary from disk
+        try:
+            f = open(filename, 'r')
+            togglesdict = pickle.load(f)
+            f.close()
+        except (IOError, pickle.PickleError), e:
+            print "ERROR READING TOGGLE STATE FROM DISK"
+            print e
+            togglesdict = {}
 
-	return togglesdict
+        return togglesdict
 
-    def save_task_store_toggle_state (self, togglesdict):
+    def save_task_store_toggle_state(self, togglesdict):
         configdir = os.path.expanduser('~/.gtimelog')
-	filename = os.path.join (configdir, 'togglesdict.pickle')
-	# write the dictionary back to disk
-	try:
-		f = open (filename, 'w')
-		pickle.dump (togglesdict, f)
-		f.close ()
-	except (IOError, pickle.PickleError), e:
-		print "FAILED TO WRITE TOGGLE STATE TO DISK"
-		print e
+        filename = os.path.join(configdir, 'togglesdict.pickle')
+        # write the dictionary back to disk
+        try:
+            f = open(filename, 'w')
+            pickle.dump(togglesdict, f)
+            f.close()
+        except (IOError, pickle.PickleError), e:
+            print "FAILED TO WRITE TOGGLE STATE TO DISK"
+            print e
 
     def on_row_expander_changed(self, treeview, iter, path, expanded):
         """Someone toggled a task list expander"""
 
-        if self._block_row_toggles > 0: return
+        if self._block_row_toggles > 0:
+            return
 
-        togglesdict = self.load_task_store_toggle_state ()
+        togglesdict = self.load_task_store_toggle_state()
         model = treeview.get_model()
-        item = model.get_value (iter, 1)
+        item = model.get_value(iter, 1)
         togglesdict[item] = expanded
         # FIXME - hypothetically we could look at the togglesdict here to
         # make a guess at the previous toggle state of all of the children
         # of this iter; but I'm not sure that it's super important
-        self.save_task_store_toggle_state (togglesdict)
+        self.save_task_store_toggle_state(togglesdict)
 
     def choose_date(self):
         """Pop up a calendar dialog.
@@ -2232,7 +1164,7 @@ class MainWindow(object):
         """
         if self.calendar_dialog.run() == Gtk.ResponseType.OK:
             y, m1, d = self.calendar.get_date()
-            day = datetime.date(y, m1+1, d)
+            day = datetime.date(y, m1 + 1, d)
         else:
             day = None
         self.calendar_dialog.hide()
@@ -2247,7 +1179,7 @@ class MainWindow(object):
             day = self.timelog.day
         monday = day - datetime.timedelta(day.weekday())
         min = datetime.datetime.combine(monday,
-                        self.timelog.virtual_midnight)
+                                        self.timelog.virtual_midnight)
         max = min + datetime.timedelta(7)
         window = self.timelog.window_for(min, max)
         return window
@@ -2428,7 +1360,7 @@ class MainWindow(object):
         self.task_pane_spinner.start()
         self.task_pane_spinner.show()
 
-    def task_list_error(self, text = "Could not get task list."):
+    def task_list_error(self, text="Could not get task list."):
         self.task_list_loading_failed = True
         self.task_pane_info_label.set_text(text)
         self.task_pane_info_label.show()
@@ -2494,7 +1426,7 @@ class MainWindow(object):
             return
 
         if self.inserting_old_time:
-            self.insert_new_log_entries ()
+            self.insert_new_log_entries()
             now = self.time_before_idle
         else:
             now = None
@@ -2513,7 +1445,7 @@ class MainWindow(object):
         for watcher in self.entry_watchers:
             watcher(entry)
 
-    def resume_from_idle (self):
+    def resume_from_idle(self):
         """
             This will give the user an opportunity to fill in a log entry for the time the computer noticed it was idle.
 
@@ -2529,7 +1461,8 @@ class MainWindow(object):
                 self.welcome_back_notification = Notify.Notification(
                     summary="Welcome back",
                     body="Would you like to insert a log entry near the time you left your computer?")
-                self.welcome_back_notification.add_action("clicked",
+                self.welcome_back_notification.add_action(
+                    "clicked",
                     "Yes please", self.insert_old_log_entries,
                     # No user_data
                     None)
@@ -2539,23 +1472,23 @@ class MainWindow(object):
         except Exception, e:
             print "pynotification failed: %s" % e
 
-    def insert_old_log_entries (self, note=None, act=None, data=None):
+    def insert_old_log_entries(self, note=None, act=None, data=None):
         """
             Callback from the resume_from_idle notification
         """
         self.inserting_old_time = True
-        self.time_label.set_text ("Backdated: " +self.time_before_idle.strftime("%H:%M"))
+        self.time_label.set_text("Backdated: " + self.time_before_idle.strftime("%H:%M"))
 
     def __notification_closed_cb(self, notification):
         if self.welcome_back_notification == notification:
             self.welcome_back_notification = None
 
-    def insert_new_log_entries (self):
+    def insert_new_log_entries(self):
         """
             Once we have inserted an old log entry, go back to inserting new ones
         """
         self.inserting_old_time = False
-        self.tick (True) #Reset label caption
+        self.tick(True) # Reset label caption
 
     def process_new_day_tasks(self):
         """
@@ -2576,10 +1509,10 @@ class MainWindow(object):
             return True
 
         #Computer has been asleep?
-        if self.settings.remind_idle > datetime.timedelta (0):
+        if self.settings.remind_idle > datetime.timedelta(0):
             if self.last_tick and now - self.last_tick > self.settings.remind_idle:
                 self.time_before_idle = self.last_tick
-                self.resume_from_idle ()
+                self.resume_from_idle()
 
             #Computer has been left idle?
             screensaving = self.screensaver and self.screensaver.GetActive()
@@ -2589,7 +1522,7 @@ class MainWindow(object):
                     self.time_before_idle = self.last_tick
                 else:
                     if now - self.time_before_idle > self.settings.remind_idle:
-                        self.resume_from_idle ()
+                        self.resume_from_idle()
 
         #Reload task list if necessary
         if self.tasks.check_reload():
@@ -2598,7 +1531,7 @@ class MainWindow(object):
         self.last_tick = now
         last_time = self.timelog.window.last_time()
 
-        if not self.inserting_old_time: #We override the text on the label when we do that
+        if not self.inserting_old_time: # We override the text on the label when we do that
             if last_time is None:
                 if self.time_label.get_text() != 'Arrival message:':
                     self.time_label.set_text(now.strftime("Arrival message:"))
@@ -2621,34 +1554,34 @@ COL_HAS_CHECKBOX = 6
 COL_ERROR_MSG = 7
 class SubmitWindow(object):
     """The window for submitting reports over the http interface"""
-    def __init__(self, tree, settings, application = None):
+    def __init__(self, tree, settings, application=None):
         self.settings = settings
         self.progress_window = tree.get_object("progress_window")
         self.progressbar = tree.get_object("progressbar")
-        tree.get_object("hide_button").connect ("clicked", self.hide_progress_window)
+        tree.get_object("hide_button").connect("clicked", self.hide_progress_window)
         self.window = tree.get_object("submit_window")
         self.report_url = settings.report_to_url
 
-        tree.get_object("submit_report").connect ("clicked", self.on_submit_report)
-        self.list_store = self._list_store ()
+        tree.get_object("submit_report").connect("clicked", self.on_submit_report)
+        self.list_store = self._list_store()
         self.tree_view = tree.get_object("submit_tree")
-        self.tree_view.set_model (self.list_store)
+        self.tree_view.set_model(self.list_store)
 
         toggle = Gtk.CellRendererToggle()
-        toggle.connect ("toggled", self.on_toggled)
+        toggle.connect("toggled", self.on_toggled)
         tree.get_object("toggle_selection").connect("clicked", self.on_toggle_selection)
-        self.tree_view.append_column(Gtk.TreeViewColumn('Include?', toggle ,active=COL_ACTIVE, activatable=COL_ACTIVATABLE, visible=COL_HAS_CHECKBOX))
+        self.tree_view.append_column(Gtk.TreeViewColumn('Include?', toggle, active=COL_ACTIVE, activatable=COL_ACTIVATABLE, visible=COL_HAS_CHECKBOX))
 
         time_cell = Gtk.CellRendererText()
         time_cell.set_property('xalign', 1.0)
-        time_cell.connect ("edited", self.on_time_cell_edit)
+        time_cell.connect("edited", self.on_time_cell_edit)
         self.tree_view.append_column(Gtk.TreeViewColumn('Log Time', time_cell, text=COL_DATE_OR_DURATION, editable=COL_EDITABLE, foreground=COL_COLOR))
 
         item_cell = Gtk.CellRendererText()
-        item_cell.connect ("edited", self.on_item_cell_edit)
+        item_cell.connect("edited", self.on_item_cell_edit)
         self.tree_view.append_column(Gtk.TreeViewColumn('Log Entry', item_cell, text=COL_DESCRIPTION, editable=COL_EDITABLE, foreground=COL_COLOR))
 
-        self.tree_view.append_column(Gtk.TreeViewColumn('Error Message', Gtk.CellRendererText (), text=COL_ERROR_MSG, foreground=COL_COLOR))
+        self.tree_view.append_column(Gtk.TreeViewColumn('Error Message', Gtk.CellRendererText(), text=COL_ERROR_MSG, foreground=COL_COLOR))
 
         selection = self.tree_view.get_selection()
         selection.set_mode(Gtk.SelectionMode.MULTIPLE)
@@ -2678,28 +1611,28 @@ class SubmitWindow(object):
 
         self.upload(data, automatic)
 
-    def on_submit_report (self, button):
-        self.hide ()
+    def on_submit_report(self, button):
+        self.hide()
         self.show_progress_window()
         self.do_submit_report()
 
-    def progress_window_tick (self):
+    def progress_window_tick(self):
         self.progressbar.pulse()
         return True
 
-    def show_progress_window (self):
+    def show_progress_window(self):
         self.timeout_id = GObject.timeout_add(200, self.progress_window_tick)
         self.progress_window.show()
 
-    def hide_progress_window (self, button = None):
+    def hide_progress_window(self, button=None):
         try:
-            GObject.source_remove (self.timeout_id)
+            GObject.source_remove(self.timeout_id)
         except AttributeError:
             pass # race condition?
 
         GObject.idle_add(lambda: self.progress_window.hide())
 
-    def push_error_infobar(self, primary = None, secondary = None):
+    def push_error_infobar(self, primary=None, secondary=None):
             main_window = self.application
             if primary is None:
                 primary = 'Bad entries in your timelog'
@@ -2727,24 +1660,24 @@ class SubmitWindow(object):
                 # the server didn't like our submission
                 self.submitting = False
                 self.hide_progress_window()
-                self.annotate_failure (txt)
+                self.annotate_failure(txt)
 
                 if automatic:
                     self.push_error_infobar()
                 else:
                     dialog = Gtk.MessageDialog(self.window,
-                             Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                             Gtk.MessageType.ERROR,
-                             Gtk.ButtonsType.OK,
-                             'Unable To Upload Timesheet')
+                                               Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                                               Gtk.MessageType.ERROR,
+                                               Gtk.ButtonsType.OK,
+                                               'Unable To Upload Timesheet')
                     dialog.set_title('Error')
                     dialog.format_secondary_text('Some of the entries in your timesheet refer to tasks that are not known to the server. These entries have been marked in red. Please review them and resubmit to the server when fixed.')
                     dialog.connect('response', lambda d, i: dialog.destroy())
-                    self.window.show ()
+                    self.window.show()
                     dialog.show()
         elif message.status_code == 200:
             self.submitting = False
-            self.hide ()
+            self.hide()
 
             if not automatic or self.progress_window.get_property('visible'):
                 dialog = Gtk.MessageDialog(self.window,
@@ -2763,7 +1696,7 @@ class SubmitWindow(object):
             # It crashes gtk-window-decorator...
             self.error_dialog('Internal server error occurred. Contact the Chronophage maintainer.', automatic=automatic)
         else:
-            self.error_dialog(txt, automatic = automatic)
+            self.error_dialog(txt, automatic=automatic)
 
     def upload(self, data, automatic):
         if not os.path.exists(self.settings.server_cert):
@@ -2775,50 +1708,50 @@ class SubmitWindow(object):
         message.request_body.complete()
         soup_session.queue_message(message, self.upload_finished, automatic)
 
-    def error_dialog(self, e, title = 'Error Communicating With The Server', automatic = False):
+    def error_dialog(self, e, title='Error Communicating With The Server', automatic=False):
         print (e)
         if automatic:
             self.push_error_infobar(title, e)
         else:
             dialog = Gtk.MessageDialog(self.window,
-                     Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                     Gtk.MessageType.ERROR,
-                     Gtk.ButtonsType.OK,
-                     title)
+                                       Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                                       Gtk.MessageType.ERROR,
+                                       Gtk.ButtonsType.OK,
+                                       title)
             dialog.set_title('Error')
             dialog.format_secondary_text('%s' % e)
-            dialog.run ()
-            dialog.destroy ()
+            dialog.run()
+            dialog.destroy()
         self.submitting = False
         self.hide_progress_window()
-        self.hide ()
+        self.hide()
 
-    def on_toggled (self, toggle, path):
+    def on_toggled(self, toggle, path):
         """When one of the dates is toggled"""
         value = not self.list_store[path][COL_ACTIVE]
         self.list_store[path] = \
             self.date_row(self.list_store[path][COL_DATE_OR_DURATION], value)
 
-    def on_toggle_selection (self, toggle):
+    def on_toggle_selection(self, toggle):
         """The toggle selection check box to do groups"""
-        model, selection = self.tree_view.get_selection ().get_selected_rows ()
+        model, selection = self.tree_view.get_selection().get_selected_rows()
         for row in selection:
             if model[row][COL_ACTIVATABLE]:
                 self.on_toggled(toggle, row)
 
-    def on_time_cell_edit (self, cell, path, text):
+    def on_time_cell_edit(self, cell, path, text):
         """When a time cell has been edited"""
         try:
-            time = parse_timedelta (text)
+            time = parse_timedelta(text)
             item = self.list_store[path][COL_DESCRIPTION]
             self.list_store[path] = self.item_row(time, item)
         except ValueError:
             return # XXX: might want to tell the user what's wrong
 
-    def on_item_cell_edit (self, cell, path, text):
+    def on_item_cell_edit(self, cell, path, text):
         """When the description cell has been edited"""
         try:
-            time = parse_timedelta (self.list_store[path][COL_DATE_OR_DURATION])
+            time = parse_timedelta(self.list_store[path][COL_DATE_OR_DURATION])
             item = text
             self.list_store[path] = self.item_row(time, item)
         except ValueError:
@@ -2830,7 +1763,7 @@ class SubmitWindow(object):
         date_dict = {}
 
         regex = re.compile(r': +')
-        for (start, finish, duration, entry) in self.timewindow.all_entries ():
+        for (start, finish, duration, entry) in self.timewindow.all_entries():
             # Trim multiple spaces after separators
             entry = regex.sub(': ', entry).strip()
             #Neatly store the things under the day on which they started
@@ -2847,15 +1780,15 @@ class SubmitWindow(object):
             parent = self.list_store.append(None, self.date_row(date))
             items = date_dict[date].keys()
             #Sort by length of time with longest first
-            items.sort (lambda a,b: cmp(date_dict[date][b], date_dict[date][a]))
+            items.sort(lambda a, b: cmp(date_dict[date][b], date_dict[date][a]))
             for item in items:
                 if date_dict[date][item] > datetime.timedelta(0) and not "**" in item:
-                    self.list_store.append(parent,self.item_row(date_dict[date][item], item))
+                    self.list_store.append(parent, self.item_row(date_dict[date][item], item))
 
     def show(self):
         self.window.show()
 
-    def submit(self, timewindow, auto_submit = False):
+    def submit(self, timewindow, auto_submit=False):
         """Shows the window with the items included in the given time window, for detailed selection"""
         if self.submitting:
             if not self.window.get_property('visible'):
@@ -2873,7 +1806,7 @@ class SubmitWindow(object):
             self.window.show()
 
     #All the row based stuff together
-    def _list_store (self):
+    def _list_store(self):
         """
         date/duration [str],
         description [str],
@@ -2889,14 +1822,14 @@ class SubmitWindow(object):
         assert len(args) == COL_ERROR_MSG + 1
         return Gtk.TreeStore(*args)
 
-    def date_row (self, date, submit=True):
+    def date_row(self, date, submit=True):
         return [date, "", submit, True, False, submit and "black" or "grey", True, ""]
 
-    def item_row (self, duration, item):
+    def item_row(self, duration, item):
         submit = duration > datetime.timedelta(0) and not "**" in item
-        return [format_duration_long (duration), item, submit, False, True, submit and "black" or "grey", False, ""]
+        return [format_duration_long(duration), item, submit, False, True, submit and "black" or "grey", False, ""]
 
-    def annotate_failure (self, response):
+    def annotate_failure(self, response):
         """
             Parses the error response sent by the server and adds notes to the treeview
         """
@@ -2907,29 +1840,29 @@ class SubmitWindow(object):
         daterow = None
         for line in map(str.strip, response.split("\n")):
 
-            m = redate.match (line)
+            m = redate.match(line)
             if m:
-                date = m.group (1)
+                date = m.group(1)
                 for row in self.list_store:
                     if row[COL_DATE_OR_DURATION] == date:
                         daterow = row
                         break
                 continue
 
-            m = reitem.match (line)
+            m = reitem.match(line)
             if m and daterow:
-                for itemrow in daterow.iterchildren ():
-                    if itemrow[1].strip () == m.group (2):
+                for itemrow in daterow.iterchildren():
+                    if itemrow[1].strip() == m.group(2):
                         itemrow[COL_COLOR] = "red"
                         daterow[COL_COLOR] = "red"
-                        itemrow[COL_ERROR_MSG] = m.group (1).strip ()
+                        itemrow[COL_ERROR_MSG] = m.group(1).strip()
                 continue
 
             if line and line != "Failed":
                 print "Couldn't understand server: %s" % line
 
-    def hide (self):
-        self.window.hide ()
+    def hide(self):
+        self.window.hide()
 
 class Application(Gtk.Application):
     def __init__(self, *args, **kwargs):

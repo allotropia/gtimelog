@@ -8,7 +8,7 @@ import functools
 import os
 
 import gi
-from gi.repository import GObject, Gtk, Soup
+from gi.repository import GObject, GLib, Gtk, Soup
 
 from .timelog import TaskList
 from .tzoffset import TZOffset
@@ -73,7 +73,7 @@ class Authenticator(object):
                 # This gives us only the password
                 password = self.Secret.password_lookup_sync(
                         self.SECRET_SCHEMA_COMPAT_NETWORK, attrs, None)
-        except self.gi._glib.GError as e:
+        except GLib.Error as e:
             # Couldn't contact daemon, or other errors
             print("Unable to contact keyring: {0}".format(e.streerror))
 
@@ -95,7 +95,7 @@ class Authenticator(object):
                     attrs,
                     self.Secret.COLLECTION_DEFAULT,
                     "Chronophage password for GTimelog", password, None)
-        except self.gi._glib.GError as e:
+        except GLib.Error as e:
             # Couldn't contact daemon, or other errors
             print("Unable to contact keyring: {0}".format(e.streerror))
 

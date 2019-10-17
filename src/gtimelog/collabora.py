@@ -73,7 +73,7 @@ class Authenticator(object):
                 # This gives us only the password
                 password = self.Secret.password_lookup_sync(
                         self.SECRET_SCHEMA_COMPAT_NETWORK, attrs, None)
-        except GLib.Error as e:
+        except (GLib.Error, KeyError) as e:
             # Couldn't contact daemon, or other errors
             print("Unable to contact keyring: {0}".format(e.streerror))
 

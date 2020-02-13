@@ -11,18 +11,17 @@ class TZOffset (datetime.tzinfo):
         else:
             # time.timezone is in seconds back to UTC
             if time.daylight and time.localtime().tm_isdst:
-                    offset = -time.altzone / 36
+                    offset = -time.altzone // 36
             else:
-                    offset = -time.timezone / 36
+                    offset = -time.timezone // 36
             # (offset % 100) needs to be adjusted to be in minutes
             # now (e.g. UTC +5.5 => offset = 550, when it should
             # be 530) - yes, treating hhmm as an integer is a pain
-            m = ((offset % 100) * 60) / 100
+            m = ((offset % 100) * 60) // 100
             offset -= (offset % 100) - m
 
         self._offset = offset
-        h = offset / 100
-        m = offset % 100
+        h, m = divmod(offset, 100)
         self._offsetdelta = datetime.timedelta(hours=h, minutes=m)
 
     def utcoffset(self, dt):

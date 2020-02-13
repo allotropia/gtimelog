@@ -347,9 +347,9 @@ class TimeWindow(object):
 
     def icalendar(self, output):
         """Create an iCalendar file with activities."""
-        print >> output, "BEGIN:VCALENDAR"
-        print >> output, "PRODID:-//mg.pov.lt/NONSGML GTimeLog//EN"
-        print >> output, "VERSION:2.0"
+        output.write("BEGIN:VCALENDAR\n")
+        output.write("PRODID:-//mg.pov.lt/NONSGML GTimeLog//EN\n")
+        output.write("VERSION:2.0\n")
         try:
             import socket
             idhost = socket.getfqdn()
@@ -357,16 +357,16 @@ class TimeWindow(object):
             idhost = 'localhost'
         dtstamp = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
         for start, stop, duration, entry in self.all_entries():
-            print >> output, "BEGIN:VEVENT"
-            print >> output, "UID:%s@%s" % (hash((start, stop, entry)), idhost)
-            print >> output, "SUMMARY:%s" % (entry.replace('\\', '\\\\')
+            output.write("BEGIN:VEVENT\n")
+            output.write("UID:%s@%s\n" % (hash((start, stop, entry)), idhost))
+            output.write("SUMMARY:%s\n" % (entry.replace('\\', '\\\\')
                                                   .replace(';', '\\;')
-                                                  .replace(',', '\\,'))
-            print >> output, "DTSTART:%s" % start.strftime('%Y%m%dT%H%M%S')
-            print >> output, "DTEND:%s" % stop.strftime('%Y%m%dT%H%M%S')
-            print >> output, "DTSTAMP:%s" % dtstamp
-            print >> output, "END:VEVENT"
-        print >> output, "END:VCALENDAR"
+                                                  .replace(',', '\\,')))
+            output.write("DTSTART:%s\n" % start.strftime('%Y%m%dT%H%M%S'))
+            output.write("DTEND:%s\n" % stop.strftime('%Y%m%dT%H%M%S'))
+            output.write("DTSTAMP:%s\n" % dtstamp)
+            output.write("END:VEVENT\n")
+        output.write("END:VCALENDAR\n")
 
     def to_csv_complete(self, writer, title_row=True):
         """Export work entries to a CSV file.
@@ -436,38 +436,38 @@ class TimeWindow(object):
         weekday_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
         weekday = weekday_names[self.min_timestamp.weekday()]
         week = self.min_timestamp.strftime('%V')
-        print >> output, "To: %(email)s" % {'email': email}
-        print >> output, ("Subject: %(date)s report for %(who)s"
-                          " (%(weekday)s, week %(week)s)"
+        output.write("To: %(email)s\n" % {'email': email})
+        output.write("Subject: %(date)s report for %(who)s"
+                          " (%(weekday)s, week %(week)s)\n"
                           % {'date': self.min_timestamp.strftime('%Y-%m-%d'),
                              'weekday': weekday, 'week': week, 'who': who})
-        print >> output
+        output.write("\n")
         items = list(self.all_entries())
         if not items:
-            print >> output, "No work done today."
+            output.write("No work done today.\n")
             return
         start, stop, duration, entry = items[0]
         entry = entry[:1].upper() + entry[1:]
-        print >> output, "%s at %s" % (entry, start.strftime('%H:%M'))
-        print >> output
+        output.write("%s at %s\n" % (entry, start.strftime('%H:%M')))
+        output.write("\n")
         work, slack = self.grouped_entries()
         total_work, total_slacking = self.totals()
         if work:
             for start, entry, duration in work:
                 entry = entry[:1].upper() + entry[1:]
-                print >> output, "%-62s  %s" % (entry,
-                                                format_duration_long(duration))
-            print >> output
-        print >> output, ("Total work done: %s" %
+                output.write("%-62s  %s\n" % (entry,
+                                              format_duration_long(duration)))
+            output.write("\n")
+        output.write("Total work done: %s\n" %
                           format_duration_long(total_work))
-        print >> output
+        output.write("\n")
         if slack:
             for start, entry, duration in slack:
                 entry = entry[:1].upper() + entry[1:]
-                print >> output, "%-62s  %s" % (entry,
-                                                format_duration_long(duration))
-            print >> output
-        print >> output, ("Time spent slacking: %s" %
+                output.write("%-62s  %s\n" % (entry,
+                                              format_duration_long(duration)))
+            output.write("\n")
+        output.write("Time spent slacking: %s\n" %
                           format_duration_long(total_slacking))
 
     def weekly_report(self, output, email, who):
@@ -476,10 +476,9 @@ class TimeWindow(object):
         Writes a weekly report template in RFC-822 format to output.
         """
         week = self.min_timestamp.strftime('%V')
-        print >> output, "To: %(email)s" % {'email': email}
-        print >> output, "Subject: Weekly report for %s (week %s)" % (who,
-                                                                      week)
-        print >> output
+        output.write("To: %(email)s\n" % {'email': email})
+        output.write("Subject: Weekly report for %s (week %s)\n" % (who, week))
+        output.write("\n")
 
         self._report(output, "week")
 
@@ -490,9 +489,9 @@ class TimeWindow(object):
         """
 
         month = self.min_timestamp.strftime('%Y/%m')
-        print >> output, "To: %(email)s" % {'email': email}
-        print >> output, "Subject: Monthly report for %s (%s)" % (who, month)
-        print >> output
+        output.write("To: %(email)s\n" % {'email': email})
+        output.write("Subject: Monthly report for %s (%s)\n" % (who, month))
+        output.write("\n")
 
         self._report(output, "month")
 
@@ -504,10 +503,10 @@ class TimeWindow(object):
 
         items = list(self.all_entries())
         if not items:
-            print >> output, "No work done this %s." % period
+            output.write("No work done this %s.\n" % period)
             return
 
-        print >> output, " " * 62, "time"
+        output.write("%-62s time\n" % "")
 
         work, slack = self.grouped_entries()
         total_work, total_slacking = self.totals()
@@ -530,17 +529,17 @@ class TimeWindow(object):
                     categories[None] = categories.get(
                         None, datetime.timedelta(0)) + duration
 
-                print >> output, ("%-62s  %s" %
-                                  (entry, format_duration_long(duration)))
-            print >> output
+                output.write("%-62s  %s\n" %
+                             (entry, format_duration_long(duration)))
+            output.write("\n")
 
-        print >> output, ("Total work done this %s: %s" %
+        output.write("Total work done this %s: %s\n" %
                           (period, format_duration_long(total_work)))
 
         if categories:
-            print >> output
-            print >> output, "By category:"
-            print >> output
+            output.write("\n")
+            output.write("By category:\n")
+            output.write("\n")
 
             items = categories.items()
             items.sort()
@@ -548,12 +547,12 @@ class TimeWindow(object):
                 if not cat:
                     continue
 
-                print >> output, "%-62s  %s" % (
-                    cat, format_duration_long(duration))
+                output.write("%-62s  %s\n" % (
+                    cat, format_duration_long(duration)))
 
             if None in categories:
-                print >> output, "%-62s  %s" % (
-                    '(none)', format_duration_long(categories[None]))
+                output.write("%-62s  %s\n" % (
+                    '(none)', format_duration_long(categories[None])))
 
 class TimeLog(object):
     """Time log.
@@ -596,8 +595,8 @@ class TimeLog(object):
         f = open(self.filename, "a")
         if self.need_space:
             self.need_space = False
-            print >> f
-        print >> f, line
+            f.write("\n")
+        f.write(line + "\n")
         f.close()
 
     def append_entry(self, entry, now):
@@ -686,7 +685,7 @@ class TaskList(object):
                     if line and not line.startswith("#"):
                         self.items.add(line)
         except IOError as e:
-            print e.message
+            print(e.message)
             pass # the file's not there, so what?
 
     def reload(self):

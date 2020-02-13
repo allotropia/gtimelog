@@ -1277,7 +1277,7 @@ class MainWindow(object):
         self.mail(window.monthly_report)
 
     def _open_spreadsheet(self, history_method):
-        with NamedTemporaryFile(prefix='gtimelog', suffix='.csv',
+        with NamedTemporaryFile(mode="w+", prefix='gtimelog', suffix='.csv',
                                 delete=False) as f:
             tempfn = f.name
             writer = csv.writer(f)
@@ -1306,7 +1306,7 @@ class MainWindow(object):
 
     def mail(self, write_draft):
         """Send an email."""
-        with NamedTemporaryFile(suffix='gtimelog', delete=False) as draft:
+        with NamedTemporaryFile(mode="w+", suffix='gtimelog', delete=False) as draft:
             draftfn = draft.name
             write_draft(draft, self.settings.email, self.settings.name)
 

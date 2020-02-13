@@ -1138,9 +1138,8 @@ class MainWindow(object):
         filename = os.path.join(configdir, 'togglesdict.pickle')
         # read the dictionary from disk
         try:
-            f = open(filename, 'r')
-            togglesdict = pickle.load(f)
-            f.close()
+            with open(filename, 'rb') as f:
+                togglesdict = pickle.load(f)
         except (IOError, pickle.PickleError) as e:
             print("ERROR READING TOGGLE STATE FROM DISK")
             print(e)
@@ -1153,9 +1152,8 @@ class MainWindow(object):
         filename = os.path.join(configdir, 'togglesdict.pickle')
         # write the dictionary back to disk
         try:
-            f = open(filename, 'w')
-            pickle.dump(togglesdict, f)
-            f.close()
+            with open (filename, 'wb') as f:
+                pickle.dump(togglesdict, f)
         except (IOError, pickle.PickleError) as e:
             print("FAILED TO WRITE TOGGLE STATE TO DISK")
             print(e)

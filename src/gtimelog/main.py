@@ -1792,13 +1792,11 @@ class SubmitWindow(object):
                 date_dict[date][entry] = datetime.timedelta(0)
             date_dict[date][entry] += duration
 
-        keys = date_dict.keys()
-        keys.sort()
+        keys = sorted(date_dict)
         for date in keys:
             parent = self.list_store.append(None, self.date_row(date))
-            items = date_dict[date].keys()
             #Sort by length of time with longest first
-            items.sort(lambda a, b: cmp(date_dict[date][b], date_dict[date][a]))
+            items = sorted(date_dict[date], key=lambda a: date_dict[date][a], reverse=True)
             for item in items:
                 if date_dict[date][item] > datetime.timedelta(0) and not "**" in item:
                     self.list_store.append(parent, self.item_row(date_dict[date][item], item))

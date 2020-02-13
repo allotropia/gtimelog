@@ -45,7 +45,7 @@ class MainWindow(object):
         while True:
             self.tasks.check_reload()
             try:
-                line = raw_input('timelog> ')
+                line = input('timelog> ')
             except EOFError:
                 print()
                 break

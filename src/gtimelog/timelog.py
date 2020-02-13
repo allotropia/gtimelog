@@ -685,7 +685,7 @@ class TaskList(object):
                     line = line.strip()
                     if line and not line.startswith("#"):
                         self.items.add(line)
-        except IOError, e:
+        except IOError as e:
             print e.message
             pass # the file's not there, so what?
 

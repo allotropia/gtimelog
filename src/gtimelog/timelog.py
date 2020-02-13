@@ -53,7 +53,7 @@ def parse_datetime(dt):
         else:
             return i
 
-    d = dict((k, myint(v)) for (k, v) in m.groupdict().iteritems())
+    d = dict((k, myint(v)) for (k, v) in m.groupdict().items())
 
     return datetime.datetime(d['year'], d['month'], d['day'],
                              d['hour'], d['min'],

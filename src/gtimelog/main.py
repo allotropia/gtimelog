@@ -835,7 +835,7 @@ class MainWindow(object):
                 count[entry] += weight
 
         self.completion_choices.clear()
-        for entry, weight in count.items():
+        for entry, weight in list(count.items()):
             self.completion_choices.append([entry, weight])
 
     def push_reminder(self, msg, close_handler=None, action_label=None, handler=None):

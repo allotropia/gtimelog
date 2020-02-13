@@ -53,7 +53,7 @@ def parse_datetime(dt):
         else:
             return i
 
-    d = dict((k, myint(v)) for (k, v) in m.groupdict().items())
+    d = dict((k, myint(v)) for (k, v) in list(m.groupdict().items()))
 
     return datetime.datetime(d['year'], d['month'], d['day'],
                              d['hour'], d['min'],
@@ -65,7 +65,7 @@ def parse_time(t):
     m = re.match(r'^(\d+):(\d+)$', t)
     if not m:
         raise ValueError('bad time: ', t)
-    hour, min = map(int, m.groups())
+    hour, min = list(map(int, m.groups()))
     return datetime.time(hour, min, tzinfo=TZOffset())
 
 def parse_timedelta(td):
@@ -417,7 +417,7 @@ class TimeWindow(object):
         # convert to hours, and a sortable list
         items = sorted(
             (day, as_hours(start), as_hours(slacking), as_hours(work))
-            for day, (start, slacking, work) in days.items())
+            for day, (start, slacking, work) in list(days.items()))
         writer.writerows(items)
 
     def daily_report(self, output, email, who):
@@ -537,7 +537,7 @@ class TimeWindow(object):
             output.write("By category:\n")
             output.write("\n")
 
-            for cat, duration in categories.items():
+            for cat, duration in list(categories.items()):
                 if not cat:
                     continue
 

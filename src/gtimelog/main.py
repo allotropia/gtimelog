@@ -11,7 +11,13 @@ import os
 import csv
 import signal
 import sys
-import urllib
+try:
+    # python3
+    from urllib.parse import urlencode
+except ImportError:
+    # python2
+    from urllib import urlencode
+
 import datetime
 import calendar
 import time
@@ -1720,7 +1726,7 @@ class SubmitWindow(object):
 
         message = Soup.Message.new('POST', self.report_url)
         message.request_headers.set_content_type('application/x-www-form-urlencoded', None)
-        message.request_body.append(urllib.urlencode(data))
+        message.request_body.append(urlencode(data).encode())
         message.request_body.complete()
         soup_session.queue_message(message, self.upload_finished, automatic)
 

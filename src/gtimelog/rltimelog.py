@@ -7,7 +7,13 @@ from __future__ import print_function
 import sys
 import os
 import signal
-import urllib
+try:
+    # python3
+    from urllib.parse import urlencode
+except ImportError:
+    # python2
+    from urllib import urlencode
+
 from datetime import datetime, timedelta
 
 from gtimelog import (Settings, configdir, soup_session, TimeLog,
@@ -114,10 +120,10 @@ class MainWindow(object):
             return
 
         print(data)
-        print(urllib.urlencode(data))
+        print(urlencode(data))
         message = Soup.Message.new('POST', self.settings.report_to_url)
         message.request_headers.set_content_type('application/x-www-form-urlencoded', None)
-        message.request_body.append(urllib.urlencode(data))
+        message.request_body.append(urlencode(data).encode())
         message.request_body.complete()
         stream = soup_session.queue_message(message, self.upload_finished, automatic)
         loop = GLib.MainLoop()

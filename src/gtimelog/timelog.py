@@ -680,10 +680,11 @@ class TaskList(object):
         self.items = set()
         self.last_mtime = self.get_mtime()
         try:
-            for line in file(self.filename):
-                line = line.strip()
-                if line and not line.startswith("#"):
-                    self.items.add(line)
+            with open(self.filename) as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#"):
+                        self.items.add(line)
         except IOError, e:
             print e.message
             pass # the file's not there, so what?

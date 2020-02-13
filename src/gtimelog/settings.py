@@ -97,8 +97,5 @@ class Settings(object):
 
     def save(self, filename):
         config = self._config()
-        f = file(filename, 'w')
-        try:
+        with open(filename, 'w') as f:
             config.write(f)
-        finally:
-            f.close()

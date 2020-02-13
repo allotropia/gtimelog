@@ -3,8 +3,9 @@ import os
 from setuptools import setup
 
 here = os.path.dirname(__file__)
-changes_file = os.path.join(here, 'NEWS.txt')
-changes = file(changes_file).read().split('\n\n\n')
+changes_filename = os.path.join(here, 'NEWS.txt')
+with open(changes_filename) as changes_file:
+    changes = changes_file.read().split('\n\n\n')
 changes_in_latest_versions = '\n\n\n'.join(changes[:3])
 
 short_description = 'A Gtk+ time tracking application'

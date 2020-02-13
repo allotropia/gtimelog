@@ -3,7 +3,13 @@ Settings for GTimeLog
 """
 from __future__ import absolute_import
 
-import ConfigParser
+try:
+    # python2
+    import ConfigParser
+except ImportError:
+    # python3
+    import configparser as ConfigParser
+
 import datetime
 import os
 

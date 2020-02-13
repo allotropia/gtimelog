@@ -16,9 +16,27 @@ import datetime
 import calendar
 import time
 from tempfile import NamedTemporaryFile
-import ConfigParser
-import cPickle as pickle
-from cgi import escape
+try:
+    # python2
+    import ConfigParser
+except ImportError:
+    # python3
+    import configparser as ConfigParser
+
+try:
+    # python2
+    import cPickle as pickle
+except ImportError:
+    # python3
+    import pickle
+
+try:
+    # python2..3.7, deprecated since 3.2
+    from cgi import escape
+except ImportError:
+    # python3.8
+    from html import escape
+
 import functools
 
 import gi

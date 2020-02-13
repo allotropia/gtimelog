@@ -311,10 +311,8 @@ class TimeWindow(object):
                 start = min(start, old_start)
                 duration += old_duration
             entries[entry] = (start, entry, duration)
-        work = work.values()
-        work.sort()
-        slack = slack.values()
-        slack.sort()
+        work = sorted(work.values())
+        slack = sorted(slack.values())
         return work, slack
 
     def totals(self):
@@ -376,10 +374,9 @@ class TimeWindow(object):
         if title_row:
             writer.writerow(["task", "time (minutes)"])
         work, slack = self.grouped_entries()
-        work = [(entry, as_minutes(duration))
+        work = sorted((entry, as_minutes(duration))
                 for start, entry, duration in work
-                if duration] # skip empty "arrival" entries
-        work.sort()
+                if duration) # skip empty "arrival" entries
         writer.writerows(work)
 
     def to_csv_daily(self, writer, title_row=True):
@@ -418,9 +415,9 @@ class TimeWindow(object):
                 dmin += datetime.timedelta(days=1)
 
         # convert to hours, and a sortable list
-        items = [(day, as_hours(start), as_hours(slacking), as_hours(work))
-                 for day, (start, slacking, work) in days.items()]
-        items.sort()
+        items = sorted(
+            (day, as_hours(start), as_hours(slacking), as_hours(work))
+            for day, (start, slacking, work) in days.items())
         writer.writerows(items)
 
     def daily_report(self, output, email, who):
@@ -513,8 +510,7 @@ class TimeWindow(object):
         categories = {}
 
         if work:
-            work = [(entry, duration) for start, entry, duration in work]
-            work.sort()
+            work = sorted((entry, duration) for start, entry, duration in work)
             for entry, duration in work:
                 if not duration:
                     continue # skip empty "arrival" entries

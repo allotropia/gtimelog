@@ -229,11 +229,18 @@ class TimeWindow(object):
                     callback(entry)
                 if self.earliest_timestamp is None:
                     self.earliest_timestamp = time
-                if self.min_timestamp <= time < self.max_timestamp:
-                    self.items.append((time, entry))
+                if self.min_timestamp and time < self.min_timestamp:
+                    continue
+                if self.max_timestamp and time >= self.max_timestamp:
+                    continue
+
+                if self.items and time <= self.items[-1][0]:
+                    print("WARNING: This entry out of order:", line)
+                self.items.append((time, entry))
+
         # The entries really should be already sorted in the file
         # XXX: instead of quietly resorting them we should inform the user
-        self.items.sort() # there's code that relies on them being sorted
+        self.items.sort()  # there's code that relies on them being sorted
         f.close()
 
     def last_time(self):

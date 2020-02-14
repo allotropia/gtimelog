@@ -189,8 +189,9 @@ class TimeWindow(object):
     oldest) timestamp in the file.
     """
 
-    def __init__(self, filename, min_timestamp, max_timestamp,
-                 virtual_midnight, callback=None):
+    def __init__(self, filename, min_timestamp=None, max_timestamp=None,
+                 virtual_midnight=datetime.time(2, 0, tzinfo=TZOffset()),
+                 callback=None):
         self.filename = filename
         self.min_timestamp = min_timestamp
         self.max_timestamp = max_timestamp

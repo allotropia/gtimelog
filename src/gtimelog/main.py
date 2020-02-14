@@ -786,11 +786,13 @@ class MainWindow(object):
         self.task_store.clear()
         for item in self.tasks.items:
             parent = task_list
-            for pos in [s.strip() for s in item.split(":")]:
-                if pos: # Prevent blank labels caused by :: in config
-                    if not pos in parent:
-                        parent[pos] = {}
-                    parent = parent[pos]
+            for pos in (s.strip() for s in item.split(":")):
+                # Prevent blank labels caused by :: in config
+                if not pos:
+                    continue
+                if pos not in parent:
+                    parent[pos] = {}
+                parent = parent[pos]
         self.tasks_dict = task_list
 
     def set_up_task_list(self):

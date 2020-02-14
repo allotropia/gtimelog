@@ -16,6 +16,7 @@ import os
 from .timelog import parse_time, parse_timedelta
 from .tzoffset import TZOffset
 
+
 class Settings(object):
     """Configurable settings for GTimeLog."""
 

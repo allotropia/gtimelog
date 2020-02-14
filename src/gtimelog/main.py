@@ -53,7 +53,7 @@ try:
     gi.require_version('Notify', '0.7')
     from gi.repository import Notify
     assert Notify.init("gtimelog")
-except:
+except ImportError:
     print("LibNotify (with introspection) not found. Idle timeouts are not supported.")
 
 gi.require_version('Soup', '2.4')

@@ -348,11 +348,9 @@ class TimeWindow(object):
         output.write("BEGIN:VCALENDAR\n")
         output.write("PRODID:-//mg.pov.lt/NONSGML GTimeLog//EN\n")
         output.write("VERSION:2.0\n")
-        try:
-            import socket
-            idhost = socket.getfqdn()
-        except: # can it actually ever fail?
-            idhost = 'localhost'
+        import socket
+        idhost = socket.getfqdn()
+
         dtstamp = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
         for start, stop, duration, entry in self.all_entries():
             output.write("BEGIN:VEVENT\n")

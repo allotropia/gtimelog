@@ -202,7 +202,7 @@ def doctest_first_of_month():
         >>> while d < date(2005, 1, 1):
         ...     f = first_of_month(d)
         ...     if (f.year, f.month, f.day) != (d.year, d.month, 1):
-        ...         print "WRONG: first_of_month(%r) returned %r" % (d, f)
+        ...         print("WRONG: first_of_month(%r) returned %r" % (d, f))
         ...     d += timedelta(1)
 
     """
@@ -238,7 +238,7 @@ def doctest_next_month():
         ...     f = next_month(d)
         ...     prev = f - timedelta(1)
         ...     if f.day != 1 or (prev.year, prev.month) != (d.year, d.month):
-        ...         print "WRONG: next_month(%r) returned %r" % (d, f)
+        ...         print("WRONG: next_month(%r) returned %r" % (d, f))
         ...     d += timedelta(1)
 
     """
@@ -268,25 +268,29 @@ def doctest_TimeWindow_monthly_report():
         >>> vm = time(2, 0, tzinfo=TZOffset())
         >>> min = datetime(2007, 9, 1, tzinfo=TZOffset())
         >>> max = datetime(2007, 10, 1, tzinfo=TZOffset())
-        >>> fh = NamedTemporaryFile()
 
-        >>> window = TimeWindow(fh.name, min, max, vm)
+        >>> try:
+        ...     from StringIO import StringIO
+        ... except ImportError:
+        ...     from io import StringIO
+
+        >>> sampledata = StringIO('')
+        >>> window = TimeWindow(sampledata, min, max, vm)
         >>> window.monthly_report(sys.stdout, 'foo@bar.com', 'Bob Jones')
         To: foo@bar.com
         Subject: Monthly report for Bob Jones (2007/09)
         <BLANKLINE>
         No work done this month.
 
-        >>> _ = [fh.write(s + '\n') for s in [
-        ...    '2007-09-30 09:00: start',
-        ...    '2007-09-30 09:23: Bing: stuff',
-        ...    '2007-09-30 12:54: Bong: other stuff',
-        ...    '2007-09-30 13:32: lunch **',
-        ...    '2007-09-30 15:46: misc',
-        ...    '']]
-        >>> fh.flush()
+        >>> sampledata = StringIO('''
+        ... 2007-09-30 09:00: start
+        ... 2007-09-30 09:23: Bing: stuff
+        ... 2007-09-30 12:54: Bong: other stuff
+        ... 2007-09-30 13:32: lunch **
+        ... 2007-09-30 15:46: misc
+        ... ''')
 
-        >>> window = TimeWindow(fh.name, min, max, vm)
+        >>> window = TimeWindow(sampledata, min, max, vm)
         >>> window.monthly_report(sys.stdout, 'foo@bar.com', 'Bob Jones')
         To: foo@bar.com
         Subject: Monthly report for Bob Jones (2007/09)
@@ -316,7 +320,11 @@ def doctest_TimeWindow_to_csv_daily():
         >>> max = datetime(2008, 7, 1, tzinfo=TZOffset())
         >>> vm = time(2, 0, tzinfo=TZOffset())
 
-        >>> from StringIO import StringIO
+        >>> try:
+        ...     from StringIO import StringIO
+        ... except ImportError:
+        ...     from io import StringIO
+
         >>> sampledata = StringIO('''
         ... 2008-06-03 12:45: start
         ... 2008-06-03 13:00: something

@@ -20,7 +20,6 @@ except ImportError:
 
 import datetime
 import calendar
-import time
 from tempfile import NamedTemporaryFile
 try:
     # python2
@@ -42,8 +41,6 @@ try:
 except ImportError:
     # python3.8
     from html import escape
-
-import functools
 
 import gi
 gi.require_version('Gtk', '3.0')

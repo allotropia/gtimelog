@@ -55,6 +55,10 @@ def parse_datetime(dt):
 
     d = dict((k, myint(v)) for (k, v) in list(m.groupdict().items()))
 
+    # For compat with Python 3, explicitly zero the TZ when missing
+    if not m.group('tz'):
+        d['tz'] = 0
+
     return datetime.datetime(d['year'], d['month'], d['day'],
                              d['hour'], d['min'],
                              tzinfo=TZOffset(d['tz']))

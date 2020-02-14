@@ -10,6 +10,7 @@ import re
 
 from .tzoffset import TZOffset
 
+
 def as_minutes(duration):
     """Convert a datetime.timedelta to an integer number of minutes."""
     return duration.days * 24 * 60 + duration.seconds // 60
@@ -42,9 +43,12 @@ def format_duration_long(duration):
     else:
         return '%d min' % m
 
+
 def parse_datetime(dt):
     """Parse a datetime instance from 'YYYY-MM-DD HH:MM' formatted string."""
-    m = re.match(r'^(?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+) (?P<hour>\d+):(?P<min>\d+)(?: (?P<tz>[+-]\d+))?$', dt)
+    m = re.match(
+        r'^(?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+) ' +
+        r'(?P<hour>\d+):(?P<min>\d+)(?: (?P<tz>[+-]\d+))?$', dt)
     if not m:
         raise ValueError('bad date time: %r' % dt)
 
@@ -64,6 +68,7 @@ def parse_datetime(dt):
                              d['hour'], d['min'],
                              tzinfo=TZOffset(d['tz']))
 
+
 def parse_time(t):
     """Parse a time instance from 'HH:MM' formatted string."""
     # FIXME - parse_time should probably support timezones
@@ -73,16 +78,17 @@ def parse_time(t):
     hour, min = list(map(int, m.groups()))
     return datetime.time(hour, min, tzinfo=TZOffset())
 
+
 def parse_timedelta(td):
     """
-       Parse a timedelta of seconds, minutes, hours and days into a timedelta
-       10s 14h 3d
-       14 days 240 MINUTES
-       12 hours and 52 d
-       1 second 3 min
-       1 day and 12 secs
-    """
+    Parse a timedelta of seconds, minutes, hours and days into a timedelta.
 
+    10s 14h 3d
+    14 days 240 MINUTES
+    12 hours and 52 d
+    1 second 3 min
+    1 day and 12 secs
+    """
     td = td.strip()
     if td == "" or td == "0":
         return datetime.timedelta(0)
@@ -97,12 +103,14 @@ def parse_timedelta(td):
 
     mm = re.search(r'\s*(\d+)\s*m(in(ute)?(s)?)?(\s*(\d+)\s*$)?', td, re.I)
     if mm:
-        seconds += int(mm.group(1)) * 60 + (mm.group(5) and int(mm.group(6)) or 0)
+        seconds += int(mm.group(1)) * 60 + \
+            (mm.group(5) and int(mm.group(6)) or 0)
         done = True
 
     mh = re.search(r'\s*(\d+)\s*h(our(s)?)?(\s*(\d+)\s*$)?', td, re.I)
     if mh:
-        seconds += int(mh.group(1)) * 60 * 60 + (mh.group(4) and int(mh.group(5)) * 60 or 0)
+        seconds += int(mh.group(1)) * 60 * 60 + \
+            (mh.group(4) and int(mh.group(5)) * 60 or 0)
         done = True
 
     if not done:
@@ -125,6 +133,7 @@ def parse_timedelta(td):
     if not done:
         raise ValueError('bad timedelta: ', td)
     return datetime.timedelta(days, seconds)
+
 
 def virtual_day(dt, virtual_midnight):
     """Return the "virtual day" of a timestamp.
@@ -167,6 +176,7 @@ def uniq(items):
             result.append(item)
     return result
 
+
 class TimeWindow(object):
     """A window into a time log.
 
@@ -192,6 +202,7 @@ class TimeWindow(object):
     def __init__(self, filename, min_timestamp=None, max_timestamp=None,
                  virtual_midnight=datetime.time(2, 0, tzinfo=TZOffset()),
                  callback=None):
+        """Construct a TimeWindow from a time log filename and options."""
         self.filename = filename
         self.min_timestamp = min_timestamp
         self.max_timestamp = max_timestamp
@@ -245,8 +256,7 @@ class TimeWindow(object):
         f.close()
 
     def last_time(self):
-        """Return the time of the last event (or None if there are no events).
-        """
+        """Return the time of the last event (or None if there are none)."""
         if not self.items:
             return None
         return self.items[-1][0]
@@ -366,11 +376,13 @@ class TimeWindow(object):
 
         dtstamp = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
         for start, stop, duration, entry in self.all_entries():
+            summary = (entry
+                       .replace('\\', '\\\\')
+                       .replace(';', '\\;')
+                       .replace(',', '\\,'))
             output.write("BEGIN:VEVENT\n")
             output.write("UID:%s@%s\n" % (hash((start, stop, entry)), idhost))
-            output.write("SUMMARY:%s\n" % (entry.replace('\\', '\\\\'))
-                                                 .replace(';', '\\;')
-                                                 .replace(',', '\\,'))
+            output.write("SUMMARY:%s\n" % summary)
             output.write("DTSTART:%s\n" % start.strftime('%Y%m%dT%H%M%S'))
             output.write("DTEND:%s\n" % stop.strftime('%Y%m%dT%H%M%S'))
             output.write("DTSTAMP:%s\n" % dtstamp)
@@ -386,8 +398,8 @@ class TimeWindow(object):
             writer.writerow(["task", "time (minutes)"])
         work, slack = self.grouped_entries()
         work = sorted((entry, as_minutes(duration))
-                for start, entry, duration in work
-                if duration) # skip empty "arrival" entries
+                      for start, entry, duration in work
+                      if duration)  # skip empty "arrival" entries
         writer.writerows(work)
 
     def to_csv_daily(self, writer, title_row=True):
@@ -404,7 +416,7 @@ class TimeWindow(object):
         # timelog must be cronological for this to be dependable
 
         d0 = datetime.timedelta(0)
-        days = {} # date -> [time_started, slacking, work]
+        days = {}  # date -> [time_started, slacking, work]
         dmin = None
         for start, stop, duration, entry in self.all_entries():
             if dmin is None:
@@ -446,9 +458,9 @@ class TimeWindow(object):
         week = self.min_timestamp.strftime('%V')
         output.write("To: %(email)s\n" % {'email': email})
         output.write("Subject: %(date)s report for %(who)s"
-                          " (%(weekday)s, week %(week)s)\n"
-                          % {'date': self.min_timestamp.strftime('%Y-%m-%d'),
-                             'weekday': weekday, 'week': week, 'who': who})
+                     " (%(weekday)s, week %(week)s)\n"
+                     % {'date': self.min_timestamp.strftime('%Y-%m-%d'),
+                        'weekday': weekday, 'week': week, 'who': who})
         output.write("\n")
         items = list(self.all_entries())
         if not items:
@@ -467,7 +479,7 @@ class TimeWindow(object):
                                               format_duration_long(duration)))
             output.write("\n")
         output.write("Total work done: %s\n" %
-                          format_duration_long(total_work))
+                     format_duration_long(total_work))
         output.write("\n")
         if slack:
             for start, entry, duration in slack:
@@ -476,7 +488,7 @@ class TimeWindow(object):
                                               format_duration_long(duration)))
             output.write("\n")
         output.write("Time spent slacking: %s\n" %
-                          format_duration_long(total_slacking))
+                     format_duration_long(total_slacking))
 
     def weekly_report(self, output, email, who):
         """Format a weekly report.
@@ -495,7 +507,6 @@ class TimeWindow(object):
 
         Writes a monthly report template in RFC-822 format to output.
         """
-
         month = self.min_timestamp.strftime('%Y/%m')
         output.write("To: %(email)s\n" % {'email': email})
         output.write("Subject: Monthly report for %s (%s)\n" % (who, month))
@@ -508,7 +519,6 @@ class TimeWindow(object):
 
         Writes a report template to output.
         """
-
         items = list(self.all_entries())
         if not items:
             output.write("No work done this %s.\n" % period)
@@ -524,7 +534,7 @@ class TimeWindow(object):
             work = sorted((entry, duration) for start, entry, duration in work)
             for entry, duration in work:
                 if not duration:
-                    continue # skip empty "arrival" entries
+                    continue  # skip empty "arrival" entries
 
                 entry = entry[:1].upper() + entry[1:]
 
@@ -541,7 +551,7 @@ class TimeWindow(object):
             output.write("\n")
 
         output.write("Total work done this %s: %s\n" %
-                          (period, format_duration_long(total_work)))
+                     (period, format_duration_long(total_work)))
 
         if categories:
             output.write("\n")
@@ -559,6 +569,7 @@ class TimeWindow(object):
                 output.write("%-62s  %s\n" % (
                     '(none)', format_duration_long(categories[None])))
 
+
 class TimeLog(object):
     """Time log.
 
@@ -567,6 +578,7 @@ class TimeLog(object):
     """
 
     def __init__(self, filename, virtual_midnight, autoarrival):
+        """Construct from a timelog file and options."""
         self.filename = filename
         self.virtual_midnight = virtual_midnight
         self.autoarrival = autoarrival
@@ -595,8 +607,7 @@ class TimeLog(object):
         return self.window_for(self.window.earliest_timestamp,
                                datetime.datetime.now(TZOffset()))
 
-    def raw_append(self, line):
-        """Append a line to the time log file."""
+    def _raw_append(self, line):
         f = codecs.open(self.filename, "a", encoding='UTF-8')
         if self.need_space:
             self.need_space = False
@@ -605,9 +616,10 @@ class TimeLog(object):
         f.close()
 
     def append_entry(self, entry, now):
+        """Append a line to the time log file."""
         self.window.items.append((now, entry))
         line = '%s: %s' % (now.strftime("%Y-%m-%d %H:%M %z"), entry)
-        self.raw_append(line)
+        self._raw_append(line)
 
     def append(self, entry, now=None):
         """Append a new entry to the time log."""
@@ -626,11 +638,13 @@ class TimeLog(object):
             if self.autoarrival:
                 self.append_entry(entry, midnight - one_minute_delta)
                 self.reread()
-                self.append_entry('-automatic arrival-', midnight + one_minute_delta)
+                self.append_entry('-automatic arrival-',
+                                  midnight + one_minute_delta)
             else:
                 self.reread()
 
         self.append_entry(entry, now)
+
 
 class TaskList(object):
     """Task list.
@@ -657,6 +671,7 @@ class TaskList(object):
     error_callback = None
 
     def __init__(self, filename):
+        """Construct from a filename with tasks."""
         self.filename = filename
         self.load()
 
@@ -673,7 +688,10 @@ class TaskList(object):
             return False
 
     def get_mtime(self):
-        """Return the mtime of self.filename, or None if the file doesn't exist."""
+        """Return the mtime of self.filename.
+
+        Return None if the file doesn't exist.
+        """
         try:
             return os.stat(self.filename).st_mtime
         except OSError:
@@ -691,7 +709,7 @@ class TaskList(object):
                         self.items.add(line)
         except IOError as e:
             print(e.message)
-            pass # the file's not there, so what?
+            pass  # the file's not there, so what?
 
     def reload(self):
         """Reload the task list."""

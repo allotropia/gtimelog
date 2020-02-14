@@ -1,6 +1,7 @@
 import datetime
 import time
 
+
 class TZOffset (datetime.tzinfo):
     ZERO = datetime.timedelta(0)
 
@@ -11,9 +12,9 @@ class TZOffset (datetime.tzinfo):
         else:
             # time.timezone is in seconds back to UTC
             if time.daylight and time.localtime().tm_isdst:
-                    offset = -time.altzone // 36
+                offset = -time.altzone // 36
             else:
-                    offset = -time.timezone // 36
+                offset = -time.timezone // 36
             # (offset % 100) needs to be adjusted to be in minutes
             # now (e.g. UTC +5.5 => offset = 550, when it should
             # be 530) - yes, treating hhmm as an integer is a pain

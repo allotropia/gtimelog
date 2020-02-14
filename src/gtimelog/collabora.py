@@ -1,6 +1,4 @@
-"""
-A temporary holding zone for troublesome things.
-"""
+"""A temporary holding zone for troublesome things."""
 from __future__ import absolute_import
 
 import datetime
@@ -14,6 +12,7 @@ from .timelog import TaskList
 from .tzoffset import TZOffset
 
 # Global HTTP stuff
+
 
 class Authenticator(object):
     def __init__(self):
@@ -46,8 +45,10 @@ class Authenticator(object):
         Secret = None
 
     def find_in_keyring(self, uri, callback):
-        """Attempts to load a username and password from the keyring, if the
-        keyring is available"""
+        """
+        Attempt to load a username and password from the keyring, if the
+        keyring is available.
+        """
         if self.Secret is None:
             callback(None, None)
             return
@@ -67,13 +68,13 @@ class Authenticator(object):
             service = self.Secret.Service.get_sync(0, None)
             # This doesn't give us the password; only details from the schema
             results = service.search_sync(
-                    self.SECRET_SCHEMA_COMPAT_NETWORK,
-                    attrs, 0, None)
+                self.SECRET_SCHEMA_COMPAT_NETWORK,
+                attrs, 0, None)
             if results:
                 username = results[0].get_attributes()['user']
                 # This gives us only the password
                 password = self.Secret.password_lookup_sync(
-                        self.SECRET_SCHEMA_COMPAT_NETWORK, attrs, None)
+                    self.SECRET_SCHEMA_COMPAT_NETWORK, attrs, None)
         except (GLib.Error, KeyError) as e:
             # Couldn't contact daemon, or other errors
             print("Unable to contact keyring: {0}".format(e))
@@ -92,10 +93,10 @@ class Authenticator(object):
                 "protocol": uri.get_scheme(),
             }
             self.Secret.password_store_sync(
-                    self.SECRET_SCHEMA_COMPAT_NETWORK,
-                    attrs,
-                    self.Secret.COLLECTION_DEFAULT,
-                    "Chronophage password for GTimelog", password, None)
+                self.SECRET_SCHEMA_COMPAT_NETWORK,
+                attrs,
+                self.Secret.COLLECTION_DEFAULT,
+                "Chronophage password for GTimelog", password, None)
         except GLib.Error as e:
             # Couldn't contact daemon, or other errors
             print("Unable to contact keyring: {0}".format(e))
@@ -111,15 +112,17 @@ class Authenticator(object):
         grid.set_row_spacing(5)
         grid.set_column_spacing(5)
 
-        l = Gtk.Label('Authentication is required for the domain "%s".' % auth.get_realm())
-        l.set_line_wrap(True)
-        grid.attach(l, 0, 0, 2, 1)
+        lab = Gtk.Label(
+            'Authentication is required for the domain "%s".' % auth.get_realm())
+        lab.set_line_wrap(True)
+        grid.attach(lab, 0, 0, 2, 1)
 
         username_label = Gtk.Label("Username:")
-        grid.attach_next_to(username_label, l, Gtk.PositionType.BOTTOM, 1, 1)
+        grid.attach_next_to(username_label, lab, Gtk.PositionType.BOTTOM, 1, 1)
 
         password_label = Gtk.Label("Password:")
-        grid.attach_next_to(password_label, username_label, Gtk.PositionType.BOTTOM, 1, 1)
+        grid.attach_next_to(password_label, username_label,
+                            Gtk.PositionType.BOTTOM, 1, 1)
 
         userentry = Gtk.Entry()
         userentry.set_hexpand(True)
@@ -130,12 +133,14 @@ class Authenticator(object):
         userentry.set_activates_default(True)
         passentry.set_activates_default(True)
 
-        grid.attach_next_to(userentry, username_label, Gtk.PositionType.RIGHT, 1, 1)
-        grid.attach_next_to(passentry, password_label, Gtk.PositionType.RIGHT, 1, 1)
+        grid.attach_next_to(userentry, username_label,
+                            Gtk.PositionType.RIGHT, 1, 1)
+        grid.attach_next_to(passentry, password_label,
+                            Gtk.PositionType.RIGHT, 1, 1)
 
         if self.Secret:
-            savepasstoggle = Gtk.CheckButton ("Save Password in Keyring")
-            savepasstoggle.set_active (True)
+            savepasstoggle = Gtk.CheckButton("Save Password in Keyring")
+            savepasstoggle.set_active(True)
             grid.attach_next_to(savepasstoggle, passentry,
                                 Gtk.PositionType.BOTTOM, 1, 1)
 
@@ -145,7 +150,8 @@ class Authenticator(object):
         d.set_default(ok_button)
 
         def update_ok_sensitivity(*args):
-            ok_button.set_sensitive(userentry.get_text() and passentry.get_text())
+            ok_button.set_sensitive(
+                userentry.get_text() and passentry.get_text())
         userentry.connect('notify::text', update_ok_sensitivity)
         passentry.connect('notify::text', update_ok_sensitivity)
         update_ok_sensitivity()
@@ -174,7 +180,8 @@ class Authenticator(object):
         def keyring_callback(username, password):
             # If not found, ask the user for it
             if username is None or retrying:
-                GObject.idle_add(lambda: self.ask_the_user(auth, uri, callback))
+                GObject.idle_add(
+                    lambda: self.ask_the_user(auth, uri, callback))
             else:
                 callback(username, password)
 
@@ -213,9 +220,11 @@ class Authenticator(object):
         self.lookup_in_progress = False
         self.maybe_pop_queue()
 
+
 soup_session = Soup.SessionAsync()
 authenticator = Authenticator()
 soup_session.connect('authenticate', authenticator.http_auth_cb)
+
 
 class RemoteTaskList(TaskList):
     """Task list stored on a remote server.
@@ -228,14 +237,15 @@ class RemoteTaskList(TaskList):
         TaskList.__init__(self, cache_filename)
         self.settings = settings
 
-        #Even better would be to use the Expires: header on the list itself I suppose...
+        # Even better would be to use the Expires: header on the list itself I suppose...
         self.max_age = settings.task_list_expiry
 
         mtime = self.get_mtime()
         if mtime:
             self.last_time = datetime.datetime.fromtimestamp(mtime, TZOffset())
         else:
-            self.last_time = datetime.datetime.now(TZOffset()) - self.max_age * 2
+            self.last_time = datetime.datetime.now(
+                TZOffset()) - self.max_age * 2
 
     def check_reload(self):
         """Check whether the task list needs to be reloaded.
@@ -247,7 +257,7 @@ class RemoteTaskList(TaskList):
         """
         if datetime.datetime.now(TZOffset()) - self.last_time > self.max_age:
             self.last_time = datetime.datetime.now(TZOffset())
-            #Always redownload if past the expiry date.
+            # Always redownload if past the expiry date.
             self.download()
             return True
         return TaskList.check_reload(self)

@@ -95,8 +95,8 @@ class Settings(object):
 
         self.server_cert = os.path.expanduser(config.get('gtimelog', 'server_cert'))
         self.autoarrival = config.getboolean('gtimelog', 'autoarrival')
-        #Anything shorter than 2 minutes will tick every minute
-        #if self.remind_idle > datetime.timedelta (0, 120):
+        # Anything shorter than 2 minutes will tick every minute
+        # if self.remind_idle > datetime.timedelta (0, 120):
         #    self.remind_idle = datetime.timedelta (0, 120)
 
     def save(self, filename):

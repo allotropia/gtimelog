@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-'''A readline interface for gtimelog.'''
+"""A readline interface for gtimelog."""
 
 from __future__ import print_function
 
@@ -22,7 +22,7 @@ from gtimelog import (Settings, configdir, soup_session, TimeLog,
 
 
 class MainWindow(object):
-    '''Simple readline interface for gtimelog.'''
+    """Simple readline interface for gtimelog."""
 
     def __init__(self, timelog, tasks, settings):
         self.timelog = timelog
@@ -34,20 +34,20 @@ class MainWindow(object):
         self.setup_readline()
 
     def setup_readline(self):
-        '''Setup readline for our completer.'''
+        """Setup readline for our completer."""
         import readline
         readline.parse_and_bind('tab: complete')
         readline.set_completer_delims('')
         readline.set_completer(self.completer)
 
     def completer(self, text, state):
-        '''Returns the state-th result for text, or None.'''
+        """Returns the state-th result for text, or None."""
         items = self.tasks.items
         results = [x + ': ' for x in items if x.startswith(text)] + [None]
         return results[state]
 
     def run(self):
-        '''Main loop'''
+        """Main loop"""
         while True:
             self.tasks.check_reload()
             try:
@@ -63,18 +63,18 @@ class MainWindow(object):
         self.do_submit_report(self.timelog.window)
 
     def display_last_minute(self):
-        '''Display the timelog messages of the past minute.'''
+        """Display the timelog messages of the past minute."""
         now = datetime.now(TZOffset())
         time_window = self.timelog.window_for(now - timedelta(minutes=1), now)
         self.display_time_window(time_window)
 
     def display_time_window(self, time_window):
-        '''Display the timelog messages of the current day.'''
+        """Display the timelog messages of the current day."""
         for message in time_window.all_entries():
             self.display_message(*message)
 
     def display_message(self, start, end, duration, message):
-        '''Display one timelog message.'''
+        """Display one timelog message."""
         if '**' in message:
             print('[%s] [32m%s[0m' % (end, message))
         elif message.startswith(tuple(self.tasks.items)):
@@ -83,7 +83,7 @@ class MainWindow(object):
             print('[%s] [31;1m%s[0m' % (end, message))
 
     def do_submit_report(self, time_window, automatic=False):
-        """The actual submit action"""
+        """Actually submit."""
         data = {}
         for start, end, duration, message in time_window.all_entries():
             day = start.strftime('%Y-%m-%d')
@@ -125,13 +125,13 @@ class MainWindow(object):
         message.request_headers.set_content_type('application/x-www-form-urlencoded', None)
         message.request_body.append(urlencode(data).encode())
         message.request_body.complete()
-        stream = soup_session.queue_message(message, self.upload_finished, automatic)
+        _ = soup_session.queue_message(message, self.upload_finished, automatic)
         loop = GLib.MainLoop()
         loop.run()
 
 
 def main():
-    '''Entry point, copy/pasted from gtimelog.Application but without GTK+.'''
+    """Entry point, copy/pasted from gtimelog.Application but without GTK+."""
     settings = Settings()
     settings_file = os.path.join(configdir, 'gtimelogrc')
     if not os.path.exists(settings_file):
@@ -151,6 +151,7 @@ def main():
     # Make ^C terminate gtimelog when hanging
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     main_window.run()
+
 
 if __name__ == '__main__':
     main()

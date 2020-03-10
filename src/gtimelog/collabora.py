@@ -16,6 +16,12 @@ from .tzoffset import TZOffset
 # Global HTTP stuff
 
 class Authenticator(object):
+    def __init__(self):
+        self.pending = []
+        self.lookup_in_progress = False
+        self.username = None
+        self.password = None
+
     # Try to use LibSecret if available
     try:
         gi.require_version('Secret', '1')

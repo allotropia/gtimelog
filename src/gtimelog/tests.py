@@ -105,27 +105,6 @@ def doctest_parse_time():
 
     """
 
-def doctest_parse_timedelta():
-    """Tests for parse_timedelta
-
-        >>> from gtimelog.timelog import parse_timedelta
-        >>> parse_timedelta('10s 14h 3d')
-        datetime.timedelta(3, 50410)
-        >>> #parse_timedelta('14 days 240 MINUTES')
-        >>> parse_timedelta('12 hours and 52 d')
-        datetime.timedelta(52, 43200)
-        >>> parse_timedelta('1 second 3 min')
-        datetime.timedelta(0, 181)
-        >>> parse_timedelta('1 day and 12 secs')
-        datetime.timedelta(1, 12)
-        >>> parse_timedelta('10 minutes')
-        datetime.timedelta(0, 600)
-        >>> parse_timedelta('10 minutes 10')
-        datetime.timedelta(0, 610)
-        >>> parse_timedelta('10 hours')
-        datetime.timedelta(0, 36000)
-    """
-
 def doctest_virtual_day():
     """Tests for virtual_day
 

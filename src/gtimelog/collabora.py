@@ -16,6 +16,12 @@ from .tzoffset import TZOffset
 # Global HTTP stuff
 
 class Authenticator(object):
+    def __init__(self):
+        self.pending = []
+        self.lookup_in_progress = False
+        self.username = None
+        self.password = None
+
     # Try to use LibSecret if available
     try:
         gi.require_version('Secret', '1')
@@ -38,11 +44,6 @@ class Authenticator(object):
     except ImportError:
         print("LibSecret not found. You will not be able to use the password keyring.")
         Secret = None
-
-    def __init__(self):
-        object.__init__(self)
-        self.pending = []
-        self.lookup_in_progress = False
 
     def find_in_keyring(self, uri, callback):
         """Attempts to load a username and password from the keyring, if the

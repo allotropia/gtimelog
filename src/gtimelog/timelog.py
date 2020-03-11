@@ -541,9 +541,7 @@ class TimeWindow(object):
             output.write("By category:\n")
             output.write("\n")
 
-            items = categories.items()
-            items.sort()
-            for cat, duration in items:
+            for cat, duration in categories.items():
                 if not cat:
                     continue
 

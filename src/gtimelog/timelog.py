@@ -1,9 +1,8 @@
 """
 Non-GUI bits of gtimelog.
 """
-from __future__ import absolute_import, unicode_literals
+from __future__ import absolute_import
 
-import codecs
 import datetime
 import os
 import re
@@ -41,7 +40,6 @@ def format_duration_long(duration):
         return '%d hour%s' % (h, h != 1 and "s" or "")
     else:
         return '%d min' % m
-
 
 def parse_datetime(dt):
     """Parse a datetime instance from 'YYYY-MM-DD HH:MM' formatted string."""
@@ -313,8 +311,10 @@ class TimeWindow(object):
                 start = min(start, old_start)
                 duration += old_duration
             entries[entry] = (start, entry, duration)
-        work = sorted(work.values())
-        slack = sorted(slack.values())
+        work = work.values()
+        work.sort()
+        slack = slack.values()
+        slack.sort()
         return work, slack
 
     def totals(self):
@@ -347,22 +347,26 @@ class TimeWindow(object):
 
     def icalendar(self, output):
         """Create an iCalendar file with activities."""
-        output.write("BEGIN:VCALENDAR\n")
-        output.write("PRODID:-//gtimelog.org/NONSGML GTimeLog//EN\n")
-        output.write("VERSION:2.0\n")
-        idhost = socket.getfqdn()
+        print >> output, "BEGIN:VCALENDAR"
+        print >> output, "PRODID:-//mg.pov.lt/NONSGML GTimeLog//EN"
+        print >> output, "VERSION:2.0"
+        try:
+            import socket
+            idhost = socket.getfqdn()
+        except: # can it actually ever fail?
+            idhost = 'localhost'
         dtstamp = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
         for start, stop, duration, entry in self.all_entries():
-            output.write("BEGIN:VEVENT\n")
-            output.write("UID:%s@%s\n" % (hash((start, stop, entry)), idhost))
-            output.write("SUMMARY:%s\n" % (entry.replace('\\', '\\\\'))
-                                                .replace(';', '\\;')
-                                                .replace(',', '\\,'))
-            output.write("DTSTART:%s\n" % start.strftime('%Y%m%dT%H%M%S'))
-            output.write("DTEND:%s\n" % stop.strftime('%Y%m%dT%H%M%S'))
-            output.write("DTSTAMP:%s\n" % dtstamp)
-            output.write("END:VEVENT\n")
-        output.write("END:VCALENDAR\n")
+            print >> output, "BEGIN:VEVENT"
+            print >> output, "UID:%s@%s" % (hash((start, stop, entry)), idhost)
+            print >> output, "SUMMARY:%s" % (entry.replace('\\', '\\\\')
+                                                  .replace(';', '\\;')
+                                                  .replace(',', '\\,'))
+            print >> output, "DTSTART:%s" % start.strftime('%Y%m%dT%H%M%S')
+            print >> output, "DTEND:%s" % stop.strftime('%Y%m%dT%H%M%S')
+            print >> output, "DTSTAMP:%s" % dtstamp
+            print >> output, "END:VEVENT"
+        print >> output, "END:VCALENDAR"
 
     def to_csv_complete(self, writer, title_row=True):
         """Export work entries to a CSV file.
@@ -414,9 +418,9 @@ class TimeWindow(object):
                 dmin += datetime.timedelta(days=1)
 
         # convert to hours, and a sortable list
-        items = sorted(
-            (day, as_hours(start), as_hours(slacking), as_hours(work))
-            for day, (start, slacking, work) in days.items())
+        items = [(day, as_hours(start), as_hours(slacking), as_hours(work))
+                 for day, (start, slacking, work) in days.items()]
+        items.sort()
         writer.writerows(items)
 
     def daily_report(self, output, email, who):
@@ -589,11 +593,11 @@ class TimeLog(object):
 
     def raw_append(self, line):
         """Append a line to the time log file."""
-        f = codecs.open(self.filename, "a", encoding='UTF-8')
+        f = open(self.filename, "a")
         if self.need_space:
             self.need_space = False
-            f.write('\n')
-        f.write(line + '\n')
+            print >> f
+        print >> f, line
         f.close()
 
     def append_entry(self, entry, now):

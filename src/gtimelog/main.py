@@ -22,32 +22,18 @@ from cgi import escape
 import functools
 
 import gi
-
-
-def require_version(namespace, version):
-    try:
-        gi.require_version(namespace, version)
-    except ValueError:
-        deb_package = "gir1.2-{namespace}-{version}".format(
-            namespace=namespace.lower(), version=version)
-        sys.exit("""Typelib files for {namespace}-{version} are not available.
-
-If you're on Ubuntu or another Debian-like distribution, please install
-them with
-
-    sudo apt install {deb_package}
-""".format(namespace=namespace, version=version, deb_package=deb_package))
-
-require_version('Gtk', '3.0')
-require_version('Soup', '2.4')
-from gi.repository import Gtk, Gdk, GLib, Gio, GObject, Pango, Soup
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gio, GLib, GObject, Gtk, Gdk, Pango
 
 try:
-    require_version('Notify', '0.7')
+    gi.require_version('Notify', '0.7')
     from gi.repository import Notify
     assert Notify.init("gtimelog")
 except:
     print("LibNotify (with introspection) not found. Idle timeouts are not supported.")
+
+gi.require_version('Soup', '2.4')
+from gi.repository import Soup
 
 from .collabora import RemoteTaskList, soup_session
 from .settings import Settings

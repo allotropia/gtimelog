@@ -351,7 +351,7 @@ class TimeWindow(object):
     def icalendar(self, output):
         """Create an iCalendar file with activities."""
         output.write("BEGIN:VCALENDAR\n")
-        output.write("PRODID:-//mg.pov.lt/NONSGML GTimeLog//EN\n")
+        output.write("PRODID:-//gtimelog.org/NONSGML GTimeLog//EN\n")
         output.write("VERSION:2.0\n")
         import socket
         idhost = socket.getfqdn()

@@ -194,4 +194,4 @@ gtimelog.png is really a renamed copy of gnome-set-time.png from
 Web
 ---
 
-http://mg.pov.lt/gtimelog
+https://gtimelog.org

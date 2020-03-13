@@ -171,7 +171,7 @@ class MainWindow(object):
     show_unavailable_tasks = False
 
     # URL to use for Help -> Online Documentation
-    help_url = "http://mg.pov.lt/gtimelog"
+    help_url = "https://gtimelog.org"
 
     def __init__(self, timelog, settings, tasks):
         """Create the main window."""

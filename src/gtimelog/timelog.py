@@ -360,9 +360,9 @@ class TimeWindow(object):
         for start, stop, duration, entry in self.all_entries():
             output.write("BEGIN:VEVENT\n")
             output.write("UID:%s@%s\n" % (hash((start, stop, entry)), idhost))
-            output.write("SUMMARY:%s\n" % (entry.replace('\\', '\\\\')
-                                                  .replace(';', '\\;')
-                                                  .replace(',', '\\,')))
+            output.write("SUMMARY:%s\n" % (entry.replace('\\', '\\\\'))
+                                                 .replace(';', '\\;')
+                                                 .replace(',', '\\,'))
             output.write("DTSTART:%s\n" % start.strftime('%Y%m%dT%H%M%S'))
             output.write("DTEND:%s\n" % stop.strftime('%Y%m%dT%H%M%S'))
             output.write("DTSTAMP:%s\n" % dtstamp)
@@ -592,8 +592,8 @@ class TimeLog(object):
         f = codecs.open(self.filename, "a", encoding='UTF-8')
         if self.need_space:
             self.need_space = False
-            f.write("\n")
-        f.write(line + "\n")
+            f.write('\n')
+        f.write(line + '\n')
         f.close()
 
     def append_entry(self, entry, now):

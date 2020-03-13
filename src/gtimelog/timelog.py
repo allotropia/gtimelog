@@ -3,6 +3,7 @@ Non-GUI bits of gtimelog.
 """
 from __future__ import absolute_import
 
+import codecs
 import datetime
 import os
 import re
@@ -588,7 +589,7 @@ class TimeLog(object):
 
     def raw_append(self, line):
         """Append a line to the time log file."""
-        f = open(self.filename, "a")
+        f = codecs.open(self.filename, "a", encoding='UTF-8')
         if self.need_space:
             self.need_space = False
             f.write("\n")

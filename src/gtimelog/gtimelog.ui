@@ -499,6 +499,7 @@ GTimeLog is a time tracking application.
                                 <property name="image">image2</property>
                                 <property name="use_stock">False</property>
                                 <signal name="activate" handler="on_submit_this_week_menu_activate"/>
+                                <accelerator key="s" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                               </object>
                             </child>
                             <child>
@@ -508,6 +509,7 @@ GTimeLog is a time tracking application.
                                 <property name="image">image3</property>
                                 <property name="use_stock">False</property>
                                 <signal name="activate" handler="on_submit_last_week_menu_activate"/>
+                                <accelerator key="s" signal="activate" modifiers="GDK_CONTROL_MASK | GDK_SHIFT_MASK"/>
                               </object>
                             </child>
                             <child>
@@ -853,8 +855,6 @@ GTimeLog is a time tracking application.
                     <property name="secondary_icon_stock">gtk-clear</property>
                     <property name="secondary_icon_activatable">True</property>
                     <property name="secondary_icon_tooltip_text">Clear</property>
-                    <accelerator key="s" signal="grab-focus" modifiers="GDK_MOD1_MASK"/>
-                    <accelerator key="s" signal="grab-focus" modifiers="GDK_CONTROL_MASK"/>
                     <accelerator key="k" signal="grab-focus" modifiers="GDK_CONTROL_MASK"/>
                   </object>
                   <packing>

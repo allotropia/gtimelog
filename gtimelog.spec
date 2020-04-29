@@ -1,72 +1,51 @@
-Name: 		gtimelog
+%global srcname gtimelog
+
+Name: 		python-%{srcname}
 Epoch:          1
 Version: 	0.2.3
-Release:	5%{?dist}
+Release:	6%{?dist}
 Summary: 	GTimeLog is a graphical (Gtk+) application for keeping track of time.
 
 Group:		Office
 License:	GPL
-URL:		http://git.collabora.co.uk/?p=gtimelog.git;a=summary
-Source0:	gtimelog-0.2.3.tar.gz
-BuildRoot:	%(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
+URL:		https://gitlab.collabora.com/collabora/gtimelog
+Source0:	%{srcname}-%{version}.tar.gz
+BuildArch:      noarch
 
-BuildRequires:	python python-setuptools
-Requires:	python m2crypto
-
-%define debug_package %{nil}
 
 %description
 GTimeLog is a graphical (Gtk+) application for keeping track of time.
 
+%package -n python3-%{srcname}
+Summary:        GTimeLog is a graphical (Gtk+) application for keeping track of time.
+BuildRequires:  python3-devel
+
+%description -n python3-%{srcname}
+GTimeLog is a graphical (Gtk+) application for keeping track of time.
+
 
 %prep
-%setup -q
-
+%autosetup -n %{srcname}-%{version}
 
 %build
-python2 setup.py build
-
+%py3_build
 
 %install
-rm -rf %{buildroot}
-python2 setup.py install --single-version-externally-managed --root=%{buildroot}
+%py3_install
 mkdir -p %{buildroot}/usr/share/pixmaps
-cp src/gtimelog/gtimelog*.png %{buildroot}/usr/share/pixmaps
+cp src/%{srcname}/%{srcname}*.png %{buildroot}/usr/share/pixmaps
 mkdir -p %{buildroot}/usr/share/applications
-cp gtimelog.desktop %{buildroot}/usr/share/applications
+cp %{srcname}.desktop %{buildroot}/usr/share/applications
 
-
-%files
+%files -n python3-%{srcname}
 %defattr(-,root,root,-)
 %doc
-/usr/bin/rltimelog
-/usr/bin/gtimelog
-/usr/lib/python2.7/site-packages/gtimelog-0.2.3-py2.7.egg-info/PKG-INFO
-/usr/lib/python2.7/site-packages/gtimelog-0.2.3-py2.7.egg-info/SOURCES.txt
-/usr/lib/python2.7/site-packages/gtimelog-0.2.3-py2.7.egg-info/dependency_links.txt
-/usr/lib/python2.7/site-packages/gtimelog-0.2.3-py2.7.egg-info/entry_points.txt
-/usr/lib/python2.7/site-packages/gtimelog-0.2.3-py2.7.egg-info/not-zip-safe
-/usr/lib/python2.7/site-packages/gtimelog-0.2.3-py2.7.egg-info/top_level.txt
-/usr/lib/python2.7/site-packages/gtimelog/__init__.py
-/usr/lib/python2.7/site-packages/gtimelog/__init__.pyc
-/usr/lib/python2.7/site-packages/gtimelog/__init__.pyo
-/usr/lib/python2.7/site-packages/gtimelog/gtimelog.png
-/usr/lib/python2.7/site-packages/gtimelog/gtimelog.py
-/usr/lib/python2.7/site-packages/gtimelog/gtimelog.pyc
-/usr/lib/python2.7/site-packages/gtimelog/gtimelog.pyo
-/usr/lib/python2.7/site-packages/gtimelog/rltimelog.py
-/usr/lib/python2.7/site-packages/gtimelog/rltimelog.pyc
-/usr/lib/python2.7/site-packages/gtimelog/rltimelog.pyo
-/usr/lib/python2.7/site-packages/gtimelog/gtimelog.ui
-/usr/lib/python2.7/site-packages/gtimelog/test_gtimelog.py
-/usr/lib/python2.7/site-packages/gtimelog/test_gtimelog.pyc
-/usr/lib/python2.7/site-packages/gtimelog/test_gtimelog.pyo
-/usr/share/applications/gtimelog.desktop
-/usr/share/pixmaps/gtimelog.png
-
-
-%clean
-rm -rf %{buildroot}
+%{_bindir}/gtimelog
+%{_bindir}/rltimelog
+%{python3_sitelib}/%{srcname}-*.egg-info/
+%{python3_sitelib}/%{srcname}/
+%{_datadir}/applications/gtimelog.desktop
+%{_datadir}/pixmaps/gtimelog.png
 
 %changelog
 

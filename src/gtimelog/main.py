@@ -338,21 +338,16 @@ class MainWindow(object):
 
             depth = model.iter_depth(iter)
 
-            if depth == 2:
-                return txt.lower() in model.get_value(iter, 0).lower()
-
-            elif depth < 2:
+            if not txt.lower() in model.get_value(iter, 0).lower():
                 child = model.iter_children(iter)
 
                 while child is not None:
                     if _task_filter_filter(model, child, None):
                         return True
                     child = model.iter_next(child)
-
                 return False
 
-            else:
-                return True
+            return True
 
         task_filter.connect("changed", _task_filter_changed)
         task_filter.connect("icon-release", _task_filter_clear)

@@ -36,7 +36,7 @@ def main():
         if line.startswith('Total work done this week:'):
             work_in_minutes = parse_time(line.split(':', 1)[1].strip())
             assert work_in_minutes is not None
-            print(line, end='')
+            print(line)
             break
     else:
         return
@@ -49,8 +49,10 @@ def main():
             break
         days_off += 0.5
         work_days -= 0.5
+
     def fmt(f):
         return ("%.1f" % f).replace(".0", "")
+
     print("  Days off: %s" % fmt(days_off))
     print("  Work days: %s" % fmt(work_days))
     print("  Average day length: %s" % format_time(avg_day_len))

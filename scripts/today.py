@@ -36,7 +36,7 @@ def parse_datetime(dt):
     m = re.match(r'^(\d+)-(\d+)-(\d+) (\d+):(\d+)$', dt)
     if not m:
         raise ValueError('bad date time: ', dt)
-    year, month, day, hour, min = map(int, m.groups())
+    year, month, day, hour, min = list(map(int, m.groups()))
     return datetime.datetime(year, month, day, hour, min)
 
 def calculate_diffs(lines):

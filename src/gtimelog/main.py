@@ -136,8 +136,6 @@ class TrayIcon(object):
                                      tray_icon_popup_menu)
         self.trayicon.connect("button-release-event", self.on_release)
         GObject.timeout_add(1000, self.tick)
-        self.gtimelog_window.entry_watchers.append(self.entry_added)
-        self.gtimelog_window.tray_icon = self
 
     def on_press(self, widget, event):
         """A mouse button was pressed on the tray icon label."""
@@ -2056,7 +2054,9 @@ class Application(Gtk.Application):
             tasks = TaskList(os.path.join(configdir, 'tasks.txt'))
         self.main_window = MainWindow(timelog, settings, tasks)
         self.add_window(self.main_window.main_window)
-        tray_icon = TrayIcon(self.main_window)
+
+        self.tray_icon = TrayIcon(self.main_window)
+        self.entry_watchers.append(self.tray_icon.entry_added)
 
 
 def main():

@@ -818,7 +818,7 @@ class MainWindow(object):
     def set_up_task_list(self):
         """Set up a fully hierarchical task list
             Creates a dictionary of dictionaries that mirrors the
-            structure of the tasks (seperated by :) and then
+            structure of the tasks (separated by :) and then
             recurses into that structure bunging it into the treeview
         """
         self._block_row_toggles += 1
@@ -1548,7 +1548,7 @@ class MainWindow(object):
 
         It is only triggered if the computer was idle
         for > settings.remind_idle period of time
-        AND the previous event in the log occured more than
+        AND the previous event in the log occurred more than
         settings.remind_idle before the start of the idling
         """
         if self.welcome_back_notification is not None:

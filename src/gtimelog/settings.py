@@ -1,17 +1,14 @@
 """
 Settings for GTimeLog
 """
-from __future__ import absolute_import
 
-try:
-    # python2
-    import ConfigParser
-except ImportError:
-    # python3
-    import configparser as ConfigParser
+from __future__ import absolute_import
 
 import datetime
 import os
+
+from configparser import RawConfigParser
+
 
 from .timelog import parse_time, parse_timedelta
 from .tzoffset import TZOffset
@@ -49,7 +46,7 @@ class Settings(object):
     autoarrival = True
 
     def _config(self):
-        config = ConfigParser.RawConfigParser()
+        config = RawConfigParser()
         config.add_section('gtimelog')
         config.set('gtimelog', 'list-email', self.email)
         config.set('gtimelog', 'name', self.name)

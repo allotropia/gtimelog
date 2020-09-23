@@ -22,7 +22,7 @@ class Settings(object):
     name = 'Anonymous'
 
     editor = 'xdg-open'
-    mailer = 'x-terminal-emulator -e mutt -H %s'
+    mailer = 'x-terminal-emulator -e "mutt -H %s"'
     spreadsheet = 'xdg-open %s'
 
     enable_gtk_completion = True  # False enables gvim-style completion
@@ -103,3 +103,4 @@ class Settings(object):
         config = self._config()
         with open(filename, 'w') as f:
             config.write(f)
+

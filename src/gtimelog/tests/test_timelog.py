@@ -1,12 +1,21 @@
-#!/usr/bin/env python2
-"""
-Tests for gtimelog.py
-"""
-
-from __future__ import print_function
+"""Tests for gtimelog.timelog"""
 
 import doctest
 import unittest
+import re
+
+
+class Checker(doctest.OutputChecker):
+    """Doctest output checker that can deal with unicode literals."""
+
+    def check_output(self, want, got, optionflags):
+        # u'...' -> '...'; u"..." -> "..."
+        got = re.sub(r'''\bu('[^']*'|"[^"]*")''', r'\1', got)
+        # Python 3.7: datetime.timedelta(seconds=1860) ->
+        # Python < 3.7: datetime.timedelta(0, 1860)
+        got = re.sub(r'datetime[.]timedelta[(]seconds=(\d+)[)]',
+                     r'datetime.timedelta(0, \1)', got)
+        return doctest.OutputChecker.check_output(self, want, got, optionflags)
 
 
 def doctest_as_hours():
@@ -25,6 +34,7 @@ def doctest_as_hours():
 
     """
 
+
 def doctest_format_duration():
     """Tests for format_duration.
 
@@ -38,6 +48,7 @@ def doctest_format_duration():
         '1 h 0 min'
 
     """
+
 
 def doctest_format_short():
     """Tests for format_duration_short.
@@ -56,6 +67,7 @@ def doctest_format_short():
         '26:03'
 
     """
+
 
 def doctest_format_duration_long():
     """Tests for format_duration_long.
@@ -77,6 +89,7 @@ def doctest_format_duration_long():
 
     """
 
+
 def doctest_parse_datetime():
     """Tests for parse_datetime
 
@@ -90,22 +103,28 @@ def doctest_parse_datetime():
         >>> parse_datetime('xyzzy')
         Traceback (most recent call last):
           ...
-        ValueError: ('bad date time: ', 'xyzzy')
+        ValueError: bad date time: 'xyzzy'
+        >>> parse_datetime('YYYY-MM-DD HH:MM')
+        Traceback (most recent call last):
+          ...
+        ValueError: bad date time: 'YYYY-MM-DD HH:MM'
 
     """
+
 
 def doctest_parse_time():
     """Tests for parse_time
 
         >>> from gtimelog.timelog import parse_time
         >>> parse_time('02:13')
-        datetime.time(2, 13, tzinfo=0)
+        datetime.time(2, 13, tzinfo=...)
         >>> parse_time('xyzzy')
         Traceback (most recent call last):
           ...
-        ValueError: ('bad time: ', 'xyzzy')
+        ValueError: bad time: 'xyzzy'
 
     """
+
 
 def doctest_virtual_day():
     """Tests for virtual_day
@@ -132,6 +151,7 @@ def doctest_virtual_day():
 
     """
 
+
 def doctest_different_days():
     """Tests for different_days
 
@@ -152,6 +172,7 @@ def doctest_different_days():
         False
 
     """
+
 
 def doctest_first_of_month():
     """Tests for first_of_month
@@ -187,6 +208,7 @@ def doctest_first_of_month():
         ...     d += timedelta(1)
 
     """
+
 
 def doctest_next_month():
     """Tests for next_month
@@ -224,6 +246,7 @@ def doctest_next_month():
 
     """
 
+
 def doctest_uniq():
     """Tests for uniq
 
@@ -236,6 +259,7 @@ def doctest_uniq():
         []
 
     """
+
 
 def doctest_TimeWindow_monthly_report():
     r"""Tests for TimeWindow.monthly_report
@@ -250,10 +274,7 @@ def doctest_TimeWindow_monthly_report():
         >>> min = datetime(2007, 9, 1, tzinfo=TZOffset())
         >>> max = datetime(2007, 10, 1, tzinfo=TZOffset())
 
-        >>> try:
-        ...     from StringIO import StringIO
-        ... except ImportError:
-        ...     from io import StringIO
+        >>> from io import StringIO
 
         >>> sampledata = StringIO('')
         >>> window = TimeWindow(sampledata, min, max, vm)
@@ -292,6 +313,7 @@ def doctest_TimeWindow_monthly_report():
 
     """
 
+
 def doctest_TimeWindow_to_csv_daily():
     r"""Tests for TimeWindow.to_csv_daily
 
@@ -301,10 +323,7 @@ def doctest_TimeWindow_to_csv_daily():
         >>> max = datetime(2008, 7, 1, tzinfo=TZOffset())
         >>> vm = time(2, 0, tzinfo=TZOffset())
 
-        >>> try:
-        ...     from StringIO import StringIO
-        ... except ImportError:
-        ...     from io import StringIO
+        >>> from io import StringIO
 
         >>> sampledata = StringIO('''
         ... 2008-06-03 12:45: start
@@ -330,12 +349,14 @@ def doctest_TimeWindow_to_csv_daily():
 
 
 def additional_tests(): # for setup.py
-    return doctest.DocTestSuite(optionflags=doctest.NORMALIZE_WHITESPACE)
+    return doctest.DocTestSuite(optionflags=doctest.NORMALIZE_WHITESPACE | doctest.ELLIPSIS,
+                                checker=Checker())
 
 
-def main():
-    unittest.TextTestRunner().run(additional_tests())
+def test_suite():
+    return unittest.TestSuite([
+        unittest.defaultTestLoader.loadTestsFromName(__name__),
+        additional_tests(),
+    ])
 
 
-if __name__ == '__main__':
-    main()

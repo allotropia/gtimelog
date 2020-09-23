@@ -46,7 +46,7 @@ def parse_datetime(dt):
     """Parse a datetime instance from 'YYYY-MM-DD HH:MM' formatted string."""
     m = re.match(r'^(?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+) (?P<hour>\d+):(?P<min>\d+)(?: (?P<tz>[+-]\d+))?$', dt)
     if not m:
-        raise ValueError('bad date time: ', dt)
+        raise ValueError('bad date time: %r' % dt)
 
     def myint(i):
         if i is not None:
@@ -69,7 +69,7 @@ def parse_time(t):
     # FIXME - parse_time should probably support timezones
     m = re.match(r'^(\d+):(\d+)$', t)
     if not m:
-        raise ValueError('bad time: ', t)
+        raise ValueError('bad time: %r' % t)
     hour, min = list(map(int, m.groups()))
     return datetime.time(hour, min, tzinfo=TZOffset())
 

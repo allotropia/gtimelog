@@ -4,36 +4,19 @@ A Gtk+ application for keeping track of time.
 
 $Id: gtimelog.py 119 2008-07-03 22:25:56Z mg $
 """
-from __future__ import print_function, absolute_import
 
 import re
 import os
+import calendar
 import csv
+import datetime
 import signal
 import sys
-try:
-    # python3
-    from urllib.parse import urlencode
-except ImportError:
-    # python2
-    from urllib import urlencode
-
-import datetime
-import calendar
+from urllib.parse import urlencode
 from tempfile import NamedTemporaryFile
-try:
-    # python2
-    import ConfigParser
-except ImportError:
-    # python3
-    import configparser as ConfigParser
+import configparser as ConfigParser
 
-try:
-    # python2
-    import cPickle as pickle
-except ImportError:
-    # python3
-    import pickle
+import pickle
 
 try:
     # python2..3.7, deprecated since 3.2

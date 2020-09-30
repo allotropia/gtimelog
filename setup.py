@@ -30,7 +30,7 @@ setup(
     packages=['gtimelog'],
     package_dir={'gtimelog': 'src/gtimelog'},
     package_data={'gtimelog': ['*.ui', '*.png']},
-    test_suite='gtimelog.tests',
+    test_suite='gtimelog.tests.main',
     zip_safe=False,
     entry_points="""
     [console_scripts]

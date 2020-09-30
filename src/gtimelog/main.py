@@ -42,6 +42,16 @@ except ImportError:
     # python3.8
     from html import escape
 
+
+
+# The gtimelog.paths import has important side effects and must be done before
+# importing 'gi'.
+
+from .paths import (
+    UI_FILE,
+    ICON_FILE,
+)
+
 import gi
 
 
@@ -78,19 +88,15 @@ from .timelog import (as_hours, first_of_month, format_duration,
                       TimeLog, TimeWindow, uniq, virtual_day)
 from .tzoffset import TZOffset
 
-# This is to let people run GTimeLog without having to install it
-resource_dir = os.path.dirname(os.path.realpath(__file__))
-ui_file = os.path.join(resource_dir, "gtimelog.ui")
-icon_file = os.path.join(resource_dir, "gtimelog.png")
 
 # Where we store configuration and other interesting files.
 configdir = os.path.expanduser('~/.gtimelog')
 
 # This is for distribution packages
-if not os.path.exists(ui_file):
-    ui_file = "/usr/share/gtimelog/gtimelog.ui"
-if not os.path.exists(icon_file):
-    icon_file = "/usr/share/pixmaps/gtimelog.png"
+if not os.path.exists(UI_FILE):
+    UI_FILE = "/usr/share/gtimelog/gtimelog.ui"
+if not os.path.exists(ICON_FILE):
+    ICON_FILE = "/usr/share/pixmaps/gtimelog.png"
 
 
 class TrayIcon(object):
@@ -100,7 +106,7 @@ class TrayIcon(object):
         self.gtimelog_window = gtimelog_window
         self.timelog = gtimelog_window.timelog
 
-        self.trayicon = Gtk.StatusIcon.new_from_file(icon_file)
+        self.trayicon = Gtk.StatusIcon.new_from_file(ICON_FILE)
 
         # self.trayicon.add(self.eventbox)
         self.last_tick = False
@@ -223,7 +229,7 @@ class MainWindow(object):
     def _init_ui(self):
         """Initialize the user interface."""
         builder = Gtk.Builder()
-        builder.add_from_file(ui_file)
+        builder.add_from_file(UI_FILE)
 
         # Set initial state of menu items *before* we hook up signals
         chronological_menu_item = builder.get_object("chronological")
@@ -253,7 +259,7 @@ class MainWindow(object):
         self.submit_window = SubmitWindow(builder, self.settings, application=self)
         self.main_window = builder.get_object("main_window")
         self.main_window.connect("delete_event", self.delete_event)
-        self.main_window.set_icon_from_file(icon_file)
+        self.main_window.set_icon_from_file(ICON_FILE)
         self.about_dialog.set_transient_for(self.main_window)
         self.about_dialog.set_modal(True)
         self.log_view = builder.get_object("log_view")

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import os
-from setuptools import setup
+import sys
+from setuptools import setup, find_packages
 
 here = os.path.dirname(__file__)
 changes_filename = os.path.join(here, 'NEWS.txt')
@@ -11,6 +12,9 @@ changes_in_latest_versions = '\n\n\n'.join(changes[:3])
 short_description = 'A Gtk+ time tracking application'
 long_description = short_description + '.' # for now
 
+if sys.version_info < (3, 5, 0):
+    sys.exit("Python 3.5 is the minimum required version")
+
 setup(
     name='gtimelog',
     version='0.2.3',
@@ -20,17 +24,25 @@ setup(
     description=short_description,
     long_description=long_description + '\n\n' + changes_in_latest_versions,
     license='GPL',
-    classifiers = [
+    keywords='time log logging timesheets gnome gtk',
+    classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: X11 Applications :: GTK',
         'License :: OSI Approved :: GNU General Public License (GPL)',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: Implementation :: CPython',
+        'Programming Language :: Python :: Implementation :: PyPy',
         'Topic :: Office/Business',
     ],
+    python_requires='>= 3.5',
 
-    packages=['gtimelog'],
-    package_dir={'gtimelog': 'src/gtimelog'},
-    package_data={'gtimelog': ['*.ui', '*.png']},
-    test_suite='gtimelog.tests.main',
+    packages=find_packages('src'),
+    package_dir={'': 'src'},
+    include_package_data=True,
+    test_suite='gtimelog.tests',
     zip_safe=False,
     entry_points="""
     [console_scripts]

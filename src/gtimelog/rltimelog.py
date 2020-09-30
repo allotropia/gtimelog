@@ -7,18 +7,17 @@ from __future__ import print_function
 import sys
 import os
 import signal
-try:
-    # python3
-    from urllib.parse import urlencode
-except ImportError:
-    # python2
-    from urllib import urlencode
+from urllib.parse import urlencode
 
 from datetime import datetime, timedelta
 
-from gtimelog import (Settings, configdir, soup_session, TimeLog,
-                      RemoteTaskList, TaskList, TZOffset, Soup, GLib,
-                      format_duration_short)
+from .collabora import RemoteTaskList, soup_session  # noqa: E402
+from .settings import Settings  # noqa: E402
+from .timelog import (as_hours, first_of_month, format_duration,
+                      format_duration_long, format_duration_short,
+                      next_month, parse_timedelta, TaskList,
+                      TimeLog, TimeWindow, uniq, virtual_day)  # noqa: E402
+from .tzoffset import TZOffset  # noqa: E402
 
 
 class MainWindow(object):

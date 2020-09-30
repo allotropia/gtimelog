@@ -1,18 +1,43 @@
 #!/usr/bin/env python
 """
 A Gtk+ application for keeping track of time.
-
-$Id: gtimelog.py 119 2008-07-03 22:25:56Z mg $
 """
+import time
+import sys
 
-import re
-import os
+
+DEBUG = '--debug' in sys.argv
+
+
+if DEBUG:
+    def mark_time(what=None, _prev=[0, 0]):
+        t = time.time()
+        if what:
+            print("{:.3f} ({:+.3f}) {}".format(t - _prev[1], t - _prev[0], what))
+        else:
+            print()
+            _prev[1] = t
+        _prev[0] = t
+else:
+    def mark_time(what=None):
+        pass
+
+
+mark_time()
+mark_time("in script")
+
 import calendar
 import csv
 import datetime
+import gettext
+import locale
+import logging
+import os
+import re
 import signal
 import sys
 from urllib.parse import urlencode
+from gettext import gettext as _
 from tempfile import NamedTemporaryFile
 import configparser as ConfigParser
 
@@ -25,6 +50,11 @@ except ImportError:
     # python3.8
     from html import escape
 
+mark_time("Python imports done")
+
+
+if DEBUG:
+    os.environ['G_ENABLE_DIAGNOSTIC'] = '1'
 
 
 # The gtimelog.paths import has important side effects and must be done before
@@ -32,6 +62,7 @@ except ImportError:
 
 from .paths import (
     UI_FILE,
+    LOCALE_DIR,
     ICON_FILE,
 )
 
@@ -52,6 +83,7 @@ them with
     sudo apt install {deb_package}
 """.format(namespace=namespace, version=version, deb_package=deb_package))
 
+
 require_version('Gtk', '3.0')
 require_version('Soup', '2.4')
 from gi.repository import Gtk, Gdk, GLib, Gio, GObject, Pango, Soup
@@ -62,6 +94,7 @@ try:
     assert Notify.init("gtimelog")
 except ImportError:
     print("LibNotify (with introspection) not found. Idle timeouts are not supported.")
+mark_time("Gtk imports done")
 
 from .collabora import RemoteTaskList, soup_session
 from .settings import Settings
@@ -71,6 +104,10 @@ from .timelog import (as_hours, first_of_month, format_duration,
                       TimeLog, TimeWindow, uniq, virtual_day)
 from .tzoffset import TZOffset
 
+mark_time("gtimelog imports done")
+
+
+log = logging.getLogger('gtimelog')
 
 # Where we store configuration and other interesting files.
 configdir = os.path.expanduser('~/.gtimelog')
@@ -1886,10 +1923,31 @@ class SubmitWindow(object):
     def hide(self):
         self.window.hide()
 
+
+def make_option(long_name, short_name=None, flags=0, arg=GLib.OptionArg.NONE,
+                arg_data=None, description=None, arg_description=None):
+    # surely something like this should exist inside PyGObject itself?!
+    option = GLib.OptionEntry()
+    option.long_name = long_name.lstrip('-')
+    option.short_name = 0 if not short_name else short_name.lstrip('-')
+    option.flags = flags
+    option.arg = arg
+    option.arg_data = arg_data
+    option.description = description
+    option.arg_description = arg_description
+    return option
+
+
 class Application(Gtk.Application):
     def __init__(self, *args, **kwargs):
-        kwargs['application_id'] = 'uk.co.collabora.gtimelog'
-        Gtk.Application.__init__(self, *args, **kwargs)
+        super(Application, self).__init__(
+            application_id='uk.co.collabora.gtimelog',
+        )
+        GLib.set_application_name(_("Time Log"))
+        GLib.set_prgname('gtimelog')
+        self.add_main_option_entries([
+            make_option("--debug", description=_("Show debug information on the console")),
+        ])
         self.main_window = None
 
         self.connect('activate', Application._activate)
@@ -1921,19 +1979,47 @@ class Application(Gtk.Application):
         self.main_window = MainWindow(timelog, settings, tasks)
         self.add_window(self.main_window.main_window)
         tray_icon = TrayIcon(self.main_window)
-        # Make ^C terminate gtimelog when hanging
-        signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 def main():
     """Run the program."""
+    mark_time("in main()")
+
     if len(sys.argv) > 1 and sys.argv[1] == '--sample-config':
         settings = Settings()
         settings.save("gtimelogrc.sample")
         print("Sample configuration file written to gtimelogrc.sample")
         return
 
+    root_logger = logging.getLogger()
+    root_logger.addHandler(logging.StreamHandler())
+    if DEBUG:
+        root_logger.setLevel(logging.DEBUG)
+    else:
+        root_logger.setLevel(logging.INFO)
+
+    # Tell Python's gettext.gettext() to use our translations
+    gettext.bindtextdomain('gtimelog', LOCALE_DIR)
+    gettext.textdomain('gtimelog')
+
+    # Tell GTK+ to use out translations
+    if hasattr(locale, 'bindtextdomain'):
+        locale.bindtextdomain('gtimelog', LOCALE_DIR)
+        locale.textdomain('gtimelog')
+    else:  # pragma: nocover
+        # https://github.com/gtimelog/gtimelog/issues/95#issuecomment-252299266
+        # locale.bindtextdomain is missing on Windows!
+        log.error(_("Unable to configure translations: no locale.bindtextdomain()"))
+
+    # Make ^C terminate the process
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+    # Run the app
     app = Application()
-    app.run(sys.argv)
+    mark_time("app created")
+    try:
+        sys.exit(app.run(sys.argv))
+    finally:
+        mark_time("exiting")
     if app.main_window is not None:
         app.main_window.save_ui_state(os.path.join(configdir, 'uistaterc'))
 

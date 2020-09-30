@@ -12,3 +12,5 @@ ui_dir = here
 
 UI_FILE = os.path.join(ui_dir, 'gtimelog.ui')
 ICON_FILE = os.path.join(ui_dir, 'gtimelog.png')
+
+LOCALE_DIR = os.path.join(here, 'locale')

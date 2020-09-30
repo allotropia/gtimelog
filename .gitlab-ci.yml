@@ -1,0 +1,25 @@
+image: debian:testing-slim
+
+variables:
+  PYTHON: python3.8
+
+before_script:
+  - apt update
+  - apt install -y $PYTHON
+
+.build-and-test:
+  script:
+  - apt install -y python3-pip python3-gi gir1.2-appindicator3-0.1 gir1.2-secret-1 gir1.2-gtk-3.0 gir1.2-soup-2.4 gir1.2-pango-1.0 gir1.2-notify-0.7
+  - pip3 install .
+  - $PYTHON setup.py build sdist bdist
+  - apt install -y python3-pytest
+  - pytest-3
+
+test:
+  extends: .build-and-test
+
+codestyle:
+  allow_failure: true
+  script:
+  - apt install -y pycodestyle
+  - pycodestyle

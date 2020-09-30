@@ -5,7 +5,7 @@ Maintainer: Simon McVittie <smcv@debian.org>
 Uploaders: Jonny Lamb <jonny.lamb@collabora.co.uk>,
            Jack Leigh <jack.leigh@collabora.co.uk>,
            Jordi Mallach <jordi.mallach@collabora.co.uk>
-Build-Depends: debhelper (>= 7.0.50~),
+Build-Depends: debhelper-compat (= 12),
                dh-python,
                python3,
                python3-setuptools (>= 0.6b3)

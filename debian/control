@@ -29,7 +29,6 @@ Depends: gir1.2-appindicator3-0.1,
          gir1.2-soup-2.4,
          gir1.2-pango-1.0,
          gir1.2-notify-0.7,
-         python3-gi,
          ${misc:Depends},
          ${python3:Depends}
 Recommends: xdg-utils

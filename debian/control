@@ -2,9 +2,9 @@ Source: collabora-gtimelog
 Section: admin
 Priority: optional
 Maintainer: Simon McVittie <smcv@debian.org>
-Uploaders: Jonny Lamb <jonny.lamb@collabora.co.uk>,
-           Jack Leigh <jack.leigh@collabora.co.uk>,
-           Jordi Mallach <jordi.mallach@collabora.co.uk>
+Uploaders: Andrej Shadura <andrew.shadura@collabora.co.uk>,
+           Emil Velikov <emil.l.velikov@gmail.com>,
+           Ryan Pavlik <ryan.pavlik@collabora.com>
 Build-Depends: debhelper-compat (= 12),
                dh-python,
                python3,

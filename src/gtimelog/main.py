@@ -1905,9 +1905,9 @@ class SubmitWindow(object):
             entry = regex.sub(': ', entry).strip()
             # Neatly store the things under the day on which they started
             (date, time) = str(start).split(" ")
-            if not date in date_dict:
+            if date not in date_dict:
                 date_dict[date] = {}
-            if not entry in date_dict[date]:
+            if entry not in date_dict[date]:
                 date_dict[date][entry] = datetime.timedelta(0)
             date_dict[date][entry] += duration
 
@@ -1918,7 +1918,7 @@ class SubmitWindow(object):
             items = sorted(
                 date_dict[date], key=lambda a: date_dict[date][a], reverse=True)
             for item in items:
-                if date_dict[date][item] > datetime.timedelta(0) and not "**" in item:
+                if date_dict[date][item] > datetime.timedelta(0) and "**" not in item:
                     self.list_store.append(
                         parent, self.item_row(date_dict[date][item], item))
 
@@ -1963,7 +1963,7 @@ class SubmitWindow(object):
         return [date, "", submit, True, False, submit and "black" or "grey", True, ""]
 
     def item_row(self, duration, item):
-        submit = duration > datetime.timedelta(0) and not "**" in item
+        submit = duration > datetime.timedelta(0) and "**" not in item
         return [format_duration_long(duration), item, submit, False, True, submit and "black" or "grey", False, ""]
 
     def annotate_failure(self, response):

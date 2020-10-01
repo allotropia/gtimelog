@@ -772,7 +772,6 @@ class MainWindow(object):
         self.w(format_duration(duration), 'duration')
         start_string = start.astimezone(TZOffset()).strftime('%H:%M')
         stop_string = stop.astimezone(TZOffset()).strftime('%H:%M')
-        print(start_string)
         assert("(" not in start_string)
         period = '\t(%s-%s)\t' % (start_string, stop_string)
 

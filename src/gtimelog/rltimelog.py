@@ -11,13 +11,11 @@ from urllib.parse import urlencode
 
 from datetime import datetime, timedelta
 
-from .collabora import RemoteTaskList, soup_session  # noqa: E402
-from .settings import Settings  # noqa: E402
-from .timelog import (as_hours, first_of_month, format_duration,
-                      format_duration_long, format_duration_short,
-                      next_month, parse_timedelta, TaskList,
-                      TimeLog, TimeWindow, uniq, virtual_day)  # noqa: E402
-from .tzoffset import TZOffset  # noqa: E402
+from .main import configdir, Soup, GLib
+from .collabora import RemoteTaskList, soup_session
+from .settings import Settings
+from .timelog import format_duration_short, TaskList, TimeLog
+from .tzoffset import TZOffset
 
 
 class MainWindow(object):
@@ -94,7 +92,7 @@ class MainWindow(object):
         # which is not exposed via GI (being as it is a macro).
         if message.status_code > Soup.KnownStatusCode.NONE and \
            message.status_code < Soup.KnownStatusCode.CONTINUE:
-            self.error_dialog(message.reason_phrase, automatic=automatic)
+            print('Error: %s' % message.reason_phrase)
             return
 
         txt = message.response_body.data
@@ -115,8 +113,8 @@ class MainWindow(object):
 
     def upload(self, data, automatic):
         if not os.path.exists(self.settings.server_cert):
-            self.error_dialog("Provided certificate %s not found" % self.settings.server_cert)
-            return
+            print("Server certificate file '%s' not found" %
+                  self.settings.server_cert)
 
         print(data)
         print(urlencode(data))

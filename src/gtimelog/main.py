@@ -1834,7 +1834,7 @@ class SubmitWindow(object):
             self.error_dialog(txt, automatic=automatic)
 
     def upload(self, data, automatic):
-        if not os.path.exists(self.settings.server_cert):
+        if self.settings.server_cert and not os.path.exists(self.settings.server_cert):
             print("Server certificate file '%s' not found" %
                   self.settings.server_cert)
 

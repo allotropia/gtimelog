@@ -22,5 +22,5 @@ test:
 codestyle:
   allow_failure: true
   script:
-  - apt install -y pycodestyle
-  - pycodestyle
+  - apt install -y flake8
+  - flake8

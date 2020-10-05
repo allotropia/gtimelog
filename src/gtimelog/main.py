@@ -2056,7 +2056,7 @@ class Application(Gtk.Application):
         self.add_window(self.main_window.main_window)
 
         self.tray_icon = TrayIcon(self.main_window)
-        self.entry_watchers.append(self.tray_icon.entry_added)
+        self.main_window.entry_watchers.append(self.tray_icon.entry_added)
 
 
 def main():

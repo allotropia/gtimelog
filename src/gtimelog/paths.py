@@ -3,7 +3,7 @@ Resource locations for running out of source checkouts and pip installs
 """
 
 import os
-import sys
+import sys  # noqa: F401  # TODO: drop when synced from upstream
 
 
 here = os.path.dirname(__file__)

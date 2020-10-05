@@ -283,7 +283,7 @@ class RemoteTaskList(TaskList):
         if self.loading_callback:
             self.loading_callback()
 
-        if not os.path.exists(self.settings.server_cert):
+        if self.settings.server_cert and not os.path.exists(self.settings.server_cert):
             print("Server certificate file not found")
 
         message = Soup.Message.new('GET', self.url)

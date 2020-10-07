@@ -336,7 +336,20 @@ class MainWindow(object):
 
             depth = model.iter_depth(iter)
 
-            if not txt.lower() in model.get_value(iter, 0).lower():
+            # Currently the first (0th) column of the data is the respective
+            # section, as separated by :, while the second (1th) column has
+            # the complete path, including the secion - foo:bar:section
+            #
+            # Seemingly the current format confuses the treeview model, since
+            # it will traverse into the children, _even_ when the parent
+            # returns false. Additionally, even as the child returns true, its
+            # parents are checked and the field is displayed _only_ iff the
+            # child (and later on parent) return true.
+            #
+            # All this is pretty weird, but using the second (1st) column gets
+            # us where we want - aka show the full tree given any section is
+            # matched.
+            if not txt.lower() in model.get_value(iter, 1).lower():
                 child = model.iter_children(iter)
 
                 while child is not None:

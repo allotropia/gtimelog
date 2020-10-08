@@ -5,8 +5,10 @@ Script to run GTimeLog's tests from the source checkout
 import os
 import sys
 
+from gtimelog.tests import main
+
+
 pkgdir = os.path.join(os.path.dirname(__file__), 'src')
 sys.path.insert(0, pkgdir)
 
-from gtimelog.tests import main
 main()

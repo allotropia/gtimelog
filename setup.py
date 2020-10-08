@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 import os
 import sys
-from setuptools import setup, find_packages
+
+from setuptools import find_packages, setup
+
 
 here = os.path.dirname(__file__)
 changes_filename = os.path.join(here, 'NEWS.txt')

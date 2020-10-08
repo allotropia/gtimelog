@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """A Gtk+ application for keeping track of time."""
-import time
 import sys
+import time
 
 
 DEBUG = '--debug' in sys.argv
@@ -59,17 +59,17 @@ if DEBUG:
 # importing 'gi'.
 
 from .paths import (
-    UI_FILE,
-    LOCALE_DIR,
     ICON_FILE,
+    LOCALE_DIR,
+    UI_FILE,
 )
-
-import gi
 from .utils import require_version
+
 
 require_version('Gtk', '3.0')
 require_version('Soup', '2.4')
-from gi.repository import Gtk, Gdk, GLib, Gio, GObject, Pango, Soup  # noqa: E402
+import gi
+from gi.repository import Gdk, Gio, GLib, GObject, Gtk, Pango, Soup  # noqa: E402
 
 try:
     require_version('Notify', '0.7')
@@ -82,10 +82,20 @@ mark_time("Gtk imports done")
 
 from .collabora import RemoteTaskList, soup_session  # noqa: E402
 from .settings import Settings  # noqa: E402
-from .timelog import (as_hours, first_of_month, format_duration,
-                      format_duration_long, format_duration_short,
-                      next_month, parse_timedelta, TaskList,
-                      TimeLog, TimeWindow, uniq, virtual_day)  # noqa: E402
+from .timelog import (
+    as_hours,
+    first_of_month,
+    format_duration,
+    format_duration_long,
+    format_duration_short,
+    next_month,
+    parse_timedelta,
+    TaskList,
+    TimeLog,
+    TimeWindow,
+    uniq,
+    virtual_day,
+)  # noqa: E402
 from .tzoffset import TZOffset  # noqa: E402
 
 mark_time("gtimelog imports done")

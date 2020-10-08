@@ -1,8 +1,8 @@
 """Tests for gtimelog.timelog"""
 
 import doctest
-import unittest
 import re
+import unittest
 
 
 class Checker(doctest.OutputChecker):
@@ -267,7 +267,6 @@ def doctest_TimeWindow_monthly_report():
         >>> import sys
 
         >>> from datetime import datetime, time
-        >>> from tempfile import NamedTemporaryFile
         >>> from gtimelog.timelog import TimeWindow, TZOffset
 
         >>> vm = time(2, 0, tzinfo=TZOffset())
@@ -358,5 +357,3 @@ def test_suite():
         unittest.defaultTestLoader.loadTestsFromName(__name__),
         additional_tests(),
     ])
-
-

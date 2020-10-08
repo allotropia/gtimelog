@@ -10,6 +10,7 @@ from .secrets import Authenticator
 from .timelog import TaskList
 from .tzoffset import TZOffset
 
+
 soup_session = Soup.SessionAsync()
 authenticator = Authenticator(soup_session)
 

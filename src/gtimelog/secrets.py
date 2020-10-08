@@ -2,7 +2,8 @@
 Keyring and secrets
 """
 import functools
-from gi.repository import GObject, GLib, Gtk, Soup
+
+from gi.repository import GLib, GObject, Gtk, Soup
 
 
 class Authenticator(object):

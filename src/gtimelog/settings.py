@@ -6,9 +6,7 @@ from __future__ import absolute_import
 
 import datetime
 import os
-
 from configparser import RawConfigParser
-
 
 from .timelog import parse_time, parse_timedelta
 from .tzoffset import TZOffset
@@ -103,4 +101,3 @@ class Settings(object):
         config = self._config()
         with open(filename, 'w') as f:
             config.write(f)
-

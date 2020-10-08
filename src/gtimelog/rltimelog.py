@@ -4,17 +4,16 @@
 
 from __future__ import print_function
 
-import sys
 import os
 import signal
+import sys
+from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
-from datetime import datetime, timedelta
-
-from .main import configdir, Soup, GLib
 from .collabora import RemoteTaskList, soup_session
+from .main import GLib, Soup, configdir
 from .settings import Settings
-from .timelog import format_duration_short, TaskList, TimeLog
+from .timelog import TaskList, TimeLog, format_duration_short
 from .tzoffset import TZOffset
 
 

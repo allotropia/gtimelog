@@ -3,13 +3,11 @@ import os
 import sys
 from datetime import datetime, time, timedelta, timezone
 
-from gtimelog.timelog import TimeWindow
-from gtimelog.tzoffset import TZOffset
-
-
 pkgdir = os.path.join(os.path.dirname(__file__), 'src')
 sys.path.insert(0, pkgdir)
 
+from gtimelog.timelog import TimeWindow
+from gtimelog.tzoffset import TZOffset
 
 if __name__ == "__main__":
     fn = os.path.expanduser('~/.gtimelog/timelog.txt')

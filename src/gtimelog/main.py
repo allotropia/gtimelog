@@ -1173,6 +1173,9 @@ class MainWindow(object):
         self.submit()
 
     def auto_submit(self):
+        if not self.settings.autosubmit:
+            return
+
         day = self.timelog.day
 
         min = day - datetime.timedelta(30)

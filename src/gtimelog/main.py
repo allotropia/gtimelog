@@ -81,7 +81,7 @@ except ImportError:
     print("Idle timeouts are not supported.")
 mark_time("Gtk imports done")
 
-from .collabora import RemoteTaskList, soup_session  # noqa: E402
+from .allotropia import RemoteTaskList, soup_session  # noqa: E402
 from .settings import Settings  # noqa: E402
 from .timelog import (
     as_hours,
@@ -2013,7 +2013,7 @@ def make_option(long_name, short_name=None, flags=0, arg=GLib.OptionArg.NONE,
 class Application(Gtk.Application):
     def __init__(self, *args, **kwargs):
         super(Application, self).__init__(
-            application_id='uk.co.collabora.gtimelog',
+            application_id='de.allotropia.gtimelog',
         )
         GLib.set_application_name(_("Time Log"))
         GLib.set_prgname('gtimelog')

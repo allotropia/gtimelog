@@ -8,7 +8,7 @@ Summary: 	GTimeLog is a graphical (Gtk+) application for keeping track of time.
 
 Group:		Office
 License:	GPL
-URL:		https://gitlab.collabora.com/collabora/gtimelog
+URL:		https://github.com/allotropia/gtimelog
 Source0:	%{srcname}-%{version}.tar.gz
 BuildArch:      noarch
 

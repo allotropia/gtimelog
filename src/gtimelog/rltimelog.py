@@ -10,7 +10,7 @@ import sys
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
-from .collabora import RemoteTaskList, soup_session
+from .allotropia import RemoteTaskList, soup_session
 from .main import GLib, Soup, configdir
 from .settings import Settings
 from .timelog import TaskList, TimeLog, format_duration_short

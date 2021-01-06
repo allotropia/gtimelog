@@ -706,7 +706,8 @@ class TaskList(object):
     def __init__(self, filename):
         """Construct from a filename with tasks."""
         self.filename = filename
-        self.load()
+        self.items = set()
+        self.last_mtime = None
 
     def check_reload(self):
         """Look at the mtime of tasks.txt, and reload it if necessary.

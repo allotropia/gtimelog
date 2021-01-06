@@ -36,6 +36,7 @@ class Settings(object):
     show_office_hours = True
 
     report_to_url = ""
+    autosubmit = True
 
     remind_idle = '10 minutes'
     server_cert = ''
@@ -63,6 +64,7 @@ class Settings(object):
         config.set('gtimelog', 'show_office_hours',
                    str(self.show_office_hours))
         config.set('gtimelog', 'report_to_url', self.report_to_url)
+        config.set('gtimelog', 'autosubmit', str(self.autosubmit))
         config.set('gtimelog', 'remind_idle', self.remind_idle)
         config.set('gtimelog', 'server_cert', self.server_cert)
         config.set('gtimelog', 'autoarrival', str(self.autoarrival))
@@ -89,6 +91,7 @@ class Settings(object):
         self.show_office_hours = config.getboolean('gtimelog',
                                                    'show_office_hours')
         self.report_to_url = config.get('gtimelog', 'report_to_url')
+        self.autosubmit = config.getboolean('gtimelog', 'autosubmit')
         self.remind_idle = parse_timedelta(config.get('gtimelog', 'remind_idle'))
 
         self.server_cert = os.path.expanduser(config.get('gtimelog', 'server_cert'))

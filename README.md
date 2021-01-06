@@ -1,5 +1,9 @@
-Build and install
+## Hack and run
 
-./setup.py build   (as a user)
+* ...hack hack hack...
+* ./gtimelog
 
-./setup.py install (as root)
+## Build and install
+
+* ./setup.py build   (as a user)
+* ./setup.py install (as root)

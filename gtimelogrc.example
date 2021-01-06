@@ -30,3 +30,13 @@ virtual_midnight = 02:00
 
 # Whether or not to show the time label in the tray icon
 show-time-label = True
+
+# where to pull task list from (if you don't keep it local)
+task_list_url = https://mysite.org/api/v1/
+
+# API endpoint where timesheets get POSTed to
+report_to_url = https://mysite.org/api/v1/
+
+# if on Linux, and screensaver implements org.gnome.ScreenSaver -
+# detect when you're idle for longer than remind_idle
+remind_idle = '15 minutes'

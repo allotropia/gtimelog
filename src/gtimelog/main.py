@@ -34,7 +34,7 @@ import os
 import re
 import signal
 import sys
-from urllib.parse import urlencode
+import json
 from gettext import gettext as _
 from tempfile import NamedTemporaryFile
 import configparser as ConfigParser
@@ -1738,15 +1738,14 @@ class SubmitWindow(object):
             if not row[COL_ACTIVE]:
                 continue
 
-            data[row[COL_DATE_OR_DURATION]] = ""
+            data[row[COL_DATE_OR_DURATION]] = []
             for item in row.iterchildren():
                 duration = format_duration_short(
                     parse_timedelta(item[COL_DATE_OR_DURATION]))
-                data[row[COL_DATE_OR_DURATION]] += "%s %s\n" % \
-                    (duration,
-                     item[COL_DESCRIPTION])
+                data[row[COL_DATE_OR_DURATION]].append(
+                    [duration, item[COL_DESCRIPTION]] )
 
-        self.upload(data, automatic)
+        self.upload(data, self.list_store[-1][COL_DATE_OR_DURATION], automatic)
 
     def on_submit_report(self, button):
         self.hide()
@@ -1799,7 +1798,7 @@ class SubmitWindow(object):
                 dialog.connect('response', lambda d, i: dialog.destroy())
                 self.window.show()
                 dialog.show()
-        elif message.status_code == 200:
+        elif message.status_code == 200 or message.status_code == 201:
             self.submitting = False
             self.hide()
 
@@ -1824,23 +1823,17 @@ class SubmitWindow(object):
         else:
             self.error_dialog(txt, automatic=automatic)
 
-    def upload(self, data, automatic):
-        if not self.report_url:
-            self.error_dialog(
-                e='No reporting URL is configured; cannot upload report data.  Check your gtimelogrc settings.',
-                title='Configuration Issue',
-                automatic=automatic
-            )
-            return
-
+    def upload(self, data, final_date, automatic):
         if self.settings.server_cert and not os.path.exists(self.settings.server_cert):
             print("Server certificate file '%s' not found" %
                   self.settings.server_cert)
 
-        message = Soup.Message.new('POST', self.report_url)
-        message.request_headers.set_content_type(
-            'application/x-www-form-urlencoded', None)
-        message.request_body.append(urlencode(data).encode())
+        # PUT the file onto a nextcloud share - curl equivalent is:
+        # curl -T file.txt -H 'X-Requested-With: XMLHttpRequest' nc.com/public.php/webdav/file.txt
+        message = Soup.Message.new('PUT',
+                                   self.report_url+"/Report_"+final_date)
+        message.request_headers.append('X-Requested-With', 'XMLHttpRequest')
+        message.request_body.append(json.dumps(data).encode())
         message.request_body.complete()
         soup_session.queue_message(message, self.upload_finished, automatic)
 

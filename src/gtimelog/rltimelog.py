@@ -8,7 +8,7 @@ import os
 import signal
 import sys
 from datetime import datetime, timedelta
-from urllib.parse import urlencode
+import json
 
 from .allotropia import RemoteTaskList, soup_session
 from .main import GLib, Soup, configdir
@@ -83,8 +83,10 @@ class MainWindow(object):
         data = {}
         for start, end, duration, message in time_window.all_entries():
             day = start.strftime('%Y-%m-%d')
-            data[day] = '%s %s\n' % (format_duration_short(duration), message)
-        self.upload(data, automatic)
+            if day not in data:
+                data[day] = []
+            data[day].append( [format_duration_short(duration), message] )
+        self.upload(data, time_window.last_time(), automatic)
 
     def upload_finished(self, session, message, automatic):
         # This is equivalent to the SOUP_STATUS_IS_TRANSPORT_ERROR() macro,
@@ -110,16 +112,17 @@ class MainWindow(object):
             print(txt)
         sys.exit(0)
 
-    def upload(self, data, automatic):
+    def upload(self, data, final_date, automatic):
         if self.settings.server_cert and not os.path.exists(self.settings.server_cert):
             print("Server certificate file '%s' not found" %
                   self.settings.server_cert)
 
-        print(data)
-        print(urlencode(data))
-        message = Soup.Message.new('POST', self.settings.report_to_url)
-        message.request_headers.set_content_type('application/x-www-form-urlencoded', None)
-        message.request_body.append(urlencode(data).encode())
+        # PUT the file onto a nextcloud share - curl equivalent is:
+        # curl -T file.txt -H 'X-Requested-With: XMLHttpRequest' nc.com/public.php/webdav/file.txt
+        message = Soup.Message.new('PUT',
+                                   self.settings.report_url+"/Report_"+final_date)
+        message.request_headers.append('X-Requested-With', 'XMLHttpRequest')
+        message.request_body.append(json.dumps(data).encode())
         message.request_body.complete()
         _ = soup_session.queue_message(message, self.upload_finished, automatic)
         loop = GLib.MainLoop()

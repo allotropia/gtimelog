@@ -1837,9 +1837,9 @@ class SubmitWindow(object):
         # PUT the file onto a nextcloud share - curl equivalent is:
         # curl -T file.txt -H 'X-Requested-With: XMLHttpRequest' nc.com/public.php/webdav/file.txt
         message = Soup.Message.new('PUT',
-                                   self.report_url+"/Report_"+final_date)
+                                   self.report_url+"/Report_"+final_date+'.txt')
         message.request_headers.append('X-Requested-With', 'XMLHttpRequest')
-        message.request_body.append(json.dumps(data).encode())
+        message.request_body.append(json.dumps(data, indent='\t').encode())
         message.request_body.complete()
         soup_session.queue_message(message, self.upload_finished, automatic)
 

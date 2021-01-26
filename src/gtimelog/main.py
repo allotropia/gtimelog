@@ -1119,6 +1119,25 @@ class MainWindow(object):
         self.chronological = False
         self.populate_log()
 
+    def on_custom_report_activate(self, widget):
+        """File -> Custom Report"""
+        saved = self.get_last_acked_reminder("custom-report")
+        if saved:
+            previous = datetime.datetime.fromordinal(saved)
+        else:
+            # hmm that's awfully hard-coded, but what is a better fallback?
+            previous = datetime.datetime(2021, 1, 21)
+        min = datetime.datetime.combine(previous,
+                                        self.timelog.virtual_midnight)
+        today = datetime.datetime.now(datetime.timezone.utc)
+        max = datetime.datetime.combine(today,
+                                        self.timelog.virtual_midnight)
+        # TODO: should the half day before the meeting be in both reports?
+        max = today
+        window = self.timelog.window_for(min, max)
+        self.mail(window.get_custom_report(min, max))
+        self.ack_reminder("custom-report", today.toordinal())
+
     def on_daily_report_activate(self, widget):
         """File -> Daily Report"""
         window = self.timelog.window

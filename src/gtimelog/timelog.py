@@ -449,6 +449,23 @@ class TimeWindow(object):
             for day, (start, slacking, work) in list(days.items()))
         writer.writerows(items)
 
+    def get_custom_report(self, min, max):
+        def custom_report(output, email, who):
+            """Format a custom report.
+
+            Writes a custom report template in RFC-822 format to output.
+            """
+            week = self.max_timestamp.strftime('%V')
+            output.write("To: %(email)s\n" % {'email': email})
+            output.write("Subject: Custom report for %s (week %s)\n" % (who, week))
+            output.write("\n")
+            output.write("Start: %s\n" % (str(min)))
+            output.write("End  : %s\n" % (str(max)))
+            output.write("\n")
+
+            self._report(output, "week")
+        return custom_report
+
     def daily_report(self, output, email, who):
         """Format a daily report.
 

@@ -97,7 +97,7 @@ class Authenticator(object):
 
     def ask_the_user(self, auth, uri, callback):
         """Pops up a username/password dialog for uri"""
-        d = Gtk.Dialog()
+        d = Gtk.Dialog(flags=Gtk.DialogFlags.MODAL)
         d.set_title('Authentication Required')
         d.set_resizable(False)
 

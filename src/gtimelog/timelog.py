@@ -546,6 +546,7 @@ class TimeWindow(object):
         work, slack = self.grouped_entries()
         total_work, total_slacking = self.totals()
         categories = {}
+        tasks = {}
 
         if work:
             work = sorted((entry, duration) for start, entry, duration in work)
@@ -554,14 +555,32 @@ class TimeWindow(object):
                     continue  # skip empty "arrival" entries
 
                 entry = entry[:1].upper() + entry[1:]
+                if entry[-1] == ':':
+                    entry += " " # missing comment; add for rsplit later
 
                 if ': ' in entry:
-                    cat, task = entry.split(': ', 1)
+                    #cat, task = entry.split(': ', 1)
+                    # category: 2nd field from the right
+                    try:
+                        cat, task, comment = entry.rsplit(': ', 2)
+                    except ValueError:
+                        # bad data? assume the missing part is the comment
+                        print("warning: entry with 1 colon: '" + entry + "'")
+                        cat, task = entry.rsplit(': ', 1)
                     categories[cat] = categories.get(
                         cat, datetime.timedelta(0)) + duration
+                    (dur, comments) = tasks.get(
+                        task, (datetime.timedelta(0), set()))
+                    if comment and not comment == "":
+                        comments.add(comment)
+                    tasks[task] = (dur + duration, comments)
                 else:
                     categories[None] = categories.get(
                         None, datetime.timedelta(0)) + duration
+                    (dur, comments) = tasks.get(
+                        None, (datetime.timedelta(0), set()))
+                    comments.add(entry)
+                    tasks[None] = (dur + duration, comments)
 
                 output.write("%-62s  %s\n" %
                              (entry, format_duration_long(duration)))
@@ -569,6 +588,17 @@ class TimeWindow(object):
 
         output.write("Total work done this %s: %s\n" %
                      (period, format_duration_long(total_work)))
+
+        if tasks:
+            output.write("\n")
+            output.write("By task:\n")
+            output.write("\n")
+
+            for task, (duration, comments) in list(tasks.items()):
+                output.write("%-62s  %s\n" % (
+                    task if task else "(none)", format_duration_long(duration)))
+                for comment in comments:
+                    output.write("- %s\n" % (comment))
 
         if categories:
             output.write("\n")

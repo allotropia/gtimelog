@@ -12,7 +12,6 @@ Build-Depends: debhelper-compat (= 12),
                python3-setuptools,
                python3-gi,
                python3-cairo (>= 1.11.1),
-               gir1.2-appindicator3-0.1,
                gir1.2-secret-1,
                gir1.2-gtk-3.0,
                gir1.2-soup-2.4,
@@ -26,8 +25,7 @@ Rules-Requires-Root: no
 
 Package: collabora-gtimelog
 Architecture: all
-Depends: gir1.2-appindicator3-0.1,
-         gir1.2-secret-1,
+Depends: gir1.2-secret-1,
          gir1.2-gtk-3.0,
          gir1.2-soup-2.4,
          gir1.2-pango-1.0,

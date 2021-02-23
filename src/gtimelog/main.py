@@ -716,6 +716,10 @@ class MainWindow(object):
                                "Edit timelog", self.edit_timelog)
             self.weekly_report_reminder_set = True
 
+        if monthly_window.parse_error:
+            self.push_error_infobar(secondary=str(monthly_window.parse_error))
+
+
     def time_left_at_work(self, total_work):
         """Calculate time left to work."""
         last_time = self.timelog.window.last_time()
@@ -916,14 +920,35 @@ class MainWindow(object):
         for entry, weight in list(count.items()):
             self.completion_choices.append([entry, weight])
 
+    def push_error_infobar(self, primary=None, secondary=None, handler=None):
+        if primary is None:
+            primary = 'Bad entries in your timelog'
+        if secondary is None:
+            secondary = 'Some entries in your timesheet are not known to the server. ' \
+                'Please correct them, and submit.'
+        message = '<b><big>%s</big></b>\n\n%s' % (
+            GLib.markup_escape_text(primary),
+            GLib.markup_escape_text(secondary))
+
+        self.push_reminder(message, None,
+                           'View problems', handler=handler, kind=Gtk.MessageType.ERROR)
+
     def push_reminder(self, msg, close_handler=None, action_label=None,
-                      handler=None):
-        self.reminders.append(dict(msg=msg, close_handler=close_handler,
-                                   action_label=action_label, handler=handler))
+                      handler=None, kind=Gtk.MessageType.INFO):
+        self.reminders.append({
+            'msg': msg,
+            'close_handler': close_handler,
+            'action_label': action_label,
+            'handler': handler,
+            'kind': kind,
+        })
         self.update_reminder()
 
     def clear_reminders(self):
-        self.reminders = []
+        # don’t remove errors
+        self.reminders = [
+            r for r in self.reminders if r['kind'] == Gtk.MessageType.ERROR
+        ]
         self.update_reminder()
 
     def reminder_response_cb(self, infobar, response, reminder):
@@ -953,7 +978,7 @@ class MainWindow(object):
         label.set_markup(reminder['msg'])
 
         self.reminder_infobar = Gtk.InfoBar()
-        self.reminder_infobar.set_message_type(Gtk.MessageType.INFO)
+        self.reminder_infobar.set_message_type(reminder['kind'])
 
         self.reminder_infobar.get_content_area().pack_start(
             label, True, True, 0)
@@ -1758,20 +1783,6 @@ class SubmitWindow(object):
 
         GObject.idle_add(lambda: self.progress_window.hide())
 
-    def push_error_infobar(self, primary=None, secondary=None):
-        main_window = self.application
-        if primary is None:
-            primary = 'Bad entries in your timelog'
-        if secondary is None:
-            secondary = 'Some entries in your timesheet are not known to the server. ' \
-                'Please correct them, and submit.'
-        message = '<b><big>%s</big></b>\n\n%s' % (
-            GLib.markup_escape_text(primary),
-            GLib.markup_escape_text(secondary))
-
-        main_window.push_reminder(message, None,
-                                  'View problems', main_window.show_submit_window)
-
     def upload_finished(self, session, message, automatic):
         # This is equivalent to the SOUP_STATUS_IS_TRANSPORT_ERROR() macro,
         # which is not exposed via GI (being as it is a macro).
@@ -1789,7 +1800,7 @@ class SubmitWindow(object):
             self.annotate_failure(txt)
 
             if automatic:
-                self.push_error_infobar()
+                self.application.push_error_infobar(handler=self.application.show_submit_window)
             else:
                 dialog = Gtk.MessageDialog(self.window,
                                            Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
@@ -1842,7 +1853,7 @@ class SubmitWindow(object):
     def error_dialog(self, e, title='Error Communicating With The Server', automatic=False):
         print(e)
         if automatic:
-            self.push_error_infobar(title, e)
+            self.application.push_error_infobar(title, e, handler=self.application.show_submit_window)
         else:
             dialog = Gtk.MessageDialog(self.window,
                                        Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,

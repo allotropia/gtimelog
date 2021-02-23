@@ -207,6 +207,7 @@ class TimeWindow(object):
         self.min_timestamp = min_timestamp
         self.max_timestamp = max_timestamp
         self.virtual_midnight = virtual_midnight
+        self.parse_error = None
         self.reread(callback)
 
     def reread(self, callback=None):
@@ -227,14 +228,15 @@ class TimeWindow(object):
         except IOError:
             return
         line = ''
+        self.parse_error = None
         for line in f:
             if ': ' not in line:
                 continue
             time, entry = line.split(': ', 1)
             try:
                 time = parse_datetime(time)
-            except ValueError:
-                continue
+            except ValueError as e:
+                self.parse_error = e
             else:
                 entry = entry.strip()
                 if callback:
@@ -247,13 +249,15 @@ class TimeWindow(object):
                     continue
 
                 if self.items and time <= self.items[-1][0]:
-                    print("WARNING: This entry out of order:", line)
+                    self.parse_error = ValueError("This entry out of order: '%s'" % line.strip())
                 self.items.append((time, entry))
 
         # The entries really should be already sorted in the file
         # XXX: instead of quietly resorting them we should inform the user
         self.items.sort()  # there's code that relies on them being sorted
         f.close()
+        if self.parse_error:
+            print("WARNING: %s" % self.parse_error)
 
     def last_time(self):
         """Return the time of the last event (or None if there are none)."""

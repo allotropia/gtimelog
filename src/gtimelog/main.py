@@ -672,6 +672,20 @@ class MainWindow(object):
             # I have no idea if there's API for that.
             self.w(' (out of ')
             self.w('%d' % self.weekdays_in_month(), 'time')
+            self.w(' days)\n')
+
+            # Find out the last day of the previous month.
+            first_of_current = self.timelog.day.replace(day=1)
+            month_ago = first_of_current - datetime.timedelta(days=1)
+
+            monthly_window = self.monthly_window(month_ago)
+            month_total_work, _ = monthly_window.totals()
+            (d, h) = divmod(as_hours(month_total_work), self.settings.hours)
+            h_delta = datetime.timedelta(hours=h)
+            self.w('Time worked last month: ')
+            self.w('%d days %s' % (d, format_duration(h_delta)), 'duration')
+            self.w(' (out of ')
+            self.w('%d' % self.weekdays_in_month(month_ago), 'time')
             self.w(' days)')
 
         if self.settings.show_office_hours:

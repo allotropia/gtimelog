@@ -738,9 +738,9 @@ class TaskList(object):
                     line = line.strip()
                     if line and not line.startswith("#"):
                         self.items.add(line)
-        except IOError as e:
-            print(e.message)
-            pass  # the file's not there, so what?
+        except FileNotFoundError:
+            msg = "No existing tasks found at '{}'; starting with empty list"
+            print(msg.format(self.filename))
 
     def reload(self):
         """Reload the task list."""

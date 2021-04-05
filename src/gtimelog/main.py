@@ -730,7 +730,6 @@ class MainWindow(object):
         if monthly_window.parse_error:
             self.push_error_infobar(secondary=str(monthly_window.parse_error))
 
-
     def time_left_at_work(self, total_work):
         """Calculate time left to work."""
         last_time = self.timelog.window.last_time()

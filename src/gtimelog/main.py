@@ -1587,12 +1587,11 @@ class MainWindow(object):
             return
 
         try:
-            unlogged_time_before_idle = self.time_before_idle - self.timelog.window.last_time())
+            unlogged_time_before_idle = self.time_before_idle - self.timelog.window.last_time()
             if unlogged_time_before_idle > self.settings.remind_idle:
                 self.welcome_back_notification = Notify.Notification(
                     summary="Welcome back",
-                    body="Would you like to insert a log entry near the " +
-                    "time you left your computer?")
+                    body="Would you like to insert a log entry near the time you left your computer?")
                 self.welcome_back_notification.add_action(
                     "clicked",
                     "Yes please", self.insert_old_log_entries,

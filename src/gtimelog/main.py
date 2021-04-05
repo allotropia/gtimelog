@@ -69,7 +69,6 @@ from .utils import require_version
 require_version('Gtk', '3.0')
 require_version('Gdk', '3.0')
 require_version('Soup', '2.4')
-import gi
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk, Pango, Soup  # noqa: E402
 
 try:
@@ -85,11 +84,9 @@ from .collabora import RemoteTaskList, soup_session  # noqa: E402
 from .settings import Settings  # noqa: E402
 from .timelog import (
     as_hours,
-    first_of_month,
     format_duration,
     format_duration_long,
     format_duration_short,
-    next_month,
     parse_timedelta,
     TaskList,
     TimeLog,

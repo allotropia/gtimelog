@@ -1587,8 +1587,7 @@ class MainWindow(object):
             return
 
         try:
-            unlogged_time_before_idle = (self.time_before_idle -
-                                         self.timelog.window.last_time())
+            unlogged_time_before_idle = self.time_before_idle - self.timelog.window.last_time())
             if unlogged_time_before_idle > self.settings.remind_idle:
                 self.welcome_back_notification = Notify.Notification(
                     summary="Welcome back",

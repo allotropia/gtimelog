@@ -327,7 +327,7 @@ class MainWindow(object):
             if len(txt) == 0:
                 return True
 
-            depth = model.iter_depth(iter)
+            model.iter_depth(iter)
 
             # Currently the first (0th) column of the data is the respective
             # section, as separated by :, while the second (1th) column has

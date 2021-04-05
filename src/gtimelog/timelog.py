@@ -47,8 +47,10 @@ def format_duration_long(duration):
 def parse_datetime(dt):
     """Parse a datetime instance from 'YYYY-MM-DD HH:MM' formatted string."""
     m = re.match(
-        r'^(?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+) ' +
-        r'(?P<hour>\d+):(?P<min>\d+)(?: (?P<tz>[+-]\d+))?$', dt)
+        r'^(?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+) '  # date part
+        r'(?P<hour>\d+):(?P<min>\d+)(?: (?P<tz>[+-]\d+))?$',  # time part
+        dt
+    )
     if not m:
         raise ValueError('bad date time: %r' % dt)
 

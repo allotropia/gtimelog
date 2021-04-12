@@ -1853,6 +1853,14 @@ class SubmitWindow(object):
             self.error_dialog(txt, automatic=automatic)
 
     def upload(self, data, automatic):
+        if not self.report_url:
+            self.error_dialog(
+                e='No reporting URL is configured; cannot upload report data.  Check your gtimelogrc settings.',
+                title='Configuration Issue',
+                automatic=automatic
+            )
+            return
+
         if self.settings.server_cert and not os.path.exists(self.settings.server_cert):
             print("Server certificate file '%s' not found" %
                   self.settings.server_cert)

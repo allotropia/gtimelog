@@ -7,3 +7,4 @@ Type=Application
 StartupNotify=true
 Icon=gtimelog
 Categories=Application;Utility;
+X-GNOME-UsesNotifications=true

@@ -16,7 +16,6 @@ Build-Depends: debhelper-compat (= 12),
                gir1.2-gtk-3.0,
                gir1.2-soup-2.4,
                gir1.2-pango-1.0,
-               gir1.2-notify-0.7,
 Standards-Version: 4.5.0
 Vcs-Browser: https://gitlab.collabora.com/collabora/gtimelog
 Vcs-Git: https://gitlab.collabora.com/collabora/gtimelog.git
@@ -29,7 +28,6 @@ Depends: gir1.2-secret-1,
          gir1.2-gtk-3.0,
          gir1.2-soup-2.4,
          gir1.2-pango-1.0,
-         gir1.2-notify-0.7,
          ${python3:Depends},
          ${misc:Depends}
 Recommends: xdg-utils

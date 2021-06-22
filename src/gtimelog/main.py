@@ -71,13 +71,6 @@ require_version('Gdk', '3.0')
 require_version('Soup', '2.4')
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk, Pango, Soup  # noqa: E402
 
-try:
-    require_version('Notify', '0.7')
-    from gi.repository import Notify
-    assert Notify.init("gtimelog")
-except ImportError:
-    print("LibNotify (with introspection) not found.")
-    print("Idle timeouts are not supported.")
 mark_time("Gtk imports done")
 
 from .collabora import RemoteTaskList, soup_session  # noqa: E402
@@ -1582,38 +1575,20 @@ class MainWindow(object):
         AND the previous event in the log occurred more than
         settings.remind_idle before the start of the idling
         """
-        if self.welcome_back_notification is not None:
-            # There's already a bubble.
-            return
 
-        try:
-            unlogged_time_before_idle = self.time_before_idle - self.timelog.window.last_time()
-            if unlogged_time_before_idle > self.settings.remind_idle:
-                self.welcome_back_notification = Notify.Notification(
-                    summary="Welcome back",
-                    body="Would you like to insert a log entry near the time you left your computer?")
-                self.welcome_back_notification.add_action(
-                    "clicked",
-                    "Yes please", self.insert_old_log_entries,
-                    # No user_data
-                    None)
-                # The please is just to make the tiny little button bigger
-                self.welcome_back_notification.show()
-                self.welcome_back_notification.connect(
-                    'closed', self.__notification_closed_cb)
-        except Exception as e:
-            print("pynotification failed: %s" % e)
+        unlogged_time_before_idle = self.time_before_idle - self.timelog.window.last_time()
+        if unlogged_time_before_idle > self.settings.remind_idle:
+            resume_notification = Gio.Notification.new("Welcome back")
+            resume_notification.set_body("Would you like to insert a log entry near the time you left your computer?")
+            resume_notification.add_button("Yes please", "app.on-welcome-back-notification-clicked")
+            Gio.Application.get_default().send_notification("resume-notification", resume_notification)
 
-    def insert_old_log_entries(self, note=None, act=None, data=None):
+    def insert_old_log_entries(self):
         """
         Callback from the resume_from_idle notification
         """
         self.inserting_old_time = True
         self.time_label.set_text("Backdated: " + self.time_before_idle.strftime("%H:%M"))
-
-    def __notification_closed_cb(self, notification):
-        if self.welcome_back_notification == notification:
-            self.welcome_back_notification = None
 
     def insert_new_log_entries(self):
         """
@@ -2080,6 +2055,17 @@ class Application(Gtk.Application):
 
         self.tray_icon = TrayIcon(self.main_window)
         self.main_window.entry_watchers.append(self.tray_icon.entry_added)
+
+        action = Gio.SimpleAction.new(
+            "on-welcome-back-notification-clicked",
+            None
+        )
+        action.connect('activate', self.insert_old_log_entries)
+        self.add_action(action)
+
+    def insert_old_log_entries(self, notification, arg):
+        if self.main_window is not None:
+            self.main_window.insert_old_log_entries()
 
 
 def main():

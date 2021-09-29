@@ -1,0 +1,47 @@
+#!/usr/bin/python3
+"""
+Script to export current timelog to csv
+"""
+import os
+import sys
+
+# add git repo subdirs to search path
+basedir = os.path.dirname(os.path.realpath(__file__))
+pkgdir = os.path.join(basedir, 'src')
+sys.path.insert(0, pkgdir)
+
+# handle parameters
+import argparse
+parser = argparse.ArgumentParser(
+    description="Parse gtimelog files, export date range to CSV")
+parser.add_argument("-o", "--output", default=sys.stdout,
+                    type=argparse.FileType('w', encoding='UTF-8'),
+                    help="Write output to given <file> (default: stdout)")
+parser.add_argument("-m", "--min", default='',
+                    help="start export from given date string (format is %Y-%m-%d %H:%M)")
+parser.add_argument("-x", "--max", default='',
+                    help="export until given date string (format is %Y-%m-%d %H:%M)")
+parser.add_argument("input", help="gtimelog input file")
+args = parser.parse_args()
+
+window = None
+
+# possibly limit time frame we're exporting
+from datetime import datetime
+from gtimelog.timelog import TimeWindow
+from gtimelog.timelog import TZOffset
+if args.min or args.max:
+    min = datetime.min
+    max = datetime.max
+    if args.min:
+        min = datetime.strptime(args.min, '%Y-%m-%d %H:%M').replace(tzinfo=TZOffset())
+    if args.max:
+        max = datetime.strptime(args.max, '%Y-%m-%d %H:%M').replace(tzinfo=TZOffset())
+    window = TimeWindow(args.input, min, max)
+else:
+    # load entire timelog file, perhaps with subset reporting period
+    window = TimeWindow(args.input)
+
+# export entire file
+import csv
+window.to_csv_complete(csv.writer(args.output))

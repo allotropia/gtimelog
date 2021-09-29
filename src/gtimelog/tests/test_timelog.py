@@ -296,19 +296,27 @@ def doctest_TimeWindow_monthly_report():
         To: foo@bar.com
         Subject: Monthly report for Bob Jones (2007/09)
         <BLANKLINE>
-                                                                        time
+                                                                       time
+        warning: entry with 1 colon: 'Bing: stuff'
         Bing: stuff                                                     23 min
+        warning: entry with 1 colon: 'Bong: other stuff'
         Bong: other stuff                                               3 hours 31 min
         Misc                                                            2 hours 14 min
         <BLANKLINE>
         Total work done this month: 6 hours 8 min
+        <BLANKLINE>
+        By task:
+        <BLANKLINE>
+        stuff                                                           23 min
+        other stuff                                                     3 hours 31 min
+        (none)                                                          2 hours 14 min
+        - Misc
         <BLANKLINE>
         By category:
         <BLANKLINE>
         Bing                                                            23 min
         Bong                                                            3 hours 31 min
         (none)                                                          2 hours 14 min
-        <BLANKLINE>
 
     """
 

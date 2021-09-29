@@ -561,6 +561,7 @@ class TimeWindow(object):
                 if ': ' in entry:
                     #cat, task = entry.split(': ', 1)
                     # category: 2nd field from the right
+                    comment = None
                     try:
                         cat, task, comment = entry.rsplit(': ', 2)
                     except ValueError:

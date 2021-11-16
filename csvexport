@@ -18,9 +18,9 @@ parser.add_argument("-o", "--output", default=sys.stdout,
                     type=argparse.FileType('w', encoding='UTF-8'),
                     help="Write output to given <file> (default: stdout)")
 parser.add_argument("-m", "--min", default='',
-                    help="start export from given date string (format is %Y-%m-%d %H:%M)")
+                    help="start export from given date string (format is %%Y-%%m-%%d %%H:%%M)")
 parser.add_argument("-x", "--max", default='',
-                    help="export until given date string (format is %Y-%m-%d %H:%M)")
+                    help="export until given date string (format is %%Y-%%m-%%d %%H:%%M)")
 parser.add_argument("input", help="gtimelog input file")
 args = parser.parse_args()
 
@@ -31,8 +31,8 @@ from datetime import datetime
 from gtimelog.timelog import TimeWindow
 from gtimelog.timelog import TZOffset
 if args.min or args.max:
-    min = datetime.min
-    max = datetime.max
+    min = datetime.min.replace(tzinfo=TZOffset())
+    max = datetime.max.replace(tzinfo=TZOffset())
     if args.min:
         min = datetime.strptime(args.min, '%Y-%m-%d %H:%M').replace(tzinfo=TZOffset())
     if args.max:

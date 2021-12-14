@@ -408,6 +408,27 @@ class TimeWindow(object):
                       if duration)  # skip empty "arrival" entries
         writer.writerows(work)
 
+    def to_csv_detailed(self, writer, title_row=True):
+        """Export every single work entry to a CSV file.
+
+        The file has three columns: task title, start time, and duration (in minutes).
+        """
+        if title_row:
+            writer.writerow(["task", "start", "time (minutes)"])
+
+        work = sorted(((entry, start, as_minutes(duration))
+                       for start, stop, duration, entry in self.all_entries()
+                       if '**' not in entry), key=lambda entry: entry[1])  # skip
+                                                                           # slack
+                                                                           # /
+                                                                           # pause
+                                                                           # entries,
+                                                                           # sort
+                                                                           # for
+                                                                           # start
+                                                                           # date
+        writer.writerows(work)
+
     def to_csv_daily(self, writer, title_row=True):
         """Export daily work, slacking, and arrival times to a CSV file.
 

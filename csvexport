@@ -13,10 +13,12 @@ sys.path.insert(0, pkgdir)
 # handle parameters
 import argparse
 parser = argparse.ArgumentParser(
-    description="Parse gtimelog files, export date range to CSV")
+    description="Parse gtimelog files, export data (possibly a range) to CSV")
 parser.add_argument("-o", "--output", default=sys.stdout,
                     type=argparse.FileType('w', encoding='UTF-8'),
                     help="Write output to given <file> (default: stdout)")
+parser.add_argument('--type', default='aggregated', choices=['aggregated', 'detailed', 'daily'],
+                    help='choose type of export (default: %(default)s)')
 parser.add_argument("-m", "--min", default='',
                     help="start export from given date string (format is %%Y-%%m-%%d %%H:%%M)")
 parser.add_argument("-x", "--max", default='',
@@ -44,4 +46,9 @@ else:
 
 # export entire file
 import csv
-window.to_csv_aggregated(csv.writer(args.output))
+if args.type == "aggregated":
+    window.to_csv_aggregated(csv.writer(args.output))
+elif args.type == "detailed":
+    window.to_csv_detailed(csv.writer(args.output))
+elif args.type == "detailed":
+    window.to_csv_daily(csv.writer(args.output))

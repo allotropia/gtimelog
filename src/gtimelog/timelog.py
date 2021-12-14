@@ -21,6 +21,11 @@ def as_hours(duration):
     return duration.days * 24.0 + duration.seconds / (60.0 * 60.0)
 
 
+def as_days(duration):
+    """Convert a datetime.timedelta to a float number of days."""
+    return duration.days + duration.seconds / (24.0 * 60.0 * 60.0)
+
+
 def format_duration(duration):
     """Format a datetime.timedelta with minute precision."""
     h, m = divmod(as_minutes(duration), 60)
@@ -395,9 +400,9 @@ class TimeWindow(object):
         The file has two columns: task title and time (in minutes).
         """
         if title_row:
-            writer.writerow(["task", "time (minutes)"])
+            writer.writerow(["task", "time (days)"])
         work, slack = self.grouped_entries()
-        work = sorted((entry, as_minutes(duration))
+        work = sorted((entry, as_days(duration))
                       for start, entry, duration in work
                       if duration)  # skip empty "arrival" entries
         writer.writerows(work)
@@ -408,9 +413,9 @@ class TimeWindow(object):
         The file has three columns: task title, start time, and duration (in minutes).
         """
         if title_row:
-            writer.writerow(["task", "start", "time (minutes)"])
+            writer.writerow(["task", "start", "time (days)"])
 
-        work = sorted(((entry, start, as_minutes(duration))
+        work = sorted(((entry, start, as_days(duration))
                        for start, stop, duration, entry in self.all_entries()
                        if '**' not in entry), key=lambda entry: entry[1])  # skip
                                                                            # slack

@@ -395,8 +395,8 @@ class TimeWindow(object):
             output.write("END:VEVENT\n")
         output.write("END:VCALENDAR\n")
 
-    def to_csv_complete(self, writer, title_row=True):
-        """Export work entries to a CSV file.
+    def to_csv_aggregated(self, writer, title_row=True):
+        """Export aggregated work entries to a CSV file.
 
         The file has two columns: task title and time (in minutes).
         """

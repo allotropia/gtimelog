@@ -44,4 +44,4 @@ else:
 
 # export entire file
 import csv
-window.to_csv_complete(csv.writer(args.output))
+window.to_csv_aggregated(csv.writer(args.output))

@@ -423,15 +423,8 @@ class TimeWindow(object):
 
         work = sorted(((entry, start, as_days(duration))
                        for start, stop, duration, entry in self.all_entries()
-                       if '**' not in entry), key=lambda entry: entry[1])  # skip
-                                                                           # slack
-                                                                           # /
-                                                                           # pause
-                                                                           # entries,
-                                                                           # sort
-                                                                           # for
-                                                                           # start
-                                                                           # date
+                       if '**' not in entry and duration), key=lambda entry: entry[1])
+                       # skip slack / pause entries, sort for start date
         writer.writerows(work)
 
     def to_csv_daily(self, writer, title_row=True):

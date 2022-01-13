@@ -4,7 +4,7 @@
   <!-- interface-naming-policy toplevel-contextual -->
   <object class="GtkTextBuffer" id="textbuffer1">
     <property name="text">19:20 did thist
-19:25 did something very very very very very very very very long to describe		
+19:25 did something very very very very very very very very long to describe
 20:20 did that
 </property>
   </object>
@@ -680,13 +680,23 @@ GTimeLog is a time tracking application.
                       </object>
                     </child>
                     <child>
-                      <object class="GtkImageMenuItem" id="open_complete_spreadsheet">
-                        <property name="label" translatable="yes">_Complete Report in Spreadsheet</property>
+                      <object class="GtkImageMenuItem" id="open_complete_spreadsheet_detailed">
+                        <property name="label" translatable="yes">_Complete Report in Spreadsheet (detailed)</property>
                         <property name="visible">True</property>
                         <property name="use_underline">True</property>
                         <property name="image">image16</property>
                         <property name="use_stock">False</property>
-                        <signal name="activate" handler="on_open_complete_spreadsheet_activate"/>
+                        <signal name="activate" handler="on_open_complete_spreadsheet_detailed_activate"/>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkImageMenuItem" id="open_complete_spreadsheet_aggregated">
+                        <property name="label" translatable="yes">Complete Report in Spreadsheet (_aggregated)</property>
+                        <property name="visible">True</property>
+                        <property name="use_underline">True</property>
+                        <property name="image">image16</property>
+                        <property name="use_stock">False</property>
+                        <signal name="activate" handler="on_open_complete_spreadsheet_aggregated_activate"/>
                       </object>
                     </child>
                     <child>

@@ -1408,8 +1408,12 @@ class MainWindow(object):
 
         self.spawn(self.settings.spreadsheet, tempfn)
 
-    def on_open_complete_spreadsheet_activate(self, widget):
-        """Report -> Complete Report in Spreadsheet"""
+    def on_open_complete_spreadsheet_detailed_activate(self, widget):
+        """Report -> Complete Report in Spreadsheet (detailed)"""
+        self._open_spreadsheet(TimeWindow.to_csv_detailed)
+
+    def on_open_complete_spreadsheet_aggregated_activate(self, widget):
+        """Report -> Complete Report in Spreadsheet (aggregated)"""
         self._open_spreadsheet(TimeWindow.to_csv_aggregated)
 
     def on_open_slack_spreadsheet_activate(self, widget):

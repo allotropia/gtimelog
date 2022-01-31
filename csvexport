@@ -17,7 +17,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument("-o", "--output", default=sys.stdout,
                     type=argparse.FileType('w', encoding='UTF-8'),
                     help="Write output to given <file> (default: stdout)")
-parser.add_argument('--type', default='aggregated', choices=['aggregated', 'detailed', 'daily'],
+parser.add_argument("-t", "--type", default='aggregated', choices=['aggregated', 'detailed', 'daily'],
                     help='choose type of export (default: %(default)s)')
 parser.add_argument("-m", "--min", default='',
                     help="start export from given date string (format is %%Y-%%m-%%d %%H:%%M)")

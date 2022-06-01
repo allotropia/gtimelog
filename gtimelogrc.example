@@ -13,10 +13,14 @@ list-email = activity@example.com
 # file containing the activity report as a RFC-2822 message.  If there is
 # no '%s', the draft file name is appended to the command.
 # allotropia: launch only your favourite text editor and save the report to NC
+# For running this under Cygwin, use it like:
+# mailer = /cygdrive/c/Program\ Files/Notepad++/notepad++.exe $(cygpath -w %s)
 mailer = gedit
 
 # Command to launch an editor.  %s is replaced with the name of the time log
 # file; if there is no '%s', the name of the log file is appended.
+# For running this under Cygwin, use it like:
+# editor = /cygdrive/c/Program\ Files/Notepad++/notepad++.exe $(cygpath -w %s)
 editor = xdg-open
 
 # User interface: True enables drop-down history completion (if you have PyGtk

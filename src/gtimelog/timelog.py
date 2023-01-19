@@ -568,8 +568,9 @@ class TimeWindow(object):
         tasks = {}
 
         if work:
-            work = sorted((entry, duration) for start, entry, duration in work)
-            for entry, duration in work:
+            # work is already sorted by start - why sort it again?
+            #work = sorted((entry, duration) for start, entry, duration in work)
+            for start, entry, duration in work:
                 if not duration:
                     continue  # skip empty "arrival" entries
 
@@ -590,16 +591,17 @@ class TimeWindow(object):
                     categories[cat] = categories.get(
                         cat, datetime.timedelta(0)) + duration
                     (dur, comments) = tasks.get(
-                        task, (datetime.timedelta(0), set()))
-                    if comment and not comment == "":
-                        comments.add(comment)
+                        task, (datetime.timedelta(0), []))
+                    if comment and not comment == "" and not comment in comments:
+                        comments.append(comment)
                     tasks[task] = (dur + duration, comments)
                 else:
                     categories[None] = categories.get(
                         None, datetime.timedelta(0)) + duration
                     (dur, comments) = tasks.get(
-                        None, (datetime.timedelta(0), set()))
-                    comments.add(entry)
+                        None, (datetime.timedelta(0), []))
+                    if not entry == "" and not entry in comments:
+                        comments.append(entry)
                     tasks[None] = (dur + duration, comments)
 
                 output.write("%-62s  %s\n" %

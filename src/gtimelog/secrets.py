@@ -35,7 +35,7 @@ class Authenticator(object):
             }
         )
     except ImportError:
-        print("LibSecret not found. You will not be able to use the password keyring.")
+        sys.stderr.write("LibSecret not found. You will not be able to use the password keyring.")
         Secret = None
 
     def find_in_keyring(self, uri, callback):
@@ -71,7 +71,7 @@ class Authenticator(object):
                     self.SECRET_SCHEMA_COMPAT_NETWORK, attrs, None)
         except (GLib.Error, KeyError) as e:
             # Couldn't contact daemon, or other errors
-            print("Unable to contact keyring: {0}".format(e))
+            sys.stderr.write("Unable to contact keyring: {0}".format(e))
 
         callback(username, password)
 
@@ -93,7 +93,7 @@ class Authenticator(object):
                 "Chronophage password for GTimelog", password, None)
         except GLib.Error as e:
             # Couldn't contact daemon, or other errors
-            print("Unable to contact keyring: {0}".format(e))
+            sys.stderr.write("Unable to contact keyring: {0}".format(e))
 
     def ask_the_user(self, auth, uri, callback):
         """Pops up a username/password dialog for uri"""

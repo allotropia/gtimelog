@@ -11,9 +11,9 @@ if DEBUG:
     def mark_time(what=None, _prev=[0, 0]):
         t = time.time()
         if what:
-            print("{:.3f} ({:+.3f}) {}".format(t - _prev[1], t - _prev[0], what))
+            sys.stderr.write("{:.3f} ({:+.3f}) {}".format(t - _prev[1], t - _prev[0], what))
         else:
-            print()
+            sys.stderr.write()
             _prev[1] = t
         _prev[0] = t
 else:
@@ -77,8 +77,8 @@ try:
     from gi.repository import Notify
     assert Notify.init("gtimelog")
 except ImportError:
-    print("LibNotify (with introspection) not found.")
-    print("Idle timeouts are not supported.")
+    sys.stderr.write("LibNotify (with introspection) not found.")
+    sys.stderr.write("Idle timeouts are not supported.")
 mark_time("Gtk imports done")
 
 from .allotropia import RemoteTaskList, soup_session  # noqa: E402
@@ -460,7 +460,7 @@ class MainWindow(object):
 
             self.main_window.move(x, y)
         except Exception as e:
-            print(e.message)
+            sys.stderr.write(e.message)
 
     def save_ui_state(self, filename):
         try:
@@ -480,7 +480,7 @@ class MainWindow(object):
             config.write(uistaterc)
             uistaterc.close()
         except Exception as e:
-            print(e.message)
+            sys.stderr.write(e.message)
 
     def set_up_log_view_columns(self):
         """Set up tab stops in the log view."""
@@ -588,7 +588,7 @@ class MainWindow(object):
         try:
             open(os.path.join(configdir, filename), 'w').write('%d' % number)
         except IOError as e:
-            print('Unable to record ack...: ' + e.message)
+            sys.stderr.write('Unable to record ack...: ' + e.message)
             pass
 
     def ack_weekly_reminder(self, *args):
@@ -1249,8 +1249,8 @@ class MainWindow(object):
             with open(filename, 'rb') as f:
                 togglesdict = pickle.load(f)
         except (IOError, pickle.PickleError) as e:
-            print("ERROR READING TOGGLE STATE FROM DISK")
-            print(e)
+            sys.stderr.write("ERROR READING TOGGLE STATE FROM DISK")
+            sys.stderr.write(e)
             togglesdict = {}
 
         return togglesdict
@@ -1263,8 +1263,8 @@ class MainWindow(object):
             with open(filename, 'wb') as f:
                 pickle.dump(togglesdict, f)
         except (IOError, pickle.PickleError) as e:
-            print("FAILED TO WRITE TOGGLE STATE TO DISK")
-            print(e)
+            sys.stderr.write("FAILED TO WRITE TOGGLE STATE TO DISK")
+            sys.stderr.write(e)
 
     def on_row_expander_changed(self, treeview, iter, path, expanded):
         """Someone toggled a task list expander"""
@@ -1595,7 +1595,7 @@ class MainWindow(object):
                 self.welcome_back_notification.connect(
                     'closed', self.__notification_closed_cb)
         except Exception as e:
-            print("pynotification failed: %s" % e)
+            sys.stderr.write("pynotification failed: %s" % e)
 
     def insert_old_log_entries(self, note=None, act=None, data=None):
         """
@@ -1854,7 +1854,7 @@ class SubmitWindow(object):
 
     def upload(self, data, final_date, automatic):
         if self.settings.server_cert and not os.path.exists(self.settings.server_cert):
-            print("Server certificate file '%s' not found" %
+            sys.stderr.write("Server certificate file '%s' not found" %
                   self.settings.server_cert)
 
         # PUT the file onto a nextcloud share - curl equivalent is:
@@ -1867,7 +1867,7 @@ class SubmitWindow(object):
         soup_session.queue_message(message, self.upload_finished, automatic)
 
     def error_dialog(self, e, title='Error Communicating With The Server', automatic=False):
-        print(e)
+        sys.stderr.write(e)
         if automatic:
             self.push_error_infobar(title, e)
         else:
@@ -2017,7 +2017,7 @@ class SubmitWindow(object):
                 continue
 
             if line and line != "Failed":
-                print("Couldn't understand server: %s" % line)
+                sys.stderr.write("Couldn't understand server: %s" % line)
 
     def hide(self):
         self.window.hide()

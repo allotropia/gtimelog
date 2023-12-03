@@ -7,6 +7,7 @@ import codecs
 import datetime
 import os
 import re
+import sys
 
 from .tzoffset import TZOffset
 
@@ -35,7 +36,7 @@ def format_duration(duration):
 def format_duration_short(duration):
     """Format a datetime.timedelta with minute precision."""
     h, m = divmod((duration.days * 24 * 60 + duration.seconds // 60), 60)
-    return '%d:%02d' % (h, m)
+    return '%d:%02d:%02d' % (h, m, duration.seconds % 60)
 
 
 def format_duration_long(duration):
@@ -408,17 +409,28 @@ class TimeWindow(object):
         writer.writerows(work)
 
     def to_csv_detailed(self, writer, title_row=True):
-        """Export every single work entry to a CSV file.
+        """Export every single work entry to a CSV file, with a project/comment split
 
         The file has three columns: task title, start time, and duration (in minutes).
         """
         if title_row:
-            writer.writerow(["task", "start", "time (days)"])
+            writer.writerow(['issue', 'timeSpent', 'started', 'comment'])
 
-        work = sorted(((entry, start, as_days(duration))
-                       for start, stop, duration, entry in self.all_entries()
-                       if '**' not in entry and duration), key=lambda entry: entry[1])
-                       # skip slack / pause entries, sort for start date
+        work = []
+        for entry in self.all_entries():
+            start, stop, duration, desc = entry
+            if '**' not in desc and duration:
+                try:
+                    project, comments = entry[3].split(': ', 1)
+                except ValueError:
+                    # bad data? assume the missing part is the comment
+                    sys.stderr.write("warning: entry no colon: '" + entry[3] + "'\n")
+                    project = ""
+                    comments = entry[3]
+                work.append((project, format_duration_short(duration), start.strftime('%Y-%m-%d %H:%M:%S'), comments))
+
+        # sort for start date
+        work = sorted(((entry) for entry in work), key=lambda entry: entry[2])
         writer.writerows(work)
 
     def to_csv_daily(self, writer, title_row=True):
@@ -586,7 +598,7 @@ class TimeWindow(object):
                         cat, task, comment = entry.rsplit(': ', 2)
                     except ValueError:
                         # bad data? assume the missing part is the comment
-                        print("warning: entry with 1 colon: '" + entry + "'")
+                        sys.stderr.write("warning: entry with 1 colon: '" + entry + "'\n")
                         cat, task = entry.rsplit(': ', 1)
                     categories[cat] = categories.get(
                         cat, datetime.timedelta(0)) + duration

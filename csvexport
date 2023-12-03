@@ -50,5 +50,5 @@ if args.type == "aggregated":
     window.to_csv_aggregated(csv.writer(args.output))
 elif args.type == "detailed":
     window.to_csv_detailed(csv.writer(args.output))
-elif args.type == "detailed":
+elif args.type == "daily":
     window.to_csv_daily(csv.writer(args.output))

@@ -122,7 +122,7 @@ class MainWindow(object):
         message = Soup.Message.new('PUT',
                                    self.settings.report_url+"/Report_"+final_date+'.txt')
         message.request_headers.append('X-Requested-With', 'XMLHttpRequest')
-        message.request_body.append(json.dumps(data, indent='\t')).encode())
+        message.request_body.append(json.dumps(data, indent='\t')).encode()
         message.request_body.complete()
         _ = soup_session.queue_message(message, self.upload_finished, automatic)
         loop = GLib.MainLoop()

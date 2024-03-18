@@ -253,7 +253,7 @@ class TimeWindow(object):
                     continue
 
                 if self.items and time <= self.items[-1][0]:
-                    sys.stderr.write("WARNING: This entry out of order: " + line)
+                    print("WARNING: This entry out of order: " + line, file=sys.stderr)
                 self.items.append((time, entry))
 
         # The entries really should be already sorted in the file
@@ -817,7 +817,7 @@ class TaskList(object):
                     if line and not line.startswith("#"):
                         self.items.add(line)
         except IOError as e:
-            sys.stderr.write(e.message)
+            print(e.message, file=sys.stderr)
             pass  # the file's not there, so what?
 
     def reload(self):

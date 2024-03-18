@@ -57,7 +57,7 @@ class RemoteTaskList(TaskList):
                 out = open(self.filename, 'w')
                 out.write(message.response_body.data)
             except IOError as e:
-                sys.stderr.write(e)
+                print(e, file=sys.stderr)
                 if self.error_callback:
                     self.error_callback()
             finally:
@@ -73,7 +73,7 @@ class RemoteTaskList(TaskList):
             self.loading_callback()
 
         if self.settings.server_cert and not os.path.exists(self.settings.server_cert):
-            sys.stderr.write("Server certificate file not found")
+            print("Server certificate file not found", file=sys.stderr)
 
         message = Soup.Message.new('GET', self.url)
         soup_session.queue_message(message, self.download_finished_cb, None)

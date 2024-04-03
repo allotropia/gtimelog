@@ -1260,7 +1260,7 @@ class MainWindow(object):
         filename = os.path.join(configdir, 'togglesdict.pickle')
         # write the dictionary back to disk
         try:
-            with open(filename, 'wb') as f:
+            with open(filename, 'wb+') as f:
                 pickle.dump(togglesdict, f)
         except (IOError, pickle.PickleError) as e:
             print("FAILED TO WRITE TOGGLE STATE TO DISK", file=sys.stderr)

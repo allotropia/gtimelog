@@ -1402,6 +1402,16 @@ class MainWindow(object):
     def on_edit_log_button_clicked(self, widget):
         self.edit_timelog()
 
+    def edit_tasks(self):
+        self.spawn(self.settings.editor, os.path.join(configdir, 'tasks.txt'))
+
+    def on_edit_tasks_activate(self, widget):
+        """File -> Edit tasks.txt"""
+        self.edit_tasks()
+
+    def on_edit_tasks_button_clicked(self, widget):
+        self.edit_tasks()
+
     def mail(self, write_draft):
         """Send an email."""
         with NamedTemporaryFile(mode="w+", suffix='gtimelog', delete=False) as draft:
